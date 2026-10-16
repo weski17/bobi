@@ -1,0 +1,20 @@
+# Upstream clones used only for analysis (Phase 0); real forks are added as submodules/subtrees later
+.upstream/
+
+# Dependencies / build output
+node_modules/
+dist/
+out/
+.turbo/
+coverage/
+
+# Local config and secrets – never commit
+.env
+.env.*
+!.env.example
+*.local.json
+bobi.local.jsonc
+
+# OS / editor
+.DS_Store
+.idea/
