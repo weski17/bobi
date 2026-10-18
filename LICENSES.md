@@ -21,3 +21,11 @@ Notes:
 | Podman | Apache-2.0 | Container sandbox |
 | ripgrep | MIT / Unlicense | Code search used by OpenCode (must be preinstalled, see docs/DEVELOPMENT.md) |
 | GNU bash 5 | GPL-3.0 | Shell used by tests; not linked or distributed |
+
+## Bobi workspace dependencies
+
+| Package | Version | License | Use |
+|---|---|---|---|
+| typescript | 5.8.2 | Apache-2.0 | Typecheck (dev) |
+| @types/bun | 1.4.0 | MIT | Bun type definitions (dev) |
+| `@opencode/*`, effect | from `vendor/opencode` | MIT | Linked from the pinned submodule by `scripts/link-upstream.ts`, never installed from npm |
