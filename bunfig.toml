@@ -1,0 +1,6 @@
+[test]
+# Bobi tests only; upstream tests run inside vendor/opencode (see docs/DEVELOPMENT.md).
+pathIgnorePatterns = ["vendor/**", "node_modules/**", ".upstream/**"]
+coverageSkipTestFiles = true
+coveragePathIgnorePatterns = ["vendor/**", "node_modules/**", "tests/**"]
+coverageThreshold = { lines = 0.8, functions = 0.8 }

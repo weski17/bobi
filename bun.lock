@@ -6,6 +6,7 @@
       "name": "bobi",
       "devDependencies": {
         "@bobi/config": "workspace:*",
+        "@bobi/core": "workspace:*",
         "@bobi/mock-model": "workspace:*",
         "@types/bun": "1.4.0",
         "typescript": "5.8.2",
@@ -14,6 +15,13 @@
     "packages/config": {
       "name": "@bobi/config",
       "version": "0.0.0",
+    },
+    "packages/core": {
+      "name": "@bobi/core",
+      "version": "0.0.0",
+      "dependencies": {
+        "@bobi/config": "workspace:*",
+      },
     },
     "packages/mock-model": {
       "name": "@bobi/mock-model",
@@ -25,6 +33,8 @@
   },
   "packages": {
     "@bobi/config": ["@bobi/config@workspace:packages/config"],
+
+    "@bobi/core": ["@bobi/core@workspace:packages/core"],
 
     "@bobi/mock-model": ["@bobi/mock-model@workspace:packages/mock-model"],
 

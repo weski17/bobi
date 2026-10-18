@@ -4,11 +4,10 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "strict": true,
-    "noUncheckedIndexedAccess": true,
     "skipLibCheck": true,
     "types": ["bun"],
     "allowImportingTsExtensions": true,
     "noEmit": true
   },
-  "include": ["packages/*/src", "packages/*/test"]
+  "include": ["packages/*/src", "packages/*/test", "scripts"]
 }
