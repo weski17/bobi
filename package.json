@@ -16,6 +16,7 @@
     "@bobi/config": "workspace:*",
     "@bobi/core": "workspace:*",
     "@bobi/mock-model": "workspace:*",
+    "@bobi/shell": "workspace:*",
     "@types/bun": "1.4.0",
     "typescript": "5.8.2"
   }
