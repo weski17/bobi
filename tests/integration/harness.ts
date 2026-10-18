@@ -1,5 +1,5 @@
 // Test harness: OpenCode SDK in-process + @bobi/core + mock model. No network beyond localhost.
-import { mkdtemp, rm } from "node:fs/promises"
+import { mkdtemp, realpath, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { OpenCode } from "@opencode/sdk"
@@ -29,7 +29,9 @@ export async function waitFor<T>(probe: () => Promise<T | undefined>, timeoutMs 
 
 export async function createHarness(patch: Partial<BobiConfig> = {}, secrets: string[] = []): Promise<Harness> {
   const mock = startMockModel({ models: ["mock-model"] })
-  const dir = await mkdtemp(path.join(tmpdir(), "bobi-it-"))
+  // Resolve symlinks (macOS: /var -> /private/var). OpenCode compares the session directory with the
+  // real git worktree path and silently skips snapshots when they differ.
+  const dir = await realpath(await mkdtemp(path.join(tmpdir(), "bobi-it-")))
   const configDir = await mkdtemp(path.join(tmpdir(), "bobi-it-config-"))
   const config: BobiConfig = {
     ...structuredClone(DEFAULTS),
