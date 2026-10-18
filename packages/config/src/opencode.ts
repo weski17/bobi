@@ -54,6 +54,12 @@ export const OFFLINE_ENV = {
   OPENCODE_DISABLE_AUTOUPDATE: "1",
 } as const
 
+/**
+ * Options for embedding OpenCode via @opencode/sdk. The SDK ignores OPENCODE_DISABLE_MODELS_FETCH
+ * (only the CLI reads it) and would fetch https://models.opencode.ai otherwise.
+ */
+export const SDK_OFFLINE_OPTIONS = { models: { fetch: false } } as const
+
 const PACKAGES = {
   openai: "aisdk:@ai-sdk/openai-compatible",
   anthropic: "aisdk:@ai-sdk/anthropic",

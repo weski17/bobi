@@ -3,7 +3,7 @@ import { mkdtemp, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { OpenCode } from "@opencode/sdk"
-import { DEFAULTS, toOpenCodeConfig, type BobiConfig } from "@bobi/config"
+import { DEFAULTS, SDK_OFFLINE_OPTIONS, toOpenCodeConfig, type BobiConfig } from "@bobi/config"
 import { createBobiCore, MemorySink } from "@bobi/core"
 import { startMockModel, type MockModel, type Turn } from "@bobi/mock-model"
 
@@ -42,7 +42,7 @@ export async function createHarness(patch: Partial<BobiConfig> = {}, secrets: st
   process.env.BOBI_MODEL_API_KEY = "it-test-key"
   const opencode = await OpenCode.create({
     config: { directory: configDir, project: false, content: JSON.stringify(toOpenCodeConfig(config)) },
-    models: { fetch: false },
+    ...SDK_OFFLINE_OPTIONS,
     fs: { filewatcher: false },
     plugins: [core],
   })
