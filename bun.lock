@@ -8,6 +8,7 @@
         "@bobi/config": "workspace:*",
         "@bobi/core": "workspace:*",
         "@bobi/mock-model": "workspace:*",
+        "@bobi/shell": "workspace:*",
         "@types/bun": "1.4.0",
         "typescript": "5.8.2",
       },
@@ -38,6 +39,17 @@
         "bobi-mock-model": "./src/cli.ts",
       },
     },
+    "packages/shell": {
+      "name": "@bobi/shell",
+      "version": "0.0.0",
+      "bin": {
+        "bobi": "./src/cli.ts",
+      },
+      "dependencies": {
+        "@bobi/config": "workspace:*",
+        "@bobi/core": "workspace:*",
+      },
+    },
   },
   "packages": {
     "@bobi/browser": ["@bobi/browser@workspace:packages/browser"],
@@ -47,6 +59,8 @@
     "@bobi/core": ["@bobi/core@workspace:packages/core"],
 
     "@bobi/mock-model": ["@bobi/mock-model@workspace:packages/mock-model"],
+
+    "@bobi/shell": ["@bobi/shell@workspace:packages/shell"],
 
     "@types/bun": ["@types/bun@1.4.0", "", { "dependencies": { "bun-types": "1.4.0" } }, "sha512-K+lZULY23vRgK/CfTjFIV+tyifaNdSMlPh9j+6mQ/cLfpOznLyAuzgV/JQysyECpkBQLVMSyvjlr2fBUSA9wFQ=="],
 
