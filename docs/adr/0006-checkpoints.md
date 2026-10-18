@@ -19,3 +19,8 @@ Snapshots store file content, so secrets in the working tree end up in the snaps
 
 - Undo is reliable for git repos from day one. Masking secrets *inside* user files in snapshots is not fully possible;
   documented as residual risk.
+
+## Phase 1 notes (2026-10-19)
+
+- Verified: revert restores changed files and removes created files in git projects.
+- Non-git projects: implementation choice still open (pointer `.git` file vs. own file backup), see docs/STATUS.md.

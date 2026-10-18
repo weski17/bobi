@@ -19,3 +19,18 @@ git submodule update --init --depth 1
 cd vendor/opencode && bun install
 cd packages/core && bun run test      # baseline: 6632 pass, 0 fail, 43 skip on v2.0.32
 ```
+
+## Bobi
+
+```bash
+bun install                 # also links @opencode/* from vendor/opencode (scripts/link-upstream.ts)
+bun run browser:install     # headless Chromium for the browser tool
+bun run typecheck
+bun run test                # Bobi tests only (vendor/ is ignored, see bunfig.toml)
+bun run test:coverage       # fails below 80 % lines/functions
+bun packages/shell/src/cli.ts            # interactive
+bun packages/shell/src/cli.ts run "…"    # headless (close stdin when scripting: </dev/null)
+```
+
+Environment: `BOBI_MODEL_BASE_URL`, `BOBI_MODEL`, `BOBI_MODEL_API_KEY`, `BOBI_MODEL_PROTOCOL`, `BOBI_CONFIG`, `BOBI_USER`,
+`OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_EXPORTER_OTLP_HEADERS`.
