@@ -18,3 +18,7 @@ bobi.local.jsonc
 # OS / editor
 .DS_Store
 .idea/
+
+# Company branding packs are applied at build time and never committed (ADR-0012)
+branding/*
+!branding/default/
