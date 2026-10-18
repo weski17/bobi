@@ -26,3 +26,11 @@ remote skill index, `.well-known` remote config, CIMD OAuth URL, runtime npm ins
 
 - Works with LiteLLM, vLLM, Ollama without code changes.
 - Model metadata (context size, pricing) must come from config or a bundled catalog copy.
+
+## Phase 1 notes (2026-10-19)
+
+- Implemented in `packages/config` (`toOpenCodeConfig`, `DISABLED_PLUGINS`, `OFFLINE_ENV`, `SDK_OFFLINE_OPTIONS`).
+- The API key is passed by name (`providers.bobi.env`), never as a value; verified against the mock endpoint.
+- Embedded SDK hosts must pass `SDK_OFFLINE_OPTIONS` – the SDK ignores `OPENCODE_DISABLE_MODELS_FETCH`.
+- ripgrep must be preinstalled, otherwise OpenCode downloads it from GitHub.
+- `opencode.provider.opencode` stays loaded (guarded upstream); no outbound call observed without a vendor login.
