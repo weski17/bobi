@@ -1,6 +1,6 @@
 # ADR-0003: Model endpoint and offline-by-default configuration
 
-- Status: Proposed
+- Status: Accepted (2026-10-19)
 - Date: 2026-10-17
 
 ## Context

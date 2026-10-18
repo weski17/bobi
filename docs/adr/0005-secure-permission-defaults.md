@@ -1,6 +1,6 @@
 # ADR-0005: Secure-by-default permissions
 
-- Status: Proposed
+- Status: Accepted (2026-10-19)
 - Date: 2026-10-17
 
 ## Context

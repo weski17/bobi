@@ -109,7 +109,7 @@ Per user project (what Bobi reads in a repository it works on):
 | 3 | `.bobi/custom_modes.yaml`, override by slug | Agent override by id | YAML loader → `ctx.agent.transform` | 2 |
 | 4 | Tools: files, search, terminal, **browser** | read/write/edit/grep/glob/shell/webfetch | Browser tool (headless Playwright, allowlisted) | 1 |
 | 5 | Confirm every write and shell command | Rule engine, no-match → ask | **Override allow-all default** with ask for `edit`, `shell`, `webfetch`, MCP; auto-approve only via explicit config | 1 |
-| 6 | Checkpoints + one-click undo | Shadow-git snapshots + revert API | Handling for non-git projects (open question), secret masking | 1 |
+| 6 | Checkpoints + one-click undo | Shadow-git snapshots + revert API | Private shadow repo for non-git projects, secret masking | 1 |
 | 7 | `/init` → AGENTS.md, rules, `.bobiignore` | `/init`, AGENTS.md, `instructions` | `.bobi/rules*` → instructions; `.bobiignore` enforced in `tool.execute.before` + shell parse | 2 |
 | 8 | MCP client, per mode | `mcp.servers`, permission rules | Mode → allowed servers mapping | 3 |
 | 9 | IDE chat, open-tab context, inline diffs | HTTP API + SSE | `bobi-chat` extension: native chat view, chat editing session | 4 |
@@ -129,6 +129,6 @@ Per user project (what Bobi reads in a repository it works on):
 - **Audit:** every tool call emits an OTel span with `bobi.user`, `bobi.mode`, `bobi.tool`, `bobi.result`.
 - **Policy as code:** `defaults/permissions.jsonc` + `.bobi/config.jsonc` are versioned and reviewed via PR.
 
-## 6. Open questions (need a decision before Phase 1)
+## 6. Decisions on open questions
 
 See [`STATUS.md`](STATUS.md#open-questions).
