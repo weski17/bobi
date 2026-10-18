@@ -29,3 +29,5 @@ Notes:
 | typescript | 5.8.2 | Apache-2.0 | Typecheck (dev) |
 | @types/bun | 1.4.0 | MIT | Bun type definitions (dev) |
 | `@opencode/*`, effect | from `vendor/opencode` | MIT | Linked from the pinned submodule by `scripts/link-upstream.ts`, never installed from npm |
+| playwright-core | 1.63.0 | Apache-2.0 | Headless browser tool (`@bobi/browser`) |
+| Chromium headless shell (via Playwright) | build 1243 | BSD-3-Clause and others (see Playwright `ThirdPartyNotices.txt`) | Browser binary, installed with `bun run browser:install`; not committed |

@@ -1,6 +1,7 @@
 // @bobi/core: the OpenCode plugin that turns the OpenCode engine into Bobi (ADR-0002).
 import type { Plugin } from "@opencode/plugin"
 import type { BobiConfig } from "@bobi/config"
+import { HeadlessBrowser, registerBrowserTool } from "@bobi/browser"
 import { type AuditSink, MemorySink, OtlpSink, parseOtlpHeaders } from "./audit.ts"
 import { createMasker, maskDeep, type Masker } from "./masking.ts"
 import { loadDefaultPolicy, rulesForAgent, type Rule } from "./permissions.ts"
@@ -15,6 +16,8 @@ export type BobiCoreOptions = {
   /** Audit sink; defaults to OTLP export when an endpoint is configured, else in-memory. */
   readonly audit?: AuditSink
   readonly policy?: readonly Rule[]
+  /** Headless browser for the `browser` tool; pass `false` to not register the tool. */
+  readonly browser?: HeadlessBrowser | false
 }
 
 type TextContent = { type: "text"; text: string }
@@ -103,7 +106,13 @@ export function createBobiCore(options: BobiCoreOptions): Plugin.Plugin & { read
         })
       })
 
-      return () => audit.flush()
+      // 6. Headless browser tool (approval per page load).
+      const browser = options.browser === false ? undefined : await registerBrowserTool(ctx, options.browser ?? new HeadlessBrowser())
+
+      return async () => {
+        await browser?.close()
+        await audit.flush()
+      }
     },
   }
 }

@@ -27,7 +27,7 @@ export async function waitFor<T>(probe: () => Promise<T | undefined>, timeoutMs 
   throw new Error("waitFor: timed out")
 }
 
-export async function createHarness(patch: Partial<BobiConfig> = {}, secrets: string[] = []): Promise<Harness> {
+export async function createHarness(patch: Partial<BobiConfig> = {}, secrets: string[] = [], options: { browser?: boolean } = {}): Promise<Harness> {
   const mock = startMockModel({ models: ["mock-model"] })
   // Resolve symlinks (macOS: /var -> /private/var). OpenCode compares the session directory with the
   // real git worktree path and silently skips snapshots when they differ.
@@ -40,7 +40,8 @@ export async function createHarness(patch: Partial<BobiConfig> = {}, secrets: st
     telemetry: { user: "tester" },
   }
   const audit = new MemorySink()
-  const core = createBobiCore({ config, audit, secrets })
+  // The browser tool is only registered where a test needs it, so other tests don't depend on Chromium.
+  const core = createBobiCore({ config, audit, secrets, ...(options.browser ? {} : { browser: false }) })
   process.env.BOBI_MODEL_API_KEY = "it-test-key"
   const opencode = await OpenCode.create({
     config: { directory: configDir, project: false, content: JSON.stringify(toOpenCodeConfig(config)) },

@@ -9,7 +9,8 @@
     "postinstall": "bun scripts/link-upstream.ts",
     "test": "bun test ./packages ./tests",
     "test:coverage": "bun test --coverage ./packages ./tests",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "browser:install": "bun packages/browser/node_modules/playwright-core/cli.js install chromium-headless-shell"
   },
   "devDependencies": {
     "@bobi/config": "workspace:*",

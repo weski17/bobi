@@ -10,6 +10,8 @@ export const PROVIDER_ID = "bobi"
  * upstream and cannot be disabled by config; it stays inert without a vendor login.
  */
 export const DISABLED_PLUGINS = [
+  // Desktop-attached browser; Bobi ships its own headless browser tool (@bobi/browser).
+  "opencode.browser",
   "opencode.provider.amazon.bedrock",
   "opencode.provider.azure",
   "opencode.provider.cerebras",
