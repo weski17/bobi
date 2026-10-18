@@ -1,6 +1,6 @@
 # ADR-0002: Bobi core as an OpenCode plugin
 
-- Status: Proposed
+- Status: Accepted (2026-10-19)
 - Date: 2026-10-17
 
 ## Context

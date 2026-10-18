@@ -1,6 +1,6 @@
 # ADR-0007: Sandbox and network allowlist
 
-- Status: Proposed
+- Status: Accepted (2026-10-19)
 - Date: 2026-10-17
 
 ## Context
@@ -10,7 +10,7 @@ Agents must run in a container without access to production data, with network a
 
 ## Decision
 
-- The Bobi server and all tool processes run in a rootless OCI container (Podman or Docker; open question).
+- The Bobi server and all tool processes run in a rootless OCI container (**Podman**, rootless – decided 2026-10-19; Docker-compatible so Docker also works).
   Only the project directory and a Bobi data volume are mounted; no host home, no SSH agent, no cloud credentials.
 - Default network: none. Egress only via an allowlist proxy in `sandbox/` (model gateway, configured MCP hosts, approved URLs).
 - IDE and Shell run on the host and talk to the server over a local port with a per-session password.

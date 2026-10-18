@@ -1,6 +1,6 @@
 # ADR-0008: Bobi IDE integration with Code-OSS
 
-- Status: Proposed
+- Status: Accepted (2026-10-19)
 - Date: 2026-10-17
 
 ## Context

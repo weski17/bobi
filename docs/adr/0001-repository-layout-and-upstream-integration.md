@@ -1,6 +1,6 @@
 # ADR-0001: Repository layout and upstream integration
 
-- Status: Proposed
+- Status: Accepted (2026-10-19)
 - Date: 2026-10-17
 
 ## Context
@@ -21,7 +21,9 @@ Code-OSS has many commits per day. CLAUDE.md requires minimal upstream changes s
 
 - Long-lived fork branches: simple at first, but rebases become opaque and upstream diffs are hard to review.
 - git subtree: no submodule friction, but the 940 MB Code-OSS history would bloat the Bobi repo.
-- Code-OSS in a separate repo: keeps Bobi light; may be revisited if submodule size hurts CI (open question).
+- Code-OSS in a separate repo: keeps Bobi light; may be revisited if submodule size hurts CI.
+
+**Decided 2026-10-19:** `vendor/opencode` is added in Phase 1; `vendor/code-oss` only in Phase 4 (≈1 GB, not needed earlier).
 
 ## Consequences
 

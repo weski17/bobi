@@ -12,7 +12,7 @@
 | ADRs 0001–0011 | ✅ proposed – [docs/adr/](adr/README.md) |
 | LICENSES.md | ✅ |
 | Demo guide | ✅ [docs/demos/phase-0.md](demos/phase-0.md) |
-| Approval of ADRs and open questions | ⏳ waiting for approval |
+| Approval of ADRs and open questions | ✅ approved 2026-10-19 |
 
 Not done in Phase 0 (on purpose): no code, no submodules, no dependencies installed.
 
@@ -26,15 +26,22 @@ Not done in Phase 0 (on purpose): no code, no submodules, no dependencies instal
 6. Code-OSS ships a native chat + inline-diff stack; Bobi can reuse it via a built-in extension, but needs proposed APIs.
 7. Both upstreams change very fast → depend only on public surfaces, pin to release tags.
 
+## Decisions (2026-10-19)
+
+All ADRs 0001–0011 accepted. Open questions answered:
+
+1. **Runtime:** install Bun and Node 24 via Homebrew in Phase 1.
+2. **Upstreams:** `vendor/opencode` as submodule in Phase 1; `vendor/code-oss` only in Phase 4.
+3. **Default model endpoint:** **LiteLLM** at `http://localhost:4000/v1`.
+4. **Non-git projects:** auto-create a private shadow repo for checkpoints.
+5. **Container runtime:** Podman (neither Docker nor Podman is installed yet).
+6. **CI:** GitHub Actions.
+7. **Browser tool:** headless Playwright (Apache-2.0).
+
 ## Open questions
 
-1. **Runtime:** Bun 1.4.2 and Node 24 are not installed on this machine. May I install them (e.g. via Homebrew) in Phase 1?
-2. **Upstream integration:** git submodules in this repo (ADR-0001) or a separate repo for the Code-OSS fork?
-3. **Default model endpoint:** LiteLLM (`localhost:4000/v1`) or Ollama (`localhost:11434/v1`)?
-4. **Non-git projects:** refuse write modes, or auto-create a private shadow repo for checkpoints?
-5. **Container runtime:** Podman or Docker? Is a container already available on developer machines?
-6. **CI:** GitHub Actions or an internal CI system?
-7. **Browser tool:** headless Playwright (Apache-2.0) inside the sandbox – OK?
+1. **Logo:** the supplied logo is a company logo with a third-party trademark. Branding is kept configurable
+   and out of the public repo until usage rights are confirmed (see ADR-0012).
 
 ## Risks
 
