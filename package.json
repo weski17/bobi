@@ -1,0 +1,19 @@
+{
+  "name": "bobi",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "packageManager": "bun@1.4.3",
+  "workspaces": ["packages/*"],
+  "scripts": {
+    "postinstall": "bun scripts/link-upstream.ts",
+    "test": "bun test packages",
+    "test:coverage": "bun test --coverage packages",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "@bobi/mock-model": "workspace:*",
+    "@types/bun": "1.4.0",
+    "typescript": "5.8.2"
+  }
+}
