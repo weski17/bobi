@@ -5,10 +5,15 @@
     "": {
       "name": "bobi",
       "devDependencies": {
+        "@bobi/config": "workspace:*",
         "@bobi/mock-model": "workspace:*",
         "@types/bun": "1.4.0",
         "typescript": "5.8.2",
       },
+    },
+    "packages/config": {
+      "name": "@bobi/config",
+      "version": "0.0.0",
     },
     "packages/mock-model": {
       "name": "@bobi/mock-model",
@@ -19,6 +24,8 @@
     },
   },
   "packages": {
+    "@bobi/config": ["@bobi/config@workspace:packages/config"],
+
     "@bobi/mock-model": ["@bobi/mock-model@workspace:packages/mock-model"],
 
     "@types/bun": ["@types/bun@1.4.0", "", { "dependencies": { "bun-types": "1.4.0" } }, "sha512-K+lZULY23vRgK/CfTjFIV+tyifaNdSMlPh9j+6mQ/cLfpOznLyAuzgV/JQysyECpkBQLVMSyvjlr2fBUSA9wFQ=="],

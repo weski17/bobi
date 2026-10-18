@@ -12,6 +12,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {
+    "@bobi/config": "workspace:*",
     "@bobi/mock-model": "workspace:*",
     "@types/bun": "1.4.0",
     "typescript": "5.8.2"
