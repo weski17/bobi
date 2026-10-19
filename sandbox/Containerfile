@@ -1,0 +1,27 @@
+# Bobi sandbox image (ADR-0007): the Bobi server and every tool process run here as an unprivileged user.
+# The same image also runs the egress proxy. Build: podman build -f sandbox/Containerfile -t bobi:dev .
+FROM docker.io/oven/bun:1.4.3@sha256:bf9d5b1f01be2de7cec5aa6e3977e8848f7ab9a307c6c3a8af7a50a27e609023
+
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends git ripgrep ca-certificates \
+ && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /opt/bobi
+# Upstream first: its install takes minutes and only changes when the submodule moves.
+COPY vendor/opencode vendor/opencode
+RUN cd vendor/opencode && bun install --frozen-lockfile
+COPY . .
+RUN bun install --frozen-lockfile \
+ && bun packages/browser/node_modules/playwright-core/cli.js install --with-deps chromium-headless-shell \
+ && chmod -R a+rX /root/.cache/ms-playwright && mv /root/.cache/ms-playwright /opt/ms-playwright
+
+ENV PLAYWRIGHT_BROWSERS_PATH=/opt/ms-playwright \
+    BOBI_HOME=/home/bun/.bobi \
+    NO_COLOR=1
+
+# Unprivileged runtime user (uid 1000, provided by the base image).
+USER bun
+RUN mkdir -p /home/bun/.bobi
+EXPOSE 4096
+ENTRYPOINT ["bun", "/opt/bobi/packages/shell/src/cli.ts"]
+CMD ["serve", "--hostname", "0.0.0.0", "--port", "4096"]
