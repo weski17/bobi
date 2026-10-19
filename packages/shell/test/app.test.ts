@@ -1,5 +1,6 @@
 // runApp with an injected client: exercises the real server (engine + bobi.core) without a TTY.
 import { afterAll, beforeAll, describe, expect, test } from "bun:test"
+import { existsSync } from "node:fs"
 import { mkdtemp, realpath, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
@@ -59,6 +60,19 @@ describe("runApp", () => {
     expect(client!.argv.slice(1, 6)).toEqual(["--preload", preloadPath(), ENGINE_CLI, "run", "hello"])
     expect(client!.cwd).toBe(dir)
     expect(client!.env).toMatchObject({ PWD: dir, OPENCODE_CLIENT: "bobi", OPENCODE_DISABLE_AUTOUPDATE: "1", XDG_DATA_HOME: path.join(home, "tui", "data") })
+  }, 60_000)
+
+  test("a project without git gets a hidden checkpoint repository once", async () => {
+    const fresh = await realpath(await mkdtemp(path.join(tmpdir(), "bobi-app-fresh-")))
+    try {
+      const t = io({ cwd: fresh })
+      await runApp(["run", "x"], t.io)
+      await runApp(["run", "x"], t.io)
+      expect(t.err.filter((l) => l.includes("hidden checkpoint repository"))).toHaveLength(1)
+      expect(existsSync(path.join(fresh, ".git"))).toBe(true)
+    } finally {
+      await rm(fresh, { recursive: true, force: true })
+    }
   }, 60_000)
 
   test("tui opens a given project directory", async () => {

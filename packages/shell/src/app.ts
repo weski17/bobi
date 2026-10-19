@@ -3,7 +3,7 @@ import { randomBytes } from "node:crypto"
 import { mkdirSync, statSync } from "node:fs"
 import path from "node:path"
 import { loadConfig, type LoadedConfig } from "@bobi/config"
-import { bobiPaths, createHost, serve, type BobiPaths, type Host, type RunningServer } from "@bobi/server"
+import { bobiPaths, createHost, ensureCheckpointRepo, serve, type BobiPaths, type Host, type RunningServer } from "@bobi/server"
 import { HELP, parseArgs, UsageError, VERSION, type Command } from "./args.ts"
 import { clientSpec } from "./client.ts"
 
@@ -32,6 +32,12 @@ export async function startServer(io: Io, cwd: string, listen: { hostname: strin
   } catch (error) {
     await host.close()
     throw error
+  }
+}
+
+function announce(io: Io, repo: ReturnType<typeof ensureCheckpointRepo>) {
+  if (repo.kind === "shadow" && repo.created) {
+    io.err(`bobi: no git repository here – created a hidden checkpoint repository (${repo.gitDir}) so changes can be undone`)
   }
 }
 
@@ -70,7 +76,9 @@ export async function runApp(argv: readonly string[], io: Io): Promise<number> {
       io.err(`bobi: cannot reach a Bobi server at ${command.url} (${health ? `HTTP ${health.status}` : "no connection"})`)
       return 2
     }
-    const spec = clientSpec(command.client, { url: command.url, password }, bobiPaths(io.env), io.cwd, io.env)
+    const paths = bobiPaths(io.env)
+    announce(io, ensureCheckpointRepo(io.cwd, paths))
+    const spec = clientSpec(command.client, { url: command.url, password }, paths, io.cwd, io.env)
     return io.spawn(spec.argv, spec.env, io.cwd)
   }
 
@@ -78,6 +86,7 @@ export async function runApp(argv: readonly string[], io: Io): Promise<number> {
   if (!statSync(directory, { throwIfNoEntry: false })?.isDirectory()) {
     throw new UsageError(`not a command or directory: ${command.kind === "tui" ? command.directory : directory}\n\n${HELP}`)
   }
+  announce(io, ensureCheckpointRepo(directory, bobiPaths(io.env)))
   const started = await startServer(io, directory, { hostname: "127.0.0.1", port: 0 })
   try {
     const args = command.kind === "run" ? ["run", ...command.client] : []
