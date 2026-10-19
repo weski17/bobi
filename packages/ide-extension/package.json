@@ -52,6 +52,16 @@
       {
         "command": "bobi.restartServer",
         "title": "Bobi: Restart Server"
+      },
+      {
+        "command": "bobi.literate",
+        "title": "Bobi: Implement Instructions Here",
+        "icon": "$(sparkle)"
+      },
+      {
+        "command": "bobi.generateCommitMessage",
+        "title": "Bobi: Generate Commit Message",
+        "icon": "$(sparkle)"
       }
     ],
     "configuration": {
@@ -74,6 +84,29 @@
     },
     "configurationDefaults": {
       "chat.disableAIFeatures": true
+    },
+    "keybindings": [
+      {
+        "command": "bobi.literate",
+        "key": "ctrl+alt+enter",
+        "mac": "cmd+alt+enter",
+        "when": "editorTextFocus"
+      }
+    ],
+    "menus": {
+      "scm/title": [
+        {
+          "command": "bobi.generateCommitMessage",
+          "when": "scmProvider == git",
+          "group": "navigation"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "bobi.literate",
+          "group": "bobi"
+        }
+      ]
     }
   },
   "scripts": {
