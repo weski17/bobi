@@ -7,6 +7,7 @@ export type Command =
   | { kind: "run"; client: string[] }
   | { kind: "serve"; hostname: string; port: number }
   | { kind: "attach"; url: string; client: string[] }
+  | { kind: "trust"; action: "status" | "yes" | "no"; directory?: string }
   | { kind: "help" }
   | { kind: "version" }
 
@@ -27,6 +28,8 @@ Usage:
   bobi attach <url> [run options] [run <message...>]
                                    Use a running Bobi server, e.g. in the sandbox
                                    (password from BOBI_SERVER_PASSWORD)
+  bobi trust [--status|--yes|--no] [directory]
+                                   Show or set project trust (JSON output with --status)
   bobi --version | --help
 
   --trust                          Trust the project's AGENTS.md, rules, modes and .bobi/config.jsonc
@@ -69,6 +72,18 @@ export function parseArgs(argv: readonly string[]): Command {
     }
     if (!hostname) throw new UsageError("--hostname needs a value")
     return { kind: "serve", hostname, port }
+  }
+
+  if (first === "trust") {
+    let action: "status" | "yes" | "no" = "status"
+    let directory: string | undefined
+    for (const arg of rest) {
+      if (arg === "--status" || arg === "--yes" || arg === "--no") action = arg.slice(2) as typeof action
+      else if (arg.startsWith("-")) throw new UsageError(`unknown option for trust: ${arg}`)
+      else if (directory) throw new UsageError("trust takes one directory")
+      else directory = arg
+    }
+    return { kind: "trust", action, ...(directory ? { directory } : {}) }
   }
 
   if (first === "attach") {

@@ -53,3 +53,16 @@ sandbox/bobi-sandbox.sh down
 Data: `BOBI_HOME` (default `~/.bobi`): `config.jsonc`, `custom_modes.yaml`, `rules*/`, `trust/projects.json`,
 `data/bobi.db`, `data/shadow/` (checkpoint repositories of non-git projects), `data/log/server.log` (engine logs),
 `tui/` (the terminal UI's own state).
+
+## Bobi IDE (from source)
+
+```bash
+bun run ide:setup      # npm ci + compile in vendor/code-oss (Node 24), branding, Bobi extension
+bun run ide [folder]   # or: bobi-ide [folder]
+bun run test:ide       # integration test inside the IDE (opens a window)
+```
+
+- macOS: if `xcrun` picks a newer leftover SDK than the Command Line Tools, native modules fail with "unknown
+  architecture"; `scripts/ide/env.ts` sets `SDKROOT` to the matching SDK automatically.
+- After changing `packages/ide-extension`, `bun run ide` rebuilds and reinstalls the extension.
+- Code-OSS patches live in `patches/code-oss/` and are applied by `bun scripts/apply-patches.ts`.

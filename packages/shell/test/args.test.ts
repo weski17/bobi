@@ -48,6 +48,14 @@ describe("parseArgs", () => {
     expect(() => parseArgs(["attach", "http://h", "serve"])).toThrow(/only a run command/)
   })
 
+  test("trust", () => {
+    expect(parseArgs(["trust"])).toEqual({ kind: "trust", action: "status" })
+    expect(parseArgs(["trust", "--yes", "./p"])).toEqual({ kind: "trust", action: "yes", directory: "./p" })
+    expect(parseArgs(["trust", "--no"])).toEqual({ kind: "trust", action: "no" })
+    expect(() => parseArgs(["trust", "--maybe"])).toThrow(/unknown option for trust/)
+    expect(() => parseArgs(["trust", "a", "b"])).toThrow(/one directory/)
+  })
+
   test("serve defaults to loopback and a random port", () => {
     expect(parseArgs(["serve"])).toEqual({ kind: "serve", hostname: "127.0.0.1", port: 0 })
     expect(parseArgs(["serve", "--hostname", "0.0.0.0", "--port", "4096"])).toEqual({ kind: "serve", hostname: "0.0.0.0", port: 4096 })

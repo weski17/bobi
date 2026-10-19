@@ -2,7 +2,7 @@
 import { randomBytes } from "node:crypto"
 import { mkdirSync, realpathSync, statSync } from "node:fs"
 import path from "node:path"
-import { loadConfig, TrustStore, trustFiles, type LoadedConfig } from "@bobi/config"
+import { findProjectRoot, loadConfig, TrustStore, trustFiles, type LoadedConfig } from "@bobi/config"
 import { bobiPaths, ensureCheckpointRepo, startBobiServer, type BobiPaths, type BobiServer } from "@bobi/server"
 import { HELP, parseArgs, UsageError, VERSION, type Command } from "./args.ts"
 import { clientSpec } from "./client.ts"
@@ -89,6 +89,15 @@ export async function runApp(rawArgv: readonly string[], io: Io): Promise<number
     if (!password) io.err(`bobi: generated server password (user "opencode"): ${started.password}`)
     await io.untilStopped()
     await stop(started)
+    return 0
+  }
+
+  if (command.kind === "trust") {
+    const directory = realpathSync(path.resolve(io.cwd, command.directory ?? "."))
+    const store = new TrustStore(bobiPaths(io.env).home)
+    if (command.action !== "status") store.decide(directory, command.action === "yes")
+    const files = trustFiles(findProjectRoot(directory)).map((f) => path.relative(findProjectRoot(directory), f))
+    io.out(JSON.stringify({ project: findProjectRoot(directory), status: store.status(directory), files }))
     return 0
   }
 
