@@ -23,6 +23,27 @@ up() {
   # the same path so the pointers resolve inside the container too.
   local shadow="${BOBI_HOME:-$HOME/.bobi}/data/shadow"
   mkdir -p "$shadow"
+  # Project trust decisions made on the host (bobi attach asks), read-only for the server.
+  local trust="${BOBI_HOME:-$HOME/.bobi}/trust"
+  mkdir -p "$trust"
+  # Files excluded by .bobiignore are hidden inside the container: empty read-only overlays, so even
+  # arbitrary shell commands cannot read them.
+  local masks=()
+  # Ignored directories are covered with an empty directory (a bind mount, so it is applied after the project
+  # mount; a tmpfs would be mounted first and end up hidden under the project).
+  local empty="${BOBI_HOME:-$HOME/.bobi}/sandbox/empty"
+  mkdir -p "$empty"
+  local repo
+  repo="$(cd "$(dirname "$0")/.." && pwd)"
+  while IFS= read -r ignored; do
+    [ -z "$ignored" ] && continue
+    case "$ignored" in *,*) echo "warning: cannot hide path with a comma: $ignored" >&2; continue ;; esac
+    if [ "${ignored%/}" != "$ignored" ]; then
+      masks+=(--mount "type=bind,source=${empty},destination=${ignored%/},ro=true")
+    else
+      masks+=(--mount "type=bind,source=/dev/null,destination=${ignored},ro=true")
+    fi
+  done < <(bun "$repo/scripts/bobiignore-paths.ts" "$project")
 
   podman rm -f bobi-egress bobi-server >/dev/null 2>&1 || true
   podman run -d --name bobi-egress --network podman --network "$NET" \
@@ -32,7 +53,8 @@ up() {
 
   podman run -d --name bobi-server --network "$NET" -p "127.0.0.1:${PORT}:4096" \
     --cap-drop all --security-opt no-new-privileges --pids-limit 512 --memory 4g \
-    -v "${project}:${project}" -v "${shadow}:${shadow}" -v bobi-home:/home/bun/.bobi -w "$project" \
+    -v "${project}:${project}" -v "${shadow}:${shadow}" -v bobi-home:/home/bun/.bobi \
+    -v "${trust}:/home/bun/.bobi/trust:ro" ${masks[@]+"${masks[@]}"} -w "$project" \
     -e HTTP_PROXY=http://bobi-egress:3128 -e HTTPS_PROXY=http://bobi-egress:3128 \
     -e http_proxy=http://bobi-egress:3128 -e https_proxy=http://bobi-egress:3128 \
     -e NO_PROXY=localhost,127.0.0.1 -e no_proxy=localhost,127.0.0.1 \

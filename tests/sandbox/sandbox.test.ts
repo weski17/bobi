@@ -1,7 +1,7 @@
 // End-to-end test of the Podman sandbox (ADR-0007). Runs only when podman and the bobi:dev image exist:
 //   podman build -f sandbox/Containerfile -t bobi:dev . && bun test ./tests/sandbox
 import { afterAll, beforeAll, describe, expect, test } from "bun:test"
-import { mkdirSync, rmSync } from "node:fs"
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import os from "node:os"
 import path from "node:path"
 import { startMockModel, type MockModel } from "@bobi/mock-model"
@@ -29,7 +29,11 @@ const sh = (args: string[], extra: Record<string, string> = {}) => {
 describe.skipIf(!available)("podman sandbox", () => {
   beforeAll(() => {
     mock = startMockModel({ hostname: "127.0.0.1", fallback: { text: "hello from the host model" } })
-    mkdirSync(project, { recursive: true })
+    mkdirSync(path.join(project, "private"), { recursive: true })
+    writeFileSync(path.join(project, ".bobiignore"), "secret.txt\nprivate/\n")
+    writeFileSync(path.join(project, "secret.txt"), "top-secret")
+    writeFileSync(path.join(project, "private", "notes.txt"), "private-notes")
+    writeFileSync(path.join(project, "AGENTS.md"), "SANDBOX-AGENTS-RULE")
     const port = new URL(mock.url).port
     env = {
       ...(process.env as Record<string, string>),
@@ -53,11 +57,13 @@ describe.skipIf(!available)("podman sandbox", () => {
   }, 60_000)
 
   test("the server in the container answers through the allowed model endpoint", async () => {
-    const child = Bun.spawn(["bun", CLI, "attach", `http://127.0.0.1:${PORT}`, "run", "hello"], { cwd: project, env, stdin: "ignore", stdout: "pipe", stderr: "pipe" })
+    // --trust: the decision is stored on the host and read by the server through the read-only trust mount.
+    const child = Bun.spawn(["bun", CLI, "attach", `http://127.0.0.1:${PORT}`, "run", "--trust", "hello"], { cwd: project, env, stdin: "ignore", stdout: "pipe", stderr: "pipe" })
     const [out, err, code] = await Promise.all([new Response(child.stdout).text(), new Response(child.stderr).text(), child.exited])
     expect(out + err).toContain("hello from the host model")
     expect(code).toBe(0)
     expect(mock.requests.at(-1)!.headers.authorization).toBe("Bearer sandbox-test")
+    expect(JSON.stringify(mock.requests.at(-1)!.body.messages)).toContain("SANDBOX-AGENTS-RULE")
   }, 120_000)
 
   test("the server container cannot reach hosts outside the allowlist", () => {
@@ -67,6 +73,14 @@ describe.skipIf(!available)("podman sandbox", () => {
     expect(direct.out).not.toContain("status 200")
     const logs = sh(["podman", "logs", "bobi-egress"]).out
     expect(logs).toContain('"target":"example.com:443","allowed":false')
+  }, 60_000)
+
+  test("files excluded by .bobiignore are empty inside the container, even for shell commands", () => {
+    expect(sh(["podman", "exec", "bobi-server", "cat", path.join(project, "secret.txt")]).out).not.toContain("top-secret")
+    expect(sh(["podman", "exec", "bobi-server", "ls", "-A", path.join(project, "private")]).out.trim()).toBe("")
+    // Writes go to /dev/null: the real file on the host stays untouched.
+    sh(["podman", "exec", "bobi-server", "sh", "-c", `echo overwritten > ${path.join(project, "secret.txt")}`])
+    expect(readFileSync(path.join(project, "secret.txt"), "utf8")).toBe("top-secret")
   }, 60_000)
 
   test("the hidden checkpoint repository of a non-git project resolves inside the container", () => {

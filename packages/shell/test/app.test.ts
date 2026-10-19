@@ -108,6 +108,56 @@ describe("runApp", () => {
   })
 })
 
+describe("project trust", () => {
+  async function projectWithRules() {
+    const p = await realpath(await mkdtemp(path.join(tmpdir(), "bobi-app-trust-")))
+    Bun.spawnSync(["git", "init", "-q"], { cwd: p })
+    await Bun.write(path.join(p, "AGENTS.md"), "rules")
+    return p
+  }
+
+  test("asks once, remembers the answer and respects no", async () => {
+    const p = await projectWithRules()
+    try {
+      const questions: string[] = []
+      const t = io({ cwd: p, ask: async (q) => (questions.push(q), false) })
+      await runApp(["run", "x"], t.io)
+      await runApp(["run", "x"], t.io)
+      expect(questions).toHaveLength(1)
+      expect(questions[0]).toContain("AGENTS.md")
+      expect(t.err.filter((l) => l.includes("project not trusted"))).toHaveLength(2)
+    } finally {
+      await rm(p, { recursive: true, force: true })
+    }
+  }, 60_000)
+
+  test("yes trusts the project", async () => {
+    const p = await projectWithRules()
+    try {
+      const t = io({ cwd: p, ask: async () => true })
+      await runApp(["run", "x"], t.io)
+      expect(t.err.some((l) => l.includes("not trusted"))).toBe(false)
+    } finally {
+      await rm(p, { recursive: true, force: true })
+    }
+  }, 60_000)
+
+  test("without a terminal the project stays untrusted unless --trust is given", async () => {
+    const p = await projectWithRules()
+    try {
+      const t = io({ cwd: p })
+      await runApp(["run", "x"], t.io)
+      expect(t.err.some((l) => l.includes("use --trust"))).toBe(true)
+      const u = io({ cwd: p })
+      await runApp(["run", "--trust", "x"], u.io)
+      expect(u.err.some((l) => l.includes("not trusted"))).toBe(false)
+      expect(u.spawned[0]!.argv).not.toContain("--trust")
+    } finally {
+      await rm(p, { recursive: true, force: true })
+    }
+  }, 60_000)
+})
+
 describe("attach", () => {
   test("connects the client to a running server", async () => {
     const serverIo = io()

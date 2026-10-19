@@ -1,5 +1,6 @@
 // Loads Bobi config from (lowest to highest precedence):
-//   built-in defaults → ~/.bobi/config.jsonc → <project>/.bobi/config.jsonc → $BOBI_CONFIG → environment
+//   built-in defaults → $BOBI_HOME/config.jsonc (default ~/.bobi) → <project>/.bobi/config.jsonc (if trusted)
+//   → $BOBI_CONFIG → environment
 import { existsSync, readFileSync } from "node:fs"
 import os from "node:os"
 import path from "node:path"
@@ -7,8 +8,11 @@ import { ConfigError, DEFAULTS, validatePartial, type AutoApproveRule, type Bobi
 
 export type LoadOptions = {
   readonly cwd: string
+  /** The user's home directory (default os.homedir()); global config lives in $BOBI_HOME or <home>/.bobi. */
   readonly home?: string
   readonly env?: Record<string, string | undefined>
+  /** Whether the project's own .bobi/config.jsonc may be used (project trust). Default true. */
+  readonly trustedProject?: boolean
 }
 
 export type LoadedConfig = {
@@ -55,10 +59,11 @@ export function findProjectRoot(cwd: string): string {
 export function loadConfig(options: LoadOptions): LoadedConfig {
   const env = options.env ?? process.env
   const home = options.home ?? os.homedir()
+  const globalDir = env.BOBI_HOME ?? path.join(home, ".bobi")
   const project = findProjectRoot(options.cwd)
   const candidates = [
-    path.join(home, ".bobi", "config.jsonc"),
-    path.join(project, ".bobi", "config.jsonc"),
+    path.join(globalDir, "config.jsonc"),
+    ...(options.trustedProject === false ? [] : [path.join(project, ".bobi", "config.jsonc")]),
     ...(env.BOBI_CONFIG ? [path.resolve(options.cwd, env.BOBI_CONFIG)] : []),
   ]
 
@@ -66,7 +71,7 @@ export function loadConfig(options: LoadOptions): LoadedConfig {
   const sources: string[] = []
   for (const file of [...new Set(candidates)]) {
     if (!existsSync(file)) {
-      if (file === candidates[2]) throw new ConfigError(file, ["BOBI_CONFIG points to a missing file"])
+      if (env.BOBI_CONFIG && file === path.resolve(options.cwd, env.BOBI_CONFIG)) throw new ConfigError(file, ["BOBI_CONFIG points to a missing file"])
       continue
     }
     config = merge(config, validatePartial(readJsonc(file), file))

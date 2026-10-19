@@ -75,6 +75,13 @@ describe("mock model", () => {
     expect(agent.choices[0]!.message.content).toBe("agent")
   })
 
+  test("clear drops unconsumed turns", async () => {
+    mock = startMockModel({ script: [{ text: "stale" }], fallback: { text: "fresh" } })
+    mock.clear()
+    const res = (await (await chat(mock, {})).json()) as { choices: { message: { content: string } }[] }
+    expect(res.choices[0]!.message.content).toBe("fresh")
+  })
+
   test("answers 404 for unknown routes", async () => {
     mock = startMockModel()
     expect((await fetch(`${mock.url}/nope`)).status).toBe(404)
