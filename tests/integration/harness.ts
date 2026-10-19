@@ -3,7 +3,7 @@ import { mkdtemp, realpath, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { OpenCode } from "@opencode/sdk"
-import { DEFAULTS, SDK_OFFLINE_OPTIONS, toOpenCodeConfig, type BobiConfig } from "@bobi/config"
+import { DEFAULTS, SDK_OFFLINE_OPTIONS, toOpenCodeConfig, type BobiConfig, type McpServer } from "@bobi/config"
 import { createBobiCore, MemorySink } from "@bobi/core"
 import { startMockModel, type MockModel, type Turn } from "@bobi/mock-model"
 import { CLI as CODE_GRAPH_CLI } from "@bobi/mcp-code-graph"
@@ -35,7 +35,13 @@ export async function waitFor<T>(probe: () => Promise<T | undefined>, timeoutMs 
 export async function createHarness(
   patch: Partial<BobiConfig> = {},
   secrets: string[] = [],
-  options: { browser?: boolean; trusted?: boolean; codeGraph?: boolean; env?: Record<string, string | undefined> } = {},
+  options: {
+    browser?: boolean
+    trusted?: boolean
+    codeGraph?: boolean
+    env?: Record<string, string | undefined>
+    builtinMcp?: (project: string) => Record<string, McpServer>
+  } = {},
 ): Promise<Harness> {
   const mock = startMockModel({ models: ["mock-model"] })
   // Resolve symlinks (macOS: /var -> /private/var). OpenCode compares the session directory with the
@@ -57,7 +63,14 @@ export async function createHarness(
     secrets,
     globalDir,
     trusted: () => options.trusted ?? true,
-    ...(options.codeGraph ? { builtinMcp: (project: string) => ({ "code-graph": { type: "local" as const, command: [process.execPath, CODE_GRAPH_CLI, project] } }) } : {}),
+    ...(options.codeGraph || options.builtinMcp
+      ? {
+          builtinMcp: (project: string) => ({
+            ...(options.codeGraph ? { "code-graph": { type: "local" as const, command: [process.execPath, CODE_GRAPH_CLI, project] } } : {}),
+            ...options.builtinMcp?.(project),
+          }),
+        }
+      : {}),
     ...(options.env ? { env: options.env } : {}),
     ...(options.browser ? {} : { browser: false }),
   })

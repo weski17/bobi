@@ -25,6 +25,7 @@
     "@bobi/core": "workspace:*",
     "@bobi/mcp-cobol": "workspace:*",
     "@bobi/mcp-code-graph": "workspace:*",
+    "@bobi/mcp-zowe": "workspace:*",
     "@bobi/mock-model": "workspace:*",
     "@bobi/server": "workspace:*",
     "@bobi/shell": "workspace:*",

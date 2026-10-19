@@ -24,12 +24,15 @@ export const PLUGIN_ID = "bobi.core"
 const REPLACED_AGENTS = ["build"]
 const EDIT_TOOLS = new Set(["edit", "write", "patch"])
 
-/** Changes to Bobi's own configuration always ask, even with auto-approve (the agent must not widen its rights). */
+/** Always ask, even with auto-approve: Bobi's own configuration (the agent must not widen its rights) and mainframe changes. */
 export const PROTECTED_RULES: Rule[] = [
   { action: "edit", resource: "*/.bobi/*", effect: "ask" },
   { action: "edit", resource: ".bobi/*", effect: "ask" },
   { action: "edit", resource: `*/${IGNORE_FILE}`, effect: "ask" },
   { action: "edit", resource: IGNORE_FILE, effect: "ask" },
+  // Changes on the mainframe (built-in zowe MCP server) always ask, even when zowe_* is auto-approved.
+  { action: "zowe_write_dataset", resource: "*", effect: "ask" },
+  { action: "zowe_submit_job", resource: "*", effect: "ask" },
 ]
 
 export type BobiCoreOptions = {

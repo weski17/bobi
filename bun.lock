@@ -9,6 +9,7 @@
         "@bobi/core": "workspace:*",
         "@bobi/mcp-cobol": "workspace:*",
         "@bobi/mcp-code-graph": "workspace:*",
+        "@bobi/mcp-zowe": "workspace:*",
         "@bobi/mock-model": "workspace:*",
         "@bobi/server": "workspace:*",
         "@bobi/shell": "workspace:*",
@@ -42,6 +43,19 @@
         "@modelcontextprotocol/server": "2.0.0",
         "ignore": "7.0.11",
         "typescript": "5.8.2",
+      },
+      "devDependencies": {
+        "@modelcontextprotocol/client": "2.0.0",
+      },
+    },
+    "mcp-servers/zowe": {
+      "name": "@bobi/mcp-zowe",
+      "version": "0.0.0",
+      "bin": {
+        "bobi-mcp-zowe": "./src/cli.ts",
+      },
+      "dependencies": {
+        "@modelcontextprotocol/server": "2.0.0",
       },
       "devDependencies": {
         "@modelcontextprotocol/client": "2.0.0",
@@ -105,6 +119,7 @@
         "@bobi/core": "workspace:*",
         "@bobi/mcp-cobol": "workspace:*",
         "@bobi/mcp-code-graph": "workspace:*",
+        "@bobi/mcp-zowe": "workspace:*",
       },
     },
     "packages/shell": {
@@ -132,6 +147,8 @@
     "@bobi/mcp-cobol": ["@bobi/mcp-cobol@workspace:mcp-servers/cobol"],
 
     "@bobi/mcp-code-graph": ["@bobi/mcp-code-graph@workspace:mcp-servers/code-graph"],
+
+    "@bobi/mcp-zowe": ["@bobi/mcp-zowe@workspace:mcp-servers/zowe"],
 
     "@bobi/mock-model": ["@bobi/mock-model@workspace:packages/mock-model"],
 
