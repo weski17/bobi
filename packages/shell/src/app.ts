@@ -59,6 +59,21 @@ export async function runApp(argv: readonly string[], io: Io): Promise<number> {
     return 0
   }
 
+  if (command.kind === "attach") {
+    const password = io.env.BOBI_SERVER_PASSWORD
+    if (!password) {
+      io.err("bobi: attach needs BOBI_SERVER_PASSWORD")
+      return 2
+    }
+    const health = await fetch(`${command.url}/api/session`, { headers: { authorization: `Basic ${btoa(`opencode:${password}`)}` } }).catch(() => undefined)
+    if (!health || health.status !== 200) {
+      io.err(`bobi: cannot reach a Bobi server at ${command.url} (${health ? `HTTP ${health.status}` : "no connection"})`)
+      return 2
+    }
+    const spec = clientSpec(command.client, { url: command.url, password }, bobiPaths(io.env), io.env)
+    return io.spawn(spec.argv, spec.env, io.cwd)
+  }
+
   const directory = command.kind === "tui" && command.directory ? path.resolve(io.cwd, command.directory) : io.cwd
   if (!statSync(directory, { throwIfNoEntry: false })?.isDirectory()) {
     throw new UsageError(`not a command or directory: ${command.kind === "tui" ? command.directory : directory}\n\n${HELP}`)

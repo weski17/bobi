@@ -94,6 +94,40 @@ describe("runApp", () => {
   })
 })
 
+describe("attach", () => {
+  test("connects the client to a running server", async () => {
+    const serverIo = io()
+    let url = ""
+    const password = "attach-test-password-123"
+    let release!: () => void
+    const stopped = new Promise<void>((r) => (release = r))
+    const serving = runApp(["serve"], {
+      ...serverIo.io,
+      env: { ...serverIo.io.env, BOBI_SERVER_PASSWORD: password },
+      out: (l) => void (url = JSON.parse(l).url),
+      untilStopped: () => stopped,
+    })
+    while (!url) await Bun.sleep(20)
+    const t = io()
+    const env = { ...t.io.env, BOBI_SERVER_PASSWORD: password }
+    expect(await runApp(["attach", url, "run", "hi"], { ...t.io, env })).toBe(0)
+    expect(t.spawned[0]!.argv).toContain("run")
+    expect(t.spawned[0]!.argv.at(-1)).toBe(url)
+    expect(await runApp(["attach", url], { ...t.io, env: { ...env, BOBI_SERVER_PASSWORD: "wrong-password-but-long" } })).toBe(2)
+    expect(t.err.at(-1)).toContain("HTTP 401")
+    release()
+    expect(await serving).toBe(0)
+  }, 60_000)
+
+  test("needs a password and a reachable server", async () => {
+    const t = io()
+    expect(await runApp(["attach", "http://127.0.0.1:1"], t.io)).toBe(2)
+    expect(t.err[0]).toContain("BOBI_SERVER_PASSWORD")
+    expect(await runApp(["attach", "http://127.0.0.1:1"], { ...t.io, env: { ...t.io.env, BOBI_SERVER_PASSWORD: "x".repeat(20) } })).toBe(2)
+    expect(t.err[1]).toContain("no connection")
+  })
+})
+
 test("clientSpec drops unset variables and appends the server URL", () => {
   const spec = clientSpec(["run", "x"], { url: "http://127.0.0.1:1", password: "p" }, { home: "/h" } as never, { A: "1", B: undefined })
   expect(spec.env.A).toBe("1")
