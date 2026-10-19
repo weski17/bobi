@@ -9,6 +9,8 @@ export type Command =
   | { kind: "attach"; url: string; client: string[] }
   | { kind: "trust"; action: "status" | "yes" | "no"; directory?: string }
   | { kind: "modes"; json: boolean }
+  | { kind: "audit"; from?: string; to?: string; user?: string; format: "md" | "json" }
+  | { kind: "diagram"; source: "code" | "cobol"; program?: string; depth?: number; directory?: string }
   | { kind: "help" }
   | { kind: "version" }
 
@@ -36,6 +38,10 @@ Usage:
   --trust                          Trust the project's AGENTS.md, rules, modes and .bobi/config.jsonc
 
   bobi modes [--json]              List the modes available in this project
+  bobi audit [--from YYYY-MM-DD] [--to YYYY-MM-DD] [--user U] [--format md|json]
+                                   Audit and compliance report from the local audit log
+  bobi diagram [code|cobol] [--program P] [--depth N] [directory]
+                                   Architecture diagram (Mermaid) from the code graph or the COBOL index
 
 Run options:
   --mode <slug>        Mode to use (code, plan, ask, advanced, orchestrator, security, own modes)
@@ -81,6 +87,47 @@ export function parseArgs(argv: readonly string[]): Command {
     const unknown = rest.find((a) => a !== "--json")
     if (unknown) throw new UsageError(`unknown option for modes: ${unknown}`)
     return { kind: "modes", json: rest.includes("--json") }
+  }
+
+  if (first === "audit") {
+    const out: Extract<Command, { kind: "audit" }> = { kind: "audit", format: "md" }
+    for (let i = 0; i < rest.length; i++) {
+      const arg = rest[i]!
+      const value = rest[i + 1]
+      if (["--from", "--to", "--user", "--format"].includes(arg) && value === undefined) throw new UsageError(`${arg} needs a value`)
+      if (arg === "--from" || arg === "--to") {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(value!)) throw new UsageError(`${arg} needs a date like 2026-10-01`)
+        out[arg === "--from" ? "from" : "to"] = value!
+        i++
+      } else if (arg === "--user") (out.user = value!), i++
+      else if (arg === "--format") {
+        if (value !== "md" && value !== "json") throw new UsageError("--format is md or json")
+        out.format = value
+        i++
+      } else if (arg !== "report") throw new UsageError(`unknown option for audit: ${arg}`)
+    }
+    return out
+  }
+
+  if (first === "diagram") {
+    const out: Extract<Command, { kind: "diagram" }> = { kind: "diagram", source: "code" }
+    for (let i = 0; i < rest.length; i++) {
+      const arg = rest[i]!
+      if (arg === "code" || arg === "cobol") out.source = arg
+      else if (arg === "--program") {
+        const value = rest[++i]
+        if (!value) throw new UsageError("--program needs a value")
+        out.program = value
+      } else if (arg === "--depth") {
+        const value = Number(rest[++i])
+        if (!Number.isInteger(value) || value < 1 || value > 4) throw new UsageError("--depth needs a number between 1 and 4")
+        out.depth = value
+      } else if (arg.startsWith("-")) throw new UsageError(`unknown option for diagram: ${arg}`)
+      else if (out.directory) throw new UsageError("diagram takes one directory")
+      else out.directory = arg
+    }
+    if (out.program && out.source !== "cobol") throw new UsageError("--program is only for cobol diagrams")
+    return out
   }
 
   if (first === "trust") {

@@ -12,7 +12,10 @@
   },
   "dependencies": {
     "@bobi/config": "workspace:*",
-    "@bobi/server": "workspace:*",
-    "@bobi/modes": "workspace:*"
+    "@bobi/core": "workspace:*",
+    "@bobi/mcp-cobol": "workspace:*",
+    "@bobi/mcp-code-graph": "workspace:*",
+    "@bobi/modes": "workspace:*",
+    "@bobi/server": "workspace:*"
   }
 }

@@ -1,3 +1,4 @@
+export { dependencyDiagram } from "./diagram.ts"
 export { CodeGraph, listSourceFiles } from "./graph.ts"
 export type { CodeSymbol, SymbolKind } from "./graph.ts"
 export { callPath, fileDependencies, findSymbols, QueryError, resolveFile, resolveSymbol, walkCalls } from "./queries.ts"

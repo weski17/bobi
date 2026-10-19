@@ -38,7 +38,8 @@ export type BobiConfig = {
   modes: Record<string, { model?: string }>
   /** Explicit auto-approvals. Default: every write, shell command and network action asks. */
   autoApprove: AutoApproveRule[]
-  telemetry: { otlpEndpoint?: string; user?: string }
+  /** OTLP export endpoint, the user recorded in audit records, and the local audit log (default on). */
+  telemetry: { otlpEndpoint?: string; user?: string; auditLog?: boolean }
   checkpoints: { enabled: boolean }
   mcp: McpConfig
 }
@@ -137,6 +138,7 @@ export function validatePartial(input: unknown, source: string): DeepPartial<Bob
       if (t.otlpEndpoint !== undefined && (typeof t.otlpEndpoint !== "string" || !/^https?:\/\//.test(t.otlpEndpoint)))
         issues.push("telemetry.otlpEndpoint: must be an http(s) URL")
       if (t.user !== undefined && typeof t.user !== "string") issues.push("telemetry.user: must be a string")
+      if (t.auditLog !== undefined && typeof t.auditLog !== "boolean") issues.push("telemetry.auditLog: must be a boolean")
     }
   }
 

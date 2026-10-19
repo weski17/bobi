@@ -6,7 +6,7 @@ import type { Plugin } from "@opencode/plugin"
 import { modelIds, PROVIDER_ID, TrustStore, type BobiConfig, type McpServer } from "@bobi/config"
 import { HeadlessBrowser, registerBrowserTool } from "@bobi/browser"
 import { DEFAULT_MODE, editAllowed, editRestriction, hasGroup, hiddenTools, loadModes, modeDenyRules, modeFiles, modePrompt, type Mode } from "@bobi/modes"
-import { type AuditSink, MemorySink, OtlpSink, parseOtlpHeaders } from "./audit.ts"
+import { type AuditSink, FileSink, MemorySink, MultiSink, OtlpSink, parseOtlpHeaders } from "./audit.ts"
 import { BobiIgnore, blockedShellPath, IGNORE_FILE, patchPaths } from "./bobiignore.ts"
 import { brandSystemPrompt } from "./identity.ts"
 import { expandTemplate, extensionDirs, readCommands, readSkills } from "./extensions.ts"
@@ -67,9 +67,13 @@ function transformContent(content: string | readonly Content[] | undefined, map:
   return content?.map((part) => (part.type === "text" ? { ...part, text: map(part.text) } : part))
 }
 
-export function defaultSink(config: BobiConfig, env: Record<string, string | undefined> = process.env): AuditSink {
-  if (!config.telemetry.otlpEndpoint) return new MemorySink()
-  return new OtlpSink({ endpoint: config.telemetry.otlpEndpoint, headers: parseOtlpHeaders(env.OTEL_EXPORTER_OTLP_HEADERS) })
+/** OTLP export when an endpoint is configured, plus the local audit log in <globalDir>/audit unless disabled. */
+export function defaultSink(config: BobiConfig, env: Record<string, string | undefined> = process.env, globalDir?: string): AuditSink {
+  const sinks: AuditSink[] = []
+  if (config.telemetry.otlpEndpoint) sinks.push(new OtlpSink({ endpoint: config.telemetry.otlpEndpoint, headers: parseOtlpHeaders(env.OTEL_EXPORTER_OTLP_HEADERS) }))
+  if (globalDir && config.telemetry.auditLog !== false) sinks.push(new FileSink(path.join(globalDir, "audit")))
+  if (sinks.length === 0) return new MemorySink()
+  return sinks.length === 1 ? sinks[0]! : new MultiSink(sinks)
 }
 
 const inputPath = (input: unknown): string | undefined =>
@@ -77,10 +81,10 @@ const inputPath = (input: unknown): string | undefined =>
 
 export function createBobiCore(options: BobiCoreOptions): Plugin.Plugin & { readonly audit: AuditSink; readonly mask: Masker } {
   const policy = options.policy ?? loadDefaultPolicy()
-  const audit = options.audit ?? defaultSink(options.config)
   const mask = createMasker(options.secrets ?? [])
   const user = options.config.telemetry.user ?? "unknown"
   const globalDir = options.globalDir ?? process.env.BOBI_HOME ?? path.join(os.homedir(), ".bobi")
+  const audit = options.audit ?? defaultSink(options.config, options.env ?? process.env, globalDir)
   const started = new Map<string, number>()
 
   return {
@@ -248,8 +252,10 @@ export function createBobiCore(options: BobiCoreOptions): Plugin.Plugin & { read
       })
 
       // 5. Audit every permission decision.
+      const sessionMode = new Map<string, string>()
       await ctx.permission.hook("evaluate", (event) => {
         const now = Date.now()
+        if (event.agent) sessionMode.set(String(event.sessionID), String(event.agent))
         audit.record({
           name: "bobi.permission",
           start: now,
@@ -264,6 +270,42 @@ export function createBobiCore(options: BobiCoreOptions): Plugin.Plugin & { read
           },
         })
       })
+
+      // 5b. Audit the user's answer to every approval request (once / always / reject).
+      const asked = new Map<string, { action: string; resources: string; agent: string }>()
+      const events = new AbortController()
+      void (async () => {
+        try {
+          for await (const event of ctx.event.subscribe({ signal: events.signal } as never) as AsyncIterable<{ type: string; data?: Record<string, unknown> }>) {
+            const data = event.data ?? {}
+            if (event.type === "permission.asked")
+              asked.set(String(data.id), {
+                action: String(data.action),
+                resources: mask((data.resources as string[] | undefined)?.join(", ") ?? ""),
+                // The request carries no mode; it is the mode of the evaluation that asked.
+                agent: sessionMode.get(String(data.sessionID)) ?? "unknown",
+              })
+            if (event.type !== "permission.replied") continue
+            const request = asked.get(String(data.requestID))
+            asked.delete(String(data.requestID))
+            const now = Date.now()
+            audit.record({
+              name: "bobi.approval",
+              start: now,
+              end: now,
+              attributes: {
+                "bobi.user": user,
+                "bobi.mode": request?.agent ?? "unknown",
+                "bobi.session": String(data.sessionID),
+                ...(request ? { "bobi.action": request.action, "bobi.resources": request.resources } : {}),
+                "bobi.result": data.reply as "once" | "always" | "reject",
+              },
+            })
+          }
+        } catch (error) {
+          if (!events.signal.aborted) console.error(`bobi audit: event stream ended: ${(error as Error).message}`)
+        }
+      })()
 
       // 6. Skills and slash commands (built-in /commit, /pr, /security-review; global; project if trusted).
       const dirs = extensionDirs(globalDir, project, trusted)
@@ -307,6 +349,7 @@ export function createBobiCore(options: BobiCoreOptions): Plugin.Plugin & { read
       const browser = options.browser === false ? undefined : await registerBrowserTool(ctx, options.browser ?? new HeadlessBrowser())
 
       return async () => {
+        events.abort()
         for (const w of watchers) w.close()
         await browser?.close()
         await audit.flush()

@@ -126,7 +126,7 @@ describe("validatePartial", () => {
           model: { baseURL: "ftp://x", protocol: "grpc", apiKeyEnv: "lower", default: "", models: [1] },
           modes: { Bad_Slug: { model: 3 } },
           autoApprove: [{ action: "rm", resource: "" }, "x", { action: "edit", resource: "a", modes: "code" }],
-          telemetry: { otlpEndpoint: "nope", user: 1 },
+          telemetry: { otlpEndpoint: "nope", user: 1, auditLog: "yes" },
           checkpoints: { enabled: "yes" },
         },
         "file.jsonc",
@@ -150,6 +150,7 @@ describe("validatePartial", () => {
         "autoApprove[2].modes",
         "telemetry.otlpEndpoint",
         "telemetry.user",
+        "telemetry.auditLog",
         "checkpoints.enabled",
       ])
         expect(issues.some((i) => i.startsWith(fragment))).toBe(true)

@@ -55,6 +55,29 @@ describe("parseArgs", () => {
     expect(parseArgs(["run", "--mode", "plan", "x"])).toEqual({ kind: "run", client: ["--agent", "plan", "x"] })
   })
 
+  test("audit and diagram", () => {
+    expect(parseArgs(["audit"])).toEqual({ kind: "audit", format: "md" })
+    expect(parseArgs(["audit", "report", "--from", "2026-10-01", "--to", "2026-10-31", "--user", "anna", "--format", "json"])).toEqual({
+      kind: "audit",
+      from: "2026-10-01",
+      to: "2026-10-31",
+      user: "anna",
+      format: "json",
+    })
+    expect(() => parseArgs(["audit", "--from", "yesterday"])).toThrow(/date like/)
+    expect(() => parseArgs(["audit", "--user"])).toThrow(/needs a value/)
+    expect(() => parseArgs(["audit", "--format", "pdf"])).toThrow(/md or json/)
+    expect(() => parseArgs(["audit", "--x"])).toThrow(/unknown option for audit/)
+    expect(parseArgs(["diagram"])).toEqual({ kind: "diagram", source: "code" })
+    expect(parseArgs(["diagram", "cobol", "--program", "CBACT01C", "app"])).toEqual({ kind: "diagram", source: "cobol", program: "CBACT01C", directory: "app" })
+    expect(parseArgs(["diagram", "code", "--depth", "3"])).toEqual({ kind: "diagram", source: "code", depth: 3 })
+    expect(() => parseArgs(["diagram", "--depth", "9"])).toThrow(/between 1 and 4/)
+    expect(() => parseArgs(["diagram", "--program"])).toThrow(/needs a value/)
+    expect(() => parseArgs(["diagram", "--program", "X"])).toThrow(/only for cobol/)
+    expect(() => parseArgs(["diagram", "a", "b"])).toThrow(/one directory/)
+    expect(() => parseArgs(["diagram", "--svg"])).toThrow(/unknown option for diagram/)
+  })
+
   test("trust", () => {
     expect(parseArgs(["trust"])).toEqual({ kind: "trust", action: "status" })
     expect(parseArgs(["trust", "--yes", "./p"])).toEqual({ kind: "trust", action: "yes", directory: "./p" })

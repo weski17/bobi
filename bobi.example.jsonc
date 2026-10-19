@@ -22,9 +22,12 @@
   "telemetry": {
     // OTLP/HTTP endpoint of an OpenTelemetry collector or Langfuse; also settable via OTEL_EXPORTER_OTLP_ENDPOINT
     // "otlpEndpoint": "http://localhost:4318"
+    // Local audit log ~/.bobi/audit/<date>.jsonl for `bobi audit` reports (default true)
+    // "auditLog": true
   },
   "checkpoints": { "enabled": true },
-  // MCP servers. The built-in "code-graph" server is always available (Advanced mode).
+  // MCP servers. Built in (Advanced mode): "code-graph", "cobol", and "zowe" when a Zowe connection is
+  // configured (zowe.config.json or ZOWE_OPT_HOST/USER/PASSWORD; datasets limited by BOBI_ZOWE_DATASETS).
   // Credentials only as ${ENV_VAR}; project servers are used only in trusted projects.
   "mcp": {
     "servers": {
