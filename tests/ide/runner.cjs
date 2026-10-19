@@ -22,6 +22,8 @@ exports.run = async function run() {
   const folder = vscode.workspace.workspaceFolders[0].uri.fsPath
   const file = path.join(folder, "app.ts")
 
+  // The built-in Copilot chat UI is off by default; Bobi's own panel works regardless.
+  assert.strictEqual(vscode.workspace.getConfiguration("chat").get("disableAIFeatures"), true, "built-in AI features disabled")
   const commands = await vscode.commands.getCommands(true)
   for (const c of ["bobi.newSession", "bobi.undo", "bobi.selectMode", "bobi.restartServer", "bobi.chat.focus"]) assert.ok(commands.includes(c), `command ${c}`)
   await vscode.commands.executeCommand("bobi.chat.focus")
