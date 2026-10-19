@@ -9,8 +9,9 @@
   ],
   "scripts": {
     "postinstall": "bun scripts/apply-patches.ts && bun scripts/link-upstream.ts",
-    "test": "bun test ./packages ./tests",
-    "test:coverage": "bun test --coverage ./packages ./tests",
+    "test": "bun test ./packages ./tests/integration",
+    "test:coverage": "bun test --coverage ./packages ./tests/integration",
+    "test:sandbox": "bun test ./tests/sandbox",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "browser:install": "bun packages/browser/node_modules/playwright-core/cli.js install chromium-headless-shell"
   },

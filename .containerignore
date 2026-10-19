@@ -1,0 +1,7 @@
+**/node_modules
+.upstream
+branding
+.git
+vendor/opencode/.git
+**/.DS_Store
+coverage
