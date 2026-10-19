@@ -19,6 +19,10 @@ up() {
 
   podman network exists "$NET" || podman network create --internal "$NET" >/dev/null
   podman volume exists bobi-home || podman volume create bobi-home >/dev/null
+  # Hidden checkpoint repositories of non-git projects (.git pointer files) live on the host; mount them at
+  # the same path so the pointers resolve inside the container too.
+  local shadow="${BOBI_HOME:-$HOME/.bobi}/data/shadow"
+  mkdir -p "$shadow"
 
   podman rm -f bobi-egress bobi-server >/dev/null 2>&1 || true
   podman run -d --name bobi-egress --network podman --network "$NET" \
@@ -28,7 +32,7 @@ up() {
 
   podman run -d --name bobi-server --network "$NET" -p "127.0.0.1:${PORT}:4096" \
     --cap-drop all --security-opt no-new-privileges --pids-limit 512 --memory 4g \
-    -v "${project}:${project}" -v bobi-home:/home/bun/.bobi -w "$project" \
+    -v "${project}:${project}" -v "${shadow}:${shadow}" -v bobi-home:/home/bun/.bobi -w "$project" \
     -e HTTP_PROXY=http://bobi-egress:3128 -e HTTPS_PROXY=http://bobi-egress:3128 \
     -e http_proxy=http://bobi-egress:3128 -e https_proxy=http://bobi-egress:3128 \
     -e NO_PROXY=localhost,127.0.0.1 -e no_proxy=localhost,127.0.0.1 \

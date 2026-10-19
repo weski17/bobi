@@ -1,7 +1,9 @@
 // Checkpoints (ADR-0006): changes made by the agent can be undone in one step.
 import { afterEach, expect, test } from "bun:test"
 import { existsSync } from "node:fs"
-import { readFile, writeFile } from "node:fs/promises"
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
+import { tmpdir } from "node:os"
+import { bobiPaths, ensureCheckpointRepo } from "@bobi/server"
 import path from "node:path"
 import { createHarness, type Harness } from "./harness.ts"
 
@@ -45,6 +47,21 @@ test("in a git project, revert restores files changed and created by the agent",
   expect(await readFile(existing, "utf8")).toBe("v1")
 }, 60_000)
 
-// OpenCode snapshots require git (vendor/opencode/packages/core/src/snapshot.ts: enabled()).
-// Approach for non-git projects is an open decision, see docs/STATUS.md.
-test.todo("in a project without git, revert restores files changed by the agent")
+test("in a project without git, the hidden checkpoint repository makes revert work", async () => {
+  h = await createHarness({ autoApprove: [{ action: "edit", resource: "*", modes: [] }] })
+  const file = path.join(h.dir, "notes.txt")
+  await writeFile(file, "original")
+  const home = await mkdtemp(path.join(tmpdir(), "bobi-ckpt-home-"))
+  try {
+    expect(ensureCheckpointRepo(h.dir, bobiPaths({ BOBI_HOME: home })).kind).toBe("shadow")
+    const sessionID = await h.prompt("edit", { toolCalls: [{ name: "write", arguments: { path: file, content: "changed" } }] }, { text: "done" })
+    await h.opencode.sessions.wait({ sessionID })
+    expect(await readFile(file, "utf8")).toBe("changed")
+    const messages = await h.opencode.message.list({ sessionID, order: "asc" })
+    const user = messages.data.find((m: { type: string }) => m.type === "user") as { id: string }
+    await h.opencode.sessions.revert.stage({ sessionID, messageID: user.id, files: true })
+    expect(await readFile(file, "utf8")).toBe("original")
+  } finally {
+    await rm(home, { recursive: true, force: true })
+  }
+}, 60_000)

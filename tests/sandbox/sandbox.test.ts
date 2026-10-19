@@ -69,6 +69,11 @@ describe.skipIf(!available)("podman sandbox", () => {
     expect(logs).toContain('"target":"example.com:443","allowed":false')
   }, 60_000)
 
+  test("the hidden checkpoint repository of a non-git project resolves inside the container", () => {
+    // `attach` created it on the host in the first test; the server must see the same repository.
+    expect(sh(["podman", "exec", "bobi-server", "git", "-C", project, "log", "--format=%s", "-1"]).out.trim()).toBe("bobi: checkpoint repository")
+  }, 60_000)
+
   test("the server runs unprivileged and sees only the project", () => {
     expect(sh(["podman", "exec", "bobi-server", "id", "-u"]).out.trim()).toBe("1000")
     expect(sh(["podman", "exec", "bobi-server", "ls", project]).code).toBe(0)
