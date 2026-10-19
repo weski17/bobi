@@ -31,6 +31,8 @@
       "dependencies": {
         "@bobi/browser": "workspace:*",
         "@bobi/config": "workspace:*",
+        "@bobi/modes": "workspace:*",
+        "ignore": "7.0.11",
       },
     },
     "packages/egress-proxy": {
@@ -46,6 +48,10 @@
       "bin": {
         "bobi-mock-model": "./src/cli.ts",
       },
+    },
+    "packages/modes": {
+      "name": "@bobi/modes",
+      "version": "0.0.0",
     },
     "packages/server": {
       "name": "@bobi/server",
@@ -78,6 +84,8 @@
 
     "@bobi/mock-model": ["@bobi/mock-model@workspace:packages/mock-model"],
 
+    "@bobi/modes": ["@bobi/modes@workspace:packages/modes"],
+
     "@bobi/server": ["@bobi/server@workspace:packages/server"],
 
     "@bobi/shell": ["@bobi/shell@workspace:packages/shell"],
@@ -87,6 +95,8 @@
     "@types/node": ["@types/node@26.6.5", "", { "dependencies": { "undici-types": "~8.9.0" } }, "sha512-uMzsv9stDdofIZBx4UGh4Z9ZgXnGC9seRDscilBcTHAeOFk67MZg/k9bWVfO+bk4qZmG+l52hRnLwUiH2LnJTg=="],
 
     "bun-types": ["bun-types@1.4.0", "", { "dependencies": { "@types/node": "*" } }, "sha512-iIKw23BspnQQYd3prITOBxeUsxBHnwzX6YJfGMuNOZzeNcMmVqzIIVGRm1l69ogaPQmb4wB6BN8mA5bE9YuC5Q=="],
+
+    "ignore": ["ignore@7.0.11", "", {}, "sha512-YChdK5txDjwGUvgR7oCJcLGkwi3LDh8Zx8tS7ndYciLEg/oOCL26VUBSUEtgS7EjiybcBqFxh5j0rAdDX7/bbg=="],
 
     "playwright-core": ["playwright-core@1.63.0", "", { "bin": { "playwright-core": "cli.js" } }, "sha512-rYCsBF/M5HjUch52bbtVONEFjv6Xu8sm8h72dNlR5bzIE1fvC/bxgspzkjSfU+MweEMmPM8KJebG6nnyxo5mCg=="],
 
