@@ -43,6 +43,34 @@ describe("built-in modes", () => {
     expect(system).toContain(SYSTEM_RULE.slice(0, 40))
   }, 30_000)
 
+  test("each mode can use its own model", async () => {
+    h = await createHarness({ modes: { plan: { model: "large-model" } } })
+    const planned = await h.promptIn("plan", "plan", done)
+    await h.opencode.sessions.wait({ sessionID: planned })
+    const coded = await h.promptIn("code", "code", done)
+    await h.opencode.sessions.wait({ sessionID: coded })
+    expect(agentRequests(h).map((r) => r.body.model)).toEqual(["large-model", "mock-model"])
+  }, 30_000)
+
+  test("switching modes in a session switches the model; a model picked by the user within a mode is kept", async () => {
+    h = await createHarness({ modes: { plan: { model: "large-model" } } })
+    const sessionID = await h.prompt("one", done)
+    await h.opencode.sessions.wait({ sessionID })
+    await h.opencode.sessions.switchAgent({ sessionID, agent: "plan" })
+    h.mock.enqueue(done)
+    await h.opencode.sessions.prompt({ sessionID, text: "two" })
+    await h.opencode.sessions.wait({ sessionID })
+    await h.opencode.sessions.switchModel({ sessionID, model: { providerID: "bobi", id: "mock-model" } })
+    h.mock.enqueue(done)
+    await h.opencode.sessions.prompt({ sessionID, text: "three" })
+    await h.opencode.sessions.wait({ sessionID })
+    await h.opencode.sessions.switchAgent({ sessionID, agent: "code" })
+    h.mock.enqueue(done)
+    await h.opencode.sessions.prompt({ sessionID, text: "four" })
+    await h.opencode.sessions.wait({ sessionID })
+    expect(agentRequests(h).map((r) => r.body.model)).toEqual(["mock-model", "large-model", "mock-model", "mock-model"])
+  }, 60_000)
+
   test("ask mode only offers reading tools and refuses writes", async () => {
     h = await createHarness({ autoApprove: [{ action: "edit", resource: "*", modes: [] }] })
     const file = path.join(h.dir, "nope.txt")
