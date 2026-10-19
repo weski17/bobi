@@ -3,3 +3,8 @@
 	url = https://github.com/anomalyco/opencode.git
 	shallow = true
 	ignore = dirty
+[submodule "vendor/code-oss"]
+	path = vendor/code-oss
+	url = https://github.com/microsoft/vscode.git
+	shallow = true
+	ignore = dirty

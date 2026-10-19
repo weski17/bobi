@@ -21,7 +21,7 @@ bobi run "explain this repository"  # headless
 ```
 
 Configuration: [`bobi.example.jsonc`](bobi.example.jsonc). Sandbox: [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md#sandbox-podman).
-Demos: [phase 1](docs/demos/phase-1.md), [phase 2](docs/demos/phase-2.md), [phase 3](docs/demos/phase-3.md).
+Demos: [phase 1](docs/demos/phase-1.md), [phase 2](docs/demos/phase-2.md), [phase 3](docs/demos/phase-3.md), [phase 4](docs/demos/phase-4.md).
 
 ## Modes
 
@@ -33,6 +33,11 @@ Demos: [phase 1](docs/demos/phase-1.md), [phase 2](docs/demos/phase-2.md), [phas
 
 Built-in **code graph** server (call chains, dependencies) in Advanced mode; own local or remote MCP servers in
 `config.jsonc` with credentials from the environment. Demo: [`docs/demos/phase-3.md`](docs/demos/phase-3.md).
+
+## Bobi IDE
+
+Code-OSS with Bobi branding and the Bobi chat panel: diff before apply, context from open tabs, modes, one-click undo.
+`bun run ide:setup` once, then `bobi-ide ~/your/project`. Demo: [`docs/demos/phase-4.md`](docs/demos/phase-4.md).
 
 ## Safeguards
 

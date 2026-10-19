@@ -142,6 +142,21 @@ describe("project trust", () => {
     }
   }, 60_000)
 
+  test("bobi trust shows and sets the decision as JSON (used by the IDE)", async () => {
+    const p = await projectWithRules()
+    try {
+      const t = io({ cwd: p })
+      await runApp(["trust", "--status"], t.io)
+      expect(JSON.parse(t.out[0]!)).toEqual({ project: p, status: "unknown", files: ["AGENTS.md"] })
+      await runApp(["trust", "--yes", p], t.io)
+      expect(JSON.parse(t.out[1]!).status).toBe("trusted")
+      await runApp(["trust", "--no"], t.io)
+      expect(JSON.parse(t.out[2]!).status).toBe("untrusted")
+    } finally {
+      await rm(p, { recursive: true, force: true })
+    }
+  })
+
   test("without a terminal the project stays untrusted unless --trust is given", async () => {
     const p = await projectWithRules()
     try {
