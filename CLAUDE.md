@@ -140,12 +140,13 @@ Jede Phase endet mit: lauffähigem Stand, grünen Tests, kurzer Demo-Anleitung i
 
 Voraussetzungen und Details: `docs/DEVELOPMENT.md`.
 
-- Installieren: `git submodule update --init --depth 1 && (cd vendor/opencode && bun install) && bun install && bun run browser:install`
+- Installieren: `git submodule update --init --depth 1 && (cd vendor/opencode && bun install) && bun install && bun run browser:install && bash scripts/install.sh`
 - Bauen: kein Build-Schritt (Bun führt TypeScript direkt aus)
-- Tests: `bun run test` (mit Abdeckung: `bun run test:coverage`)
+- Tests: `bun run test` (mit Abdeckung: `bun run test:coverage`; Sandbox: `bun run test:sandbox`)
 - Lint/Typprüfung: `bun run typecheck` (Semgrep läuft in der CI)
 - Bobi IDE starten: `TODO` (Phase 4)
-- Bobi Shell starten: `bun packages/shell/src/cli.ts` (interaktiv) oder `bun packages/shell/src/cli.ts run "<Auftrag>"` (headless)
+- Bobi Shell starten: `bobi` (interaktiv), `bobi run "<Auftrag>"` (headless), `bobi serve`, `bobi attach <url>`
+- Sandbox: `podman build -f sandbox/Containerfile -t bobi:dev .` und `sandbox/bobi-sandbox.sh up <projekt>`
 
 ## Ausgabe am Ende jeder Phase
 

@@ -1,83 +1,81 @@
-# Demo – Phase 1: Bobi core
+# Demo – Phase 1: Bobi as its own application
 
-What you will see: Bobi answers through a configurable model endpoint, asks before every write and
-shell command, masks secrets, marks tool output as untrusted data, and audits every action.
-No real model needed – the demo uses the mock model.
+What you will see: `bobi` runs its own server (engine + Bobi core), answers through a configurable model endpoint,
+asks before every write and shell command, masks secrets, marks tool output as untrusted data, audits every action,
+and can run inside a Podman sandbox whose only way out is an allowlist proxy. No real model needed (mock model).
 
 ## 0. Setup (once)
 
 ```bash
-brew install oven-sh/bun/bun node@24 ripgrep bash
+brew install oven-sh/bun/bun ripgrep bash podman
 cd ~/Documents/GitHub/bobi
 git submodule update --init --depth 1
-(cd vendor/opencode && bun install)
-bun install
-bun run browser:install
+(cd vendor/opencode && bun install) && bun install && bun run browser:install
+bash scripts/install.sh            # `bobi` in ~/.local/bin
 ```
 
-## 1. Run the tests
+## 1. Tests
 
 ```bash
 bun run typecheck
-bun run test:coverage
+bun run test:coverage              # 136 pass, 1 todo
 ```
 
-Expected: 105 pass, 1 todo, 0 fail; coverage above 80 %.
-
-## 2. Start the mock model (terminal 1)
+## 2. Mock model (terminal 1)
 
 ```bash
 bun packages/mock-model/src/cli.ts --port 4011
 ```
 
-## 3. Talk to Bobi headless (terminal 2)
+## 3. Terminal UI (terminal 2)
 
 ```bash
-mkdir -p /tmp/bobi-demo && cd /tmp/bobi-demo
+mkdir -p ~/bobi-demo && cd ~/bobi-demo
 export BOBI_MODEL_BASE_URL=http://127.0.0.1:4011/v1 BOBI_MODEL=mock-model BOBI_MODEL_API_KEY=demo
-bun ~/Documents/GitHub/bobi/packages/shell/src/cli.ts run "hello bobi" </dev/null
+bobi
 ```
 
-Expected: `mock reply to: "hello bobi"`.
+You see the Bobi logo and "Bobi model endpoint". Type something – the mock answers `mock reply to: …`.
 
-## 4. See a write being blocked
-
-Restart the mock model with a script that tries to write a file:
+## 4. Headless and the approval rule
 
 ```bash
-echo '[{"toolCalls":[{"name":"write","arguments":{"path":"/tmp/bobi-demo/pwned.txt","content":"x"}}]},{"text":"gave up"}]' > /tmp/turns.json
-bun packages/mock-model/src/cli.ts --port 4011 --script /tmp/turns.json
+bobi run "hello bobi" </dev/null
+echo '[{"toolCalls":[{"name":"write","arguments":{"path":"'$HOME'/bobi-demo/pwned.txt","content":"x"}}]},{"text":"gave up"}]' > /tmp/turns.json
 ```
 
-Then in terminal 2:
+Restart the mock with `--script /tmp/turns.json`, then:
 
 ```bash
-bun ~/Documents/GitHub/bobi/packages/shell/src/cli.ts run "write a file" </dev/null
-ls /tmp/bobi-demo
+bobi run "write a file" </dev/null   # "permission requested: edit … auto-rejecting"
+ls ~/bobi-demo                         # no pwned.txt
+bobi                                   # same script interactively: Bobi shows an approval prompt
 ```
 
-Expected: `permission requested: edit … auto-rejecting`, and no `pwned.txt`.
-
-## 5. Interactive (TUI)
+## 5. Safeguards of the command line
 
 ```bash
-cd /tmp/bobi-demo
-bun ~/Documents/GitHub/bobi/packages/shell/src/cli.ts
+bobi run --auto x        # refused
+bobi upgrade             # refused
+ls ~/.bobi               # Bobi's own data: data/bobi.db, snapshots, logs
 ```
 
-With the write script from step 4 loaded, send any message: Bobi shows an approval prompt for the write.
-Choose "reject" or "allow once". (Not yet verified by an automated test – please check manually.)
-
-## 6. Safeguards of the launcher
+## 6. Sandbox
 
 ```bash
-bun ~/Documents/GitHub/bobi/packages/shell/src/cli.ts run --auto "x"   # refused
-bun ~/Documents/GitHub/bobi/packages/shell/src/cli.ts upgrade          # refused
+podman machine init && podman machine start      # once
+podman build -f sandbox/Containerfile -t bobi:dev .
+export BOBI_SERVER_PASSWORD="$(openssl rand -base64 24)"
+export BOBI_MODEL_BASE_URL=http://host.containers.internal:4011/v1 BOBI_EGRESS_ALLOW=host.containers.internal:4011
+sandbox/bobi-sandbox.sh up ~/bobi-demo
+cd ~/bobi-demo && bobi attach http://127.0.0.1:4096
+sandbox/bobi-sandbox.sh status                   # egress decisions, e.g. example.com:443 allowed:false
+sandbox/bobi-sandbox.sh down
 ```
+
+Automated: `bun run test:sandbox` (3 tests: answers via allowed endpoint, blocked egress, unprivileged).
 
 ## 7. Real model
-
-Point Bobi at your LiteLLM gateway instead of the mock:
 
 ```bash
 export BOBI_MODEL_BASE_URL=http://localhost:4000/v1 BOBI_MODEL=<model id> BOBI_MODEL_API_KEY=<key>
