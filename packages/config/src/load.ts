@@ -42,6 +42,11 @@ function merge(base: BobiConfig, patch: DeepPartial<BobiConfig>): BobiConfig {
     ],
     telemetry: { ...base.telemetry, ...patch.telemetry },
     checkpoints: { ...base.checkpoints, ...patch.checkpoints },
+    // Servers merge by name; a later file replaces a server with the same name entirely.
+    mcp: {
+      servers: { ...base.mcp.servers, ...((patch.mcp?.servers ?? {}) as BobiConfig["mcp"]["servers"]) },
+      ...(patch.mcp?.timeout || base.mcp.timeout ? { timeout: { ...base.mcp.timeout, ...patch.mcp?.timeout } } : {}),
+    },
   }
 }
 

@@ -3,13 +3,14 @@ import { existsSync, watch, type FSWatcher } from "node:fs"
 import os from "node:os"
 import path from "node:path"
 import type { Plugin } from "@opencode/plugin"
-import { modelIds, PROVIDER_ID, TrustStore, type BobiConfig } from "@bobi/config"
+import { modelIds, PROVIDER_ID, TrustStore, type BobiConfig, type McpServer } from "@bobi/config"
 import { HeadlessBrowser, registerBrowserTool } from "@bobi/browser"
 import { DEFAULT_MODE, editAllowed, editRestriction, hiddenTools, loadModes, modeDenyRules, modeFiles, modePrompt, type Mode } from "@bobi/modes"
 import { type AuditSink, MemorySink, OtlpSink, parseOtlpHeaders } from "./audit.ts"
 import { BobiIgnore, blockedShellPath, IGNORE_FILE, patchPaths } from "./bobiignore.ts"
 import { brandSystemPrompt } from "./identity.ts"
 import { initPrompt } from "./init.ts"
+import { resolveMcpServers } from "./mcp.ts"
 import { createMasker, maskDeep, type Masker } from "./masking.ts"
 import { loadDefaultPolicy, rulesForAgent, type Rule } from "./permissions.ts"
 import { collectRules, rulesPrompt } from "./rules.ts"
@@ -48,6 +49,10 @@ export type BobiCoreOptions = {
    * with their own auto-approvals and mode models. Default: `config` for every project.
    */
   readonly projectConfig?: (project: string, trusted: boolean) => BobiConfig
+  /** Built-in MCP servers for a project (e.g. the code graph); configured servers with the same name win. */
+  readonly builtinMcp?: (project: string) => Record<string, McpServer>
+  /** Environment for ${VAR} references in MCP configs (default process.env). */
+  readonly env?: Record<string, string | undefined>
 }
 
 type TextContent = { type: "text"; text: string }
@@ -87,6 +92,14 @@ export function createBobiCore(options: BobiCoreOptions): Plugin.Plugin & { read
       const config = options.projectConfig?.(project, trusted) ?? options.config
       const loadAllModes = () => loadModes({ globalDir, project, includeProject: trusted })
       let modes: Mode[] = loadAllModes()
+
+      // MCP servers of this project: built-in ones, then global/project config (project only if trusted).
+      const mcp = resolveMcpServers({ ...options.builtinMcp?.(project), ...config.mcp.servers }, config.mcp.timeout, options.env ?? process.env)
+      for (const { name, problem } of mcp) if (problem) console.error(`bobi: MCP server "${name}" disabled: ${problem}`)
+      const mcpNames = mcp.map((m) => m.name)
+      await ctx.mcp.transform((editor) => {
+        for (const { name, server } of mcp) editor.set(name, server as Parameters<typeof editor.set>[1])
+      })
       const modeOf = (agent: string) => modes.find((m) => m.slug === agent)
 
       // 1. Modes become engine agents; every agent gets the secure policy, auto-approvals, protected rules and
@@ -104,7 +117,7 @@ export function createBobiCore(options: BobiCoreOptions): Plugin.Plugin & { read
         for (const agent of editor.list()) {
           const id = String(agent.id)
           const mode = modeOf(id)
-          agent.permissions.push(...rulesForAgent(id, policy, config.autoApprove), ...PROTECTED_RULES, ...(mode ? modeDenyRules(mode) : []))
+          agent.permissions.push(...rulesForAgent(id, policy, config.autoApprove), ...PROTECTED_RULES, ...(mode ? modeDenyRules(mode, mcpNames) : []))
         }
         if (modeOf(DEFAULT_MODE)) editor.default(DEFAULT_MODE)
       })

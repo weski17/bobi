@@ -26,6 +26,12 @@ export type AutoApproveRule = {
   modes: string[]
 }
 
+/** MCP servers (requirement 8). Secret values only as ${ENV_VAR} references. */
+export type McpLocalServer = { type: "local"; command: string[]; env?: Record<string, string>; cwd?: string; enabled?: boolean }
+export type McpRemoteServer = { type: "remote"; url: string; headers?: Record<string, string>; enabled?: boolean }
+export type McpServer = McpLocalServer | McpRemoteServer
+export type McpConfig = { servers: Record<string, McpServer>; timeout?: { startup?: number; execution?: number } }
+
 export type BobiConfig = {
   model: ModelEndpoint
   /** Per-mode model selection: mode slug → model id. */
@@ -34,6 +40,7 @@ export type BobiConfig = {
   autoApprove: AutoApproveRule[]
   telemetry: { otlpEndpoint?: string; user?: string }
   checkpoints: { enabled: boolean }
+  mcp: McpConfig
 }
 
 export const DEFAULTS: BobiConfig = {
@@ -48,6 +55,7 @@ export const DEFAULTS: BobiConfig = {
   autoApprove: [],
   telemetry: {},
   checkpoints: { enabled: true },
+  mcp: { servers: {} },
 }
 
 export class ConfigError extends Error {
@@ -79,7 +87,7 @@ export function validatePartial(input: unknown, source: string): DeepPartial<Bob
   if (!isObject(input)) throw new ConfigError(source, ["config must be a JSON object"])
   findSecrets(input, "", issues)
 
-  const known = new Set(["$schema", "model", "modes", "autoApprove", "telemetry", "checkpoints"])
+  const known = new Set(["$schema", "model", "modes", "autoApprove", "telemetry", "checkpoints", "mcp"])
   for (const key of Object.keys(input)) if (!known.has(key)) issues.push(`${key}: unknown key`)
 
   const model = input.model
@@ -137,8 +145,68 @@ export function validatePartial(input: unknown, source: string): DeepPartial<Bob
       issues.push("checkpoints.enabled: must be a boolean")
   }
 
+  if (input.mcp !== undefined) validateMcp(input.mcp, issues)
+
   if (issues.length) throw new ConfigError(source, issues)
   return input as DeepPartial<BobiConfig>
 }
 
 export type DeepPartial<T> = { [K in keyof T]?: T[K] extends (infer U)[] ? U[] : T[K] extends object ? DeepPartial<T[K]> : T[K] }
+
+/** Header and variable names whose values are credentials: they must be ${ENV_VAR} references. */
+const SECRET_NAME = /(auth|token|secret|password|passwd|api[-_]?key|cookie|credential)/i
+// An optional auth scheme prefix is allowed: "Bearer ${TOKEN}".
+const ENV_REF = /^((Bearer|Basic|Token) )?\$\{[A-Z_][A-Z0-9_]*\}$/
+
+function validateStringMap(value: unknown, at: string, issues: string[]) {
+  if (!isObject(value)) return void issues.push(`${at}: must be an object of strings`)
+  for (const [key, v] of Object.entries(value)) {
+    if (typeof v !== "string") issues.push(`${at}.${key}: must be a string`)
+    else if (SECRET_NAME.test(key) && !ENV_REF.test(v)) issues.push(`${at}.${key}: credentials must be an environment reference like \${MY_TOKEN}`)
+  }
+}
+
+function validateMcp(mcp: unknown, issues: string[]) {
+  if (!isObject(mcp)) return void issues.push("mcp: must be an object")
+  for (const key of Object.keys(mcp)) if (key !== "servers" && key !== "timeout") issues.push(`mcp.${key}: unknown key`)
+  if (mcp.timeout !== undefined) {
+    if (!isObject(mcp.timeout)) issues.push("mcp.timeout: must be an object")
+    else
+      for (const [k, v] of Object.entries(mcp.timeout))
+        if (!["startup", "execution"].includes(k) || typeof v !== "number" || !(v > 0)) issues.push(`mcp.timeout.${k}: positive milliseconds (startup, execution)`)
+  }
+  if (mcp.servers === undefined) return
+  if (!isObject(mcp.servers)) return void issues.push("mcp.servers: must be an object")
+  for (const [name, server] of Object.entries(mcp.servers)) {
+    const at = `mcp.servers.${name}`
+    // Tools are exposed as <server>_<tool>, so a server name must not contain "_".
+    if (!/^[a-z][a-z0-9-]*$/.test(name)) issues.push(`${at}: name must be lowercase letters, digits and hyphens`)
+    if (!isObject(server)) {
+      issues.push(`${at}: must be an object`)
+      continue
+    }
+    if (server.enabled !== undefined && typeof server.enabled !== "boolean") issues.push(`${at}.enabled: must be a boolean`)
+    if (server.type === "local") {
+      if (!Array.isArray(server.command) || server.command.length === 0 || server.command.some((c) => typeof c !== "string" || c === ""))
+        issues.push(`${at}.command: must be a non-empty list of strings`)
+      if (server.env !== undefined) validateStringMap(server.env, `${at}.env`, issues)
+      if (server.cwd !== undefined && typeof server.cwd !== "string") issues.push(`${at}.cwd: must be a string`)
+      for (const key of Object.keys(server)) if (!["type", "command", "env", "cwd", "enabled"].includes(key)) issues.push(`${at}.${key}: unknown key`)
+    } else if (server.type === "remote") {
+      if (typeof server.url !== "string" || !/^https?:\/\//.test(server.url)) issues.push(`${at}.url: must be an http(s) URL`)
+      if (server.headers !== undefined) validateStringMap(server.headers, `${at}.headers`, issues)
+      for (const key of Object.keys(server)) if (!["type", "url", "headers", "enabled"].includes(key)) issues.push(`${at}.${key}: unknown key`)
+    } else issues.push(`${at}.type: must be "local" or "remote"`)
+  }
+}
+
+/** Replaces ${VAR} references with environment values; returns the names of missing variables. */
+export function expandEnv(value: string, env: Record<string, string | undefined>): { value: string; missing: string[] } {
+  const missing: string[] = []
+  const out = value.replace(/\$\{([A-Z_][A-Z0-9_]*)\}/g, (_, name: string) => {
+    const v = env[name]
+    if (v === undefined) missing.push(name)
+    return v ?? ""
+  })
+  return { value: out, missing }
+}

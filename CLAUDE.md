@@ -117,7 +117,7 @@ in `docs/adr/` und nach meiner Freigabe.
 | 5 | Bobi Shell, Orchestrator, Skills, Literate Coding, Security-Agent, Git |
 | 6 | COBOL- und Zowe-MCP-Server, Autovervollständigung, Audit-Berichte, A2A |
 
-**Aktuelle Phase: 2**
+**Aktuelle Phase: 3**
 Den Fortschritt pflegst du in `docs/STATUS.md`.
 
 Jede Phase endet mit: lauffähigem Stand, grünen Tests, kurzer Demo-Anleitung in
