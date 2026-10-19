@@ -1,11 +1,12 @@
 // @bobi/core: turns the OpenCode engine into Bobi (ADR-0002, ADR-0013). Registered as a host plugin by @bobi/server.
-import { existsSync, watch, type FSWatcher } from "node:fs"
+import { existsSync, readFileSync, watch, type FSWatcher } from "node:fs"
 import os from "node:os"
 import path from "node:path"
 import type { Plugin } from "@opencode/plugin"
-import { modelIds, PROVIDER_ID, TrustStore, type BobiConfig, type McpServer } from "@bobi/config"
+import { expandEnv, modelIds, PROVIDER_ID, TrustStore, type BobiConfig, type McpServer } from "@bobi/config"
+import { A2A_TOOL, registerA2aTool, type RemoteAgent } from "@bobi/a2a"
 import { HeadlessBrowser, registerBrowserTool } from "@bobi/browser"
-import { DEFAULT_MODE, editAllowed, editRestriction, hasGroup, hiddenTools, loadModes, modeDenyRules, modeFiles, modePrompt, type Mode } from "@bobi/modes"
+import { BUILTIN_FILE, DEFAULT_MODE, editAllowed, editRestriction, hasGroup, hiddenTools, loadModes, modeDenyRules, modeFiles, modePrompt, parseModes, type Mode } from "@bobi/modes"
 import { type AuditSink, FileSink, MemorySink, MultiSink, OtlpSink, parseOtlpHeaders } from "./audit.ts"
 import { BobiIgnore, blockedShellPath, IGNORE_FILE, patchPaths } from "./bobiignore.ts"
 import { brandSystemPrompt } from "./identity.ts"
@@ -33,7 +34,19 @@ export const PROTECTED_RULES: Rule[] = [
   // Changes on the mainframe (built-in zowe MCP server) always ask, even when zowe_* is auto-approved.
   { action: "zowe_write_dataset", resource: "*", effect: "ask" },
   { action: "zowe_submit_job", resource: "*", effect: "ask" },
+  // Asking another agent sends project information out (A2A); always confirmed.
+  { action: "a2a", resource: "*", effect: "ask" },
 ]
+
+/**
+ * Agent for requests from other agents (A2A, requirement 20): the built-in Ask mode, never overridable by a
+ * project, limited to reading – everything else is denied, and nothing waits for an approval nobody can give.
+ */
+export const A2A_AGENT = "a2a"
+const A2A_TOOLS = new Set(["read", "glob", "grep", "skill"])
+const A2A_PROMPT =
+  "This request comes from another agent over the A2A protocol, not from a person at this workstation. You can only " +
+  "read and search the project. Answer in plain text. Do not include secrets, credentials or personal data in the answer."
 
 export type BobiCoreOptions = {
   readonly config: BobiConfig
@@ -108,7 +121,9 @@ export function createBobiCore(options: BobiCoreOptions): Plugin.Plugin & { read
       await ctx.mcp.transform((editor) => {
         for (const { name, server } of mcp) editor.set(name, server as Parameters<typeof editor.set>[1])
       })
-      const modeOf = (agent: string) => modes.find((m) => m.slug === agent)
+      // A2A requests always get the built-in Ask mode, whatever the project or global modes define.
+      const a2aMode = parseModes(readFileSync(BUILTIN_FILE, "utf8"), BUILTIN_FILE).find((m) => m.slug === "ask")!
+      const modeOf = (agent: string) => (agent === A2A_AGENT ? a2aMode : modes.find((m) => m.slug === agent))
 
       // 1. Modes become engine agents; every agent gets the secure policy, auto-approvals, protected rules and
       //    – for modes – deny rules for every tool group the mode does not grant (appended last, so they win).
@@ -125,10 +140,18 @@ export function createBobiCore(options: BobiCoreOptions): Plugin.Plugin & { read
             agent.hidden = false
           })
         }
+        editor.update(A2A_AGENT, (agent) => {
+          agent.name = "Bobi (A2A)" as unknown as typeof agent.name
+          agent.description = "Read-only answers for other agents"
+          agent.mode = "primary"
+          agent.hidden = true
+        })
         for (const agent of editor.list()) {
           const id = String(agent.id)
           const mode = modeOf(id)
-          agent.permissions.push(...rulesForAgent(id, policy, config.autoApprove), ...PROTECTED_RULES, ...(mode ? modeDenyRules(mode, mcpNames) : []))
+          // No auto-approvals for other agents.
+          const approvals = id === A2A_AGENT ? [] : config.autoApprove
+          agent.permissions.push(...rulesForAgent(id, policy, approvals), ...PROTECTED_RULES, ...(mode ? modeDenyRules(mode, mcpNames) : []))
         }
         if (modeOf(DEFAULT_MODE)) editor.default(DEFAULT_MODE)
       })
@@ -184,6 +207,12 @@ export function createBobiCore(options: BobiCoreOptions): Plugin.Plugin & { read
           event.system.push({ type: "text", text: modePrompt(mode) })
           for (const name of hiddenTools(mode, Object.keys(event.tools))) delete event.tools[name]
         }
+        // The a2a tool reaches outside like an MCP server: only for modes with the mcp group.
+        if (!mode || !hasGroup(mode, "mcp")) delete event.tools[A2A_TOOL]
+        if (String(event.agent) === A2A_AGENT) {
+          event.system.push({ type: "text", text: A2A_PROMPT })
+          for (const name of Object.keys(event.tools)) if (!A2A_TOOLS.has(name)) delete event.tools[name]
+        }
         const rules = rulesPrompt(collectRules(mode?.slug ?? String(event.agent), { globalDir, project, location, includeProject: trusted }), project)
         if (rules) event.system.push({ type: "text", text: rules })
       })
@@ -191,6 +220,11 @@ export function createBobiCore(options: BobiCoreOptions): Plugin.Plugin & { read
       // 3. Before a tool runs: .bobiignore and the mode's edit restriction.
       await ctx.tool.hook("execute.before", (event) => {
         started.set(event.id, Date.now())
+        if (String(event.agent) === A2A_AGENT && !A2A_TOOLS.has(event.tool)) throw new Error(`${event.tool} is not available to requests from other agents (read-only).`)
+        if (event.tool === A2A_TOOL) {
+          const mode = modeOf(String(event.agent))
+          if (!mode || !hasGroup(mode, "mcp")) throw new Error(`The a2a tool needs a mode with the mcp group (e.g. Advanced); ${String(event.agent)} does not have it.`)
+        }
         const target = inputPath(event.input)
         const paths =
           event.tool === "patch" ? patchPaths(String((event.input as { patchText?: unknown })?.patchText ?? "")) : target ? [target] : []
@@ -256,6 +290,11 @@ export function createBobiCore(options: BobiCoreOptions): Plugin.Plugin & { read
       await ctx.permission.hook("evaluate", (event) => {
         const now = Date.now()
         if (event.agent) sessionMode.set(String(event.sessionID), String(event.agent))
+        // Other agents may only read; an approval request would wait for a person who is not there.
+        if (String(event.agent) === A2A_AGENT && (event.effect === "ask" || !A2A_TOOLS.has(event.action))) {
+          event.effect = "deny"
+          event.message = "Not available to requests from other agents (read-only)."
+        }
         audit.record({
           name: "bobi.permission",
           start: now,
@@ -344,6 +383,22 @@ export function createBobiCore(options: BobiCoreOptions): Plugin.Plugin & { read
           },
         })
       })
+
+      // 7a. Remote agents (A2A); header values are ${VAR} references, agents with missing variables are skipped.
+      const remote: Record<string, RemoteAgent> = {}
+      for (const [name, agent] of Object.entries(config.a2a.agents)) {
+        const missing: string[] = []
+        const headers = Object.fromEntries(
+          Object.entries(agent.headers ?? {}).map(([k, v]) => {
+            const out = expandEnv(v, options.env ?? process.env)
+            missing.push(...out.missing)
+            return [k, out.value]
+          }),
+        )
+        if (missing.length) console.error(`bobi: A2A agent "${name}" disabled: missing environment variable(s) ${[...new Set(missing)].join(", ")}`)
+        else remote[name] = { url: agent.url, headers, ...(agent.description ? { description: agent.description } : {}) }
+      }
+      await registerA2aTool(ctx, remote)
 
       // 7. Headless browser tool (approval per page).
       const browser = options.browser === false ? undefined : await registerBrowserTool(ctx, options.browser ?? new HeadlessBrowser())

@@ -5,6 +5,7 @@
     "": {
       "name": "bobi",
       "devDependencies": {
+        "@bobi/a2a": "workspace:*",
         "@bobi/config": "workspace:*",
         "@bobi/core": "workspace:*",
         "@bobi/mcp-cobol": "workspace:*",
@@ -61,6 +62,10 @@
         "@modelcontextprotocol/client": "2.0.0",
       },
     },
+    "packages/a2a": {
+      "name": "@bobi/a2a",
+      "version": "0.0.0",
+    },
     "packages/browser": {
       "name": "@bobi/browser",
       "version": "0.0.0",
@@ -76,6 +81,7 @@
       "name": "@bobi/core",
       "version": "0.0.0",
       "dependencies": {
+        "@bobi/a2a": "workspace:*",
         "@bobi/browser": "workspace:*",
         "@bobi/config": "workspace:*",
         "@bobi/modes": "workspace:*",
@@ -115,6 +121,7 @@
       "name": "@bobi/server",
       "version": "0.0.0",
       "dependencies": {
+        "@bobi/a2a": "workspace:*",
         "@bobi/config": "workspace:*",
         "@bobi/core": "workspace:*",
         "@bobi/mcp-cobol": "workspace:*",
@@ -139,6 +146,8 @@
     },
   },
   "packages": {
+    "@bobi/a2a": ["@bobi/a2a@workspace:packages/a2a"],
+
     "@bobi/browser": ["@bobi/browser@workspace:packages/browser"],
 
     "@bobi/config": ["@bobi/config@workspace:packages/config"],
