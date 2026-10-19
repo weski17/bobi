@@ -4,7 +4,9 @@
   "type": "module",
   "license": "MIT",
   "packageManager": "bun@1.4.3",
-  "workspaces": ["packages/*"],
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
     "postinstall": "bun scripts/link-upstream.ts",
     "test": "bun test ./packages ./tests",
@@ -16,6 +18,7 @@
     "@bobi/config": "workspace:*",
     "@bobi/core": "workspace:*",
     "@bobi/mock-model": "workspace:*",
+    "@bobi/server": "workspace:*",
     "@bobi/shell": "workspace:*",
     "@types/bun": "1.4.0",
     "typescript": "5.8.2"
