@@ -39,6 +39,8 @@ export class ChatController {
   private lastUserMessage: string | undefined
   readonly pending = new Map<string, PermissionRequest>()
   private readonly toolNames = new Map<string, string>()
+  /** Subtask sessions started by the current session (orchestrator delegation). */
+  private readonly children = new Set<string>()
   private busy = false
   private idleWaiters: (() => void)[] = []
   private readonly abort = new AbortController()
@@ -85,12 +87,21 @@ export class ChatController {
   /** Visible for tests. */
   handle(event: BobiEvent) {
     const data = event.data ?? {}
+    // Track subtasks of the current session so their approvals reach the user.
+    if (event.type === "session.created" && data.parentID && (data.parentID === this.sessionID || this.children.has(String(data.parentID)))) {
+      this.children.add(String(data.sessionID))
+      return
+    }
     // Modes changed (e.g. custom_modes.yaml edited): refresh the picker.
     if (event.type === "agent.updated") {
       void this.loadModes().then((modes) => modes.length && this.ui.post({ type: "ready", modes, mode: this.mode }))
       return
     }
-    if (!this.sessionID || (data.sessionID && data.sessionID !== this.sessionID)) return
+    if (!this.sessionID) return
+    const child = data.sessionID !== undefined && this.children.has(String(data.sessionID))
+    if (data.sessionID && data.sessionID !== this.sessionID && !child) return
+    // From subtasks only tool activity and approvals are shown; their text goes back to the orchestrator.
+    if (child && !["session.tool.input.started", "session.tool.called", "permission.asked"].includes(event.type)) return
     switch (event.type) {
       case "session.text.delta":
         this.ui.post({ type: "text", delta: String(data.delta ?? "") })
@@ -183,7 +194,33 @@ export class ChatController {
     return true
   }
 
+  /**
+   * A commit message for the staged changes, written by Bobi in its own short session: the model reads the diff with
+   * `git diff --staged` (allowed without asking), so the diff passes Bobi's secret masking and audit like any tool output.
+   */
+  async commitMessage(timeoutMs = 120_000): Promise<string> {
+    const session = await this.client.createSession(this.directory, "code")
+    await this.client.prompt(
+      session.id,
+      "Write a git commit message for the staged changes. Run `git diff --staged` (and `git log -n 10 --format=%s` for the " +
+        "repository's style). Reply with the commit message only – subject line (max 72 characters, imperative), a blank " +
+        "line, then a short body if needed. No quotes, no code fences, no other text. Do not run any other command.",
+    )
+    const deadline = Date.now() + timeoutMs
+    while (Date.now() < deadline) {
+      const messages = (await this.client.messages(session.id)) as { type: string; content?: { type: string; text?: string }[]; outcome?: string }[]
+      if (messages.some((m) => m.type === "idle")) {
+        const last = [...messages].reverse().find((m) => m.type === "assistant" && m.content?.some((c) => c.type === "text" && c.text?.trim()))
+        const text = last?.content?.filter((c) => c.type === "text").map((c) => c.text ?? "").join("").trim() ?? ""
+        return text.replace(/^```\w*\n?|\n?```$/g, "").trim()
+      }
+      await new Promise((r) => setTimeout(r, 200))
+    }
+    throw new Error("Bobi did not answer in time")
+  }
+
   newChat() {
+    this.children.clear()
     this.sessionID = undefined
     this.lastUserMessage = undefined
     this.pending.clear()

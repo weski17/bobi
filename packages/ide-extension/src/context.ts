@@ -32,3 +32,28 @@ export function withSelection(text: string, root: string, selection?: Selection)
   const lines = selection.startLine === selection.endLine ? `line ${selection.startLine}` : `lines ${selection.startLine}-${selection.endLine}`
   return `Selected in ${file} (${lines}):\n\`\`\`\n${code}\n\`\`\`\n\n${text}`
 }
+
+const COMMENT = /^\s*(\/\/+|#+|--|;+|\*|\/\*+|\*\/|<!--|-->|%|'|rem\b)/i
+
+/** Literate coding (requirement 12): the selection, or the comment block around the cursor. */
+export function literateRegion(lines: readonly string[], cursor: number, selection?: { start: number; end: number }): { start: number; end: number } | undefined {
+  if (selection && selection.end >= selection.start && (selection.end > selection.start || lines[selection.start]?.trim())) return selection
+  if (!COMMENT.test(lines[cursor] ?? "")) return undefined
+  let start = cursor
+  let end = cursor
+  while (start > 0 && COMMENT.test(lines[start - 1]!)) start--
+  while (end < lines.length - 1 && COMMENT.test(lines[end + 1]!)) end++
+  return { start, end }
+}
+
+export function literatePrompt(file: string, start: number, end: number, text: string, language: string): string {
+  return [
+    `In ${file} (${language}), lines ${start + 1}-${end + 1} contain instructions written in plain language or pseudocode:`,
+    "```",
+    text,
+    "```",
+    "Implement them at exactly this place: replace these lines with working code (keep a short comment only where it",
+    "helps a reader). Change other code only if the instructions require it. Use the edit tool so the user can review",
+    "the change as a diff before it is applied.",
+  ].join("\n")
+}
