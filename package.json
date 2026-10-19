@@ -23,6 +23,7 @@
   "devDependencies": {
     "@bobi/config": "workspace:*",
     "@bobi/core": "workspace:*",
+    "@bobi/mcp-cobol": "workspace:*",
     "@bobi/mcp-code-graph": "workspace:*",
     "@bobi/mock-model": "workspace:*",
     "@bobi/server": "workspace:*",
