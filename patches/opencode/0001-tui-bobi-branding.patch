@@ -1,0 +1,174 @@
+Bobi branding in the terminal UI (ADR-0001, ADR-0013).
+Replaces the OpenCode logo, terminal titles and onboarding texts and updates the
+tests that assert them; no behaviour change. Upstream TUI suite: 1491 pass.
+
+diff --git a/packages/tui/src/app.tsx b/packages/tui/src/app.tsx
+index 88939eb..109e195 100644
+--- a/packages/tui/src/app.tsx
++++ b/packages/tui/src/app.tsx
+@@ -607,14 +607,14 @@ function App() {
+     if (!terminalTitleEnabled()) return
+ 
+     if (route.data.type === "home") {
+-      renderer.setTerminalTitle("OpenCode")
++      renderer.setTerminalTitle("Bobi")
+       return
+     }
+ 
+     if (route.data.type === "session") {
+       const title = session?.title
+       if (!title || isFallbackTitle(title)) {
+-        renderer.setTerminalTitle("OpenCode")
++        renderer.setTerminalTitle("Bobi")
+         return
+       }
+ 
+@@ -1020,7 +1020,7 @@ function App() {
+         ? [
+             {
+               name: "opencode.update",
+-              title: "Update OpenCode",
++              title: "Update Bobi",
+               slash: { name: "update" },
+               run: () => updater.open?.("manual"),
+               category: "System",
+diff --git a/packages/tui/src/attention.ts b/packages/tui/src/attention.ts
+index 544668d..ff2bbb0 100644
+--- a/packages/tui/src/attention.ts
++++ b/packages/tui/src/attention.ts
+@@ -32,7 +32,7 @@ type AttentionHost = Attention & {
+   dispose(): void
+ }
+ 
+-const DEFAULT_TITLE = "OpenCode"
++const DEFAULT_TITLE = "Bobi"
+ const TITLE_LIMIT = 80
+ const MESSAGE_LIMIT = 240
+ const BUILTIN_SOUNDS: Record<AttentionSoundName, string> = {
+diff --git a/packages/tui/src/feature-plugins/sidebar/footer.tsx b/packages/tui/src/feature-plugins/sidebar/footer.tsx
+index b875d5f..ae15917 100644
+--- a/packages/tui/src/feature-plugins/sidebar/footer.tsx
++++ b/packages/tui/src/feature-plugins/sidebar/footer.tsx
+@@ -54,9 +54,9 @@ export function SidebarOnboarding(props: { context: Plugin.Context; sessionID: s
+               ✕
+             </text>
+           </box>
+-          <text fg={props.context.theme.text.muted}>OpenCode includes free models so you can start immediately.</text>
++          <text fg={props.context.theme.text.muted}>Bobi uses your company model endpoint.</text>
+           <text fg={props.context.theme.text.muted}>
+-            Connect from 75+ providers to use other models, including Claude, GPT, Gemini etc
++            Configure it in ~/.bobi/config.jsonc or with BOBI_MODEL_BASE_URL.
+           </text>
+           <box
+             id="sidebar.footer.getting-started.connect"
+diff --git a/packages/tui/src/logo.ts b/packages/tui/src/logo.ts
+index 8c570fb..713f3e8 100644
+--- a/packages/tui/src/logo.ts
++++ b/packages/tui/src/logo.ts
+@@ -1,6 +1,6 @@
+ export const logo = {
+-  left: ["                   ", "█▀▀█ █▀▀█ █▀▀█ █▀▀▄", "█__█ █__█ █^^^ █__█", "▀▀▀▀ █▀▀▀ ▀▀▀▀ ▀~~▀"],
+-  right: ["             ▄     ", "█▀▀▀ █▀▀█ █▀▀█ █▀▀█", "█___ █__█ █__█ █^^^", "▀▀▀▀ ▀▀▀▀ ▀▀▀▀ ▀▀▀▀"],
++  left: ["▄        ", "█▀▀█ █▀▀█", "█__█ █__█", "▀▀▀▀ ▀▀▀▀"],
++  right: ["▄    ▀", "█▀▀█ █", "█__█ █", "▀▀▀▀ ▀"],
+ }
+ 
+ export const go = {
+diff --git a/packages/tui/src/mini/footer.permission.tsx b/packages/tui/src/mini/footer.permission.tsx
+index 6f11e85..d6a329c 100644
+--- a/packages/tui/src/mini/footer.permission.tsx
++++ b/packages/tui/src/mini/footer.permission.tsx
+@@ -110,7 +110,7 @@ export function RejectField(props: {
+       minHeight={1}
+       maxHeight={3}
+       wrapMode="word"
+-      placeholder="Tell OpenCode what to do differently"
++      placeholder="Tell Bobi what to do differently"
+       placeholderColor={props.theme.muted}
+       textColor={props.theme.formfieldText}
+       focusedTextColor={props.theme.formfieldFocusedText}
+@@ -322,7 +322,7 @@ export function RunPermissionBody(props: {
+           {title()}
+         </text>
+         <Show when={!compact() && stage() === "reject"}>
+-          <text fg={props.theme.muted}>Tell OpenCode what to do differently</text>
++          <text fg={props.theme.muted}>Tell Bobi what to do differently</text>
+         </Show>
+       </box>
+ 
+diff --git a/packages/tui/src/mini/footer.prompt.tsx b/packages/tui/src/mini/footer.prompt.tsx
+index d698f12..831ece4 100644
+--- a/packages/tui/src/mini/footer.prompt.tsx
++++ b/packages/tui/src/mini/footer.prompt.tsx
+@@ -534,7 +534,7 @@ export function createPromptState(input: PromptInput): PromptState {
+         description: "compact older session context to free space",
+       } satisfies SlashOption,
+       ...EXIT_COMMANDS.map(
+-        (name) => ({ kind: "slash", name, display: `/${name}`, description: "close OpenCode" }) satisfies SlashOption,
++        (name) => ({ kind: "slash", name, display: `/${name}`, description: "close Bobi" }) satisfies SlashOption,
+       ),
+     ]
+     const hidden = new Set(builtins.map((item) => item.name))
+diff --git a/packages/tui/src/mini/runtime.lifecycle.ts b/packages/tui/src/mini/runtime.lifecycle.ts
+index 6a103bc..1aa626b 100644
+--- a/packages/tui/src/mini/runtime.lifecycle.ts
++++ b/packages/tui/src/mini/runtime.lifecycle.ts
+@@ -174,8 +174,8 @@ export async function createRuntimeLifecycle(input: LifecycleInput): Promise<Lif
+   if (mono) renderer.on(CliRenderEvents.EXTERNAL_OUTPUT, monoSnapshot)
+   const setTitle = (title?: string) => {
+     if (input.host.platform !== "linux") return
+-    if (!title || isFallbackTitle(title)) return renderer.setTerminalTitle("OpenCode")
+-    renderer.setTerminalTitle(`OC | ${title.length > 40 ? title.slice(0, 37) + "…" : title}`)
++    if (!title || isFallbackTitle(title)) return renderer.setTerminalTitle("Bobi")
++    renderer.setTerminalTitle(`Bobi | ${title.length > 40 ? title.slice(0, 37) + "…" : title}`)
+   }
+   setTitle(input.sessionTitle)
+   const theme = await resolveRunTheme(renderer, tuiConfig.theme, mono)
+diff --git a/packages/tui/test/app-lifecycle.test.tsx b/packages/tui/test/app-lifecycle.test.tsx
+index 2e9833e..7bc2b9f 100644
+--- a/packages/tui/test/app-lifecycle.test.tsx
++++ b/packages/tui/test/app-lifecycle.test.tsx
+@@ -226,7 +226,7 @@ test("SIGHUP clears title and disposes scoped resources once", async () => {
+   const setTitle = setup.renderer.setTerminalTitle.bind(setup.renderer)
+   setup.renderer.setTerminalTitle = (title) => {
+     titles.push(title)
+-    if (title === "OpenCode") started()
++    if (title === "Bobi") started()
+     setTitle(title)
+   }
+   const listeners = new Set(process.listeners("SIGHUP"))
+@@ -424,7 +424,7 @@ test("session title generated while an untitled session is loading remains visib
+ 
+     const generated = titles.lastIndexOf("OC | Generated title")
+     expect(generated).toBeGreaterThan(-1)
+-    expect(titles.slice(generated + 1)).not.toContain("OpenCode")
++    expect(titles.slice(generated + 1)).not.toContain("Bobi")
+     setup.renderer.destroy()
+     await task
+   } finally {
+diff --git a/packages/tui/test/feature-plugins/sidebar-footer.test.tsx b/packages/tui/test/feature-plugins/sidebar-footer.test.tsx
+index 8a872f9..5ede388 100644
+--- a/packages/tui/test/feature-plugins/sidebar-footer.test.tsx
++++ b/packages/tui/test/feature-plugins/sidebar-footer.test.tsx
+@@ -86,7 +86,7 @@ test("sidebar shows onboarding without a connected integration", async () => {
+   try {
+     const frame = app.captureCharFrame()
+     expect(frame).toContain("Getting started")
+-    expect(frame).toContain("OpenCode includes free models")
++    expect(frame).toContain("Bobi uses your company model")
+     expect(frame).toContain("Connect provider")
+     expect(frame).toContain("/connect")
+   } finally {
+diff --git a/packages/tui/test/mini/blocker.responsive.test.tsx b/packages/tui/test/mini/blocker.responsive.test.tsx
+index b851f1b..3c5ded0 100644
+--- a/packages/tui/test/mini/blocker.responsive.test.tsx
++++ b/packages/tui/test/mini/blocker.responsive.test.tsx
+@@ -257,7 +257,7 @@ test("roomy rejection keeps the editor and confirmation hints inline", async ()
+     expect(confirm.y).toBe(editor.y)
+     expect(confirm.x).toBeGreaterThanOrEqual(editor.x + editor.width)
+     expect(app.captureCharFrame()).toContain("esc cancel")
+-    expect(app.captureCharFrame()).toContain("Tell OpenCode what to do differently")
++    expect(app.captureCharFrame()).toContain("Tell Bobi what to do differently")
+   } finally {
+     app.renderer.destroy()
+   }
