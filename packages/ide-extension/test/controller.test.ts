@@ -144,3 +144,31 @@ test("events of other sessions are ignored", () => {
   controller.handle({ type: "session.text.delta", data: { sessionID: "ses_other", delta: "x" } })
   expect(posts).toEqual([])
 })
+
+test("approvals from delegated subtasks reach the user; their text does not", async () => {
+  const file = path.join(dir, "sub.txt")
+  mock.enqueue(
+    { toolCalls: [{ name: "subagent", arguments: { agent: "code", description: "write", prompt: `create ${file}` } }] },
+    { text: "CHILD-TEXT", toolCalls: [{ name: "write", arguments: { path: file, content: "sub" } }] },
+    { text: "child done" },
+    { text: "orchestrated" },
+  )
+  await controller.setMode("orchestrator")
+  await controller.send("delegate")
+  await until(() => posts.some((p) => p.type === "approval"))
+  const approval = posts.find((p) => p.type === "approval") as Extract<ToUi, { type: "approval" }>
+  expect(approval.action).toBe("edit")
+  await controller.reply(approval.id, "once")
+  await until(() => posts.some((p) => p.type === "text" && (p as { delta: string }).delta.includes("orchestrated")))
+  expect(await readFile(file, "utf8")).toBe("sub")
+  expect(posts.some((p) => p.type === "text" && (p as { delta: string }).delta.includes("CHILD-TEXT"))).toBe(false)
+  expect(posts.some((p) => p.type === "tool" && (p as { name: string }).name === "write")).toBe(true)
+}, 60_000)
+
+test("writes a commit message from the staged diff (read without approval)", async () => {
+  await writeFile(path.join(dir, "feature.ts"), "export const feature = true\n")
+  Bun.spawnSync(["git", "add", "feature.ts"], { cwd: dir })
+  mock.enqueue({ toolCalls: [{ name: "shell", arguments: { command: "git diff --staged" } }] }, { text: "```\nAdd feature flag\n\nEnables the new feature.\n```" })
+  expect(await controller.commitMessage()).toBe("Add feature flag\n\nEnables the new feature.")
+  expect(JSON.stringify(mock.requests.at(-1)!.body.messages)).toContain("feature.ts")
+}, 60_000)

@@ -173,6 +173,15 @@ describe("project trust", () => {
   }, 60_000)
 })
 
+test("bobi modes lists built-in and trusted project modes", async () => {
+  const t = io()
+  await runApp(["modes"], t.io)
+  expect(t.out.map((l) => l.split(" ")[0])).toEqual(["code", "plan", "ask", "advanced", "orchestrator", "security"])
+  expect(t.out.find((l) => l.startsWith("plan"))).toContain("edit(\\.(md|mdx)$)")
+  await runApp(["modes", "--json"], t.io)
+  expect(JSON.parse(t.out.at(-1)!)[0]).toMatchObject({ slug: "code", name: "Code" })
+})
+
 describe("attach", () => {
   test("connects the client to a running server", async () => {
     const serverIo = io()

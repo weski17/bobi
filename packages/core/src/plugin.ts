@@ -5,10 +5,11 @@ import path from "node:path"
 import type { Plugin } from "@opencode/plugin"
 import { modelIds, PROVIDER_ID, TrustStore, type BobiConfig, type McpServer } from "@bobi/config"
 import { HeadlessBrowser, registerBrowserTool } from "@bobi/browser"
-import { DEFAULT_MODE, editAllowed, editRestriction, hiddenTools, loadModes, modeDenyRules, modeFiles, modePrompt, type Mode } from "@bobi/modes"
+import { DEFAULT_MODE, editAllowed, editRestriction, hasGroup, hiddenTools, loadModes, modeDenyRules, modeFiles, modePrompt, type Mode } from "@bobi/modes"
 import { type AuditSink, MemorySink, OtlpSink, parseOtlpHeaders } from "./audit.ts"
 import { BobiIgnore, blockedShellPath, IGNORE_FILE, patchPaths } from "./bobiignore.ts"
 import { brandSystemPrompt } from "./identity.ts"
+import { expandTemplate, extensionDirs, readCommands, readSkills } from "./extensions.ts"
 import { initPrompt } from "./init.ts"
 import { resolveMcpServers } from "./mcp.ts"
 import { createMasker, maskDeep, type Masker } from "./masking.ts"
@@ -109,8 +110,11 @@ export function createBobiCore(options: BobiCoreOptions): Plugin.Plugin & { read
         for (const mode of modes) {
           editor.update(mode.slug, (agent) => {
             agent.name = mode.name as unknown as typeof agent.name
-            agent.description = mode.description ?? mode.whenToUse
-            agent.mode = "primary"
+            // The orchestrator chooses subagents by this description (requirement 10).
+            agent.description = [mode.description, mode.whenToUse && `Use for: ${mode.whenToUse}`].filter(Boolean).join(". ") || undefined
+            // Modes are also subagents, so a mode with the subtask group can delegate to them; a delegating mode
+            // itself stays primary-only to avoid delegation loops.
+            agent.mode = hasGroup(mode, "subtask") ? "primary" : "all"
             agent.hidden = false
           })
         }
@@ -258,8 +262,30 @@ export function createBobiCore(options: BobiCoreOptions): Plugin.Plugin & { read
         })
       })
 
-      // 6. /init with Bobi's own prompt (replaces the engine's).
+      // 6. Skills and slash commands (built-in /commit, /pr, /security-review; global; project if trusted).
+      const dirs = extensionDirs(globalDir, project, trusted)
+      const skills = readSkills(dirs.skills)
+      await ctx.skill.transform((editor) => {
+        for (const skill of skills)
+          editor.add({ id: skill.name, name: skill.name, description: skill.description, path: skill.path, content: skill.content } as Parameters<typeof editor.add>[0])
+      })
+      const commands = readCommands(dirs.commands)
+      // /init with Bobi's own prompt (replaces the engine's).
       await ctx.command.transform((editor) => {
+        for (const command of commands)
+          editor.add({
+            name: command.name,
+            description: command.description,
+            execute: async (input) => {
+              if (command.mode && modeOf(command.mode)) await ctx.session.switchAgent({ sessionID: input.sessionID, agent: command.mode })
+              await ctx.session.prompt({
+                ...input.prompt,
+                sessionID: input.sessionID,
+                text: expandTemplate(command.template, input.prompt.text ?? ""),
+                delivery: input.delivery,
+              } as Parameters<typeof ctx.session.prompt>[0])
+            },
+          })
         editor.add({
           name: "init",
           description: "create or update AGENTS.md for this project",

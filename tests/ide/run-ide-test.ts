@@ -19,7 +19,19 @@ export async function runIdeTest(): Promise<{ passed: boolean; code: number; out
   await writeFile(path.join(project, "app.ts"), "export const answer = 41\n")
   for (const args of [["init", "-q"], ["add", "."], ["-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "init"]]) Bun.spawnSync(["git", ...args], { cwd: project })
   const file = path.join(project, "app.ts")
-  const mock = startMockModel({ script: [{ toolCalls: [{ name: "edit", arguments: { path: file, oldString: "41", newString: "42" } }] }, { text: "Fixed." }] })
+  const mock = startMockModel({
+    script: [
+      // 1. chat: diff before apply, accept, undo
+      { toolCalls: [{ name: "edit", arguments: { path: file, oldString: "41", newString: "42" } }] },
+      { text: "Fixed." },
+      // 2. literate coding: the comment block becomes code
+      { toolCalls: [{ name: "write", arguments: { path: file, content: "export const answer = 41\nexport const doubled = answer * 2\n" } }] },
+      { text: "Implemented." },
+      // 3. commit message from the staged diff
+      { toolCalls: [{ name: "shell", arguments: { command: "git diff --staged" } }] },
+      { text: "Double the answer" },
+    ],
+  })
   try {
     const child = Bun.spawn(
       [
@@ -48,7 +60,13 @@ export async function runIdeTest(): Promise<{ passed: boolean; code: number; out
       },
     )
     const [out, err, code] = await Promise.all([new Response(child.stdout).text(), new Response(child.stderr).text(), child.exited])
-    return { passed: existsSync(path.join(project, ".ide-test-passed")) && code === 0, code, output: out + err }
+    const passed = existsSync(path.join(project, ".ide-test-passed")) && code === 0
+    const requests = passed
+      ? ""
+      : mock.requests
+          .map((r, i) => `#${i} tools=${r.body.tools?.length ?? 0} last=${JSON.stringify(r.body.messages.at(-1)).slice(0, 300)}`)
+          .join("\n")
+    return { passed, code, output: `${out}${err}\n--- mock requests ---\n${requests}` }
   } finally {
     await mock.stop()
     for (const d of [project, userData, home]) await rm(d, { recursive: true, force: true })
