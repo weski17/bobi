@@ -143,3 +143,8 @@ describe("groups", () => {
     expect(modePrompt(mode(["read", ["edit", { fileRegex: "x" }]]))).toEndWith("You may only edit files matching x.")
   })
 })
+
+test("the documented example file is valid", async () => {
+  const file = path.resolve(import.meta.dir, "..", "..", "..", "docs", "examples", "custom_modes.yaml")
+  expect(parseModes(await Bun.file(file).text(), file).map((m) => m.slug)).toEqual(["ask", "reviewer"])
+})
