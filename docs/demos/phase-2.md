@@ -6,7 +6,7 @@ No real model needed (mock model). Setup as in [phase 1](phase-1.md).
 
 ```bash
 bun run typecheck
-bun run test:coverage     # 193 pass
+bun run test:coverage     # 213 pass
 bun run test:e2e          # terminal UI: approvals and mode switching
 ```
 
@@ -67,3 +67,21 @@ printf 'secrets/\n.env*\n' > .bobiignore
 
 Reading `secrets/…` or `.env` is refused ("blocked by .bobiignore"), search results hide those files, and
 `cat .env` in the terminal tool is blocked. Changes to `.bobi/` or `.bobiignore` always ask, even with auto-approve.
+
+## 6. Project trust
+
+Open a project that contains `AGENTS.md` or `.bobi/` files for the first time:
+
+```text
+This project contains files that instruct or configure Bobi:
+  AGENTS.md
+  .bobi/config.jsonc
+Trust this project? Its rules, modes and settings (including auto-approvals) are used only if you trust it. [y/N]
+```
+
+Answer `n` (or run headless without `--trust`) and Bobi ignores those files; `.bobiignore` still applies. Change one of
+the files and Bobi asks again. Decisions: `~/.bobi/trust/projects.json`.
+
+## 7. Terminals and logs
+
+Terminals opened in the UI work through the Bobi server. Engine logs: `~/.bobi/data/log/server.log`.

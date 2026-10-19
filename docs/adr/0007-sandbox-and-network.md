@@ -32,3 +32,10 @@ Agents must run in a container without access to production data, with network a
     (default: the LiteLLM gateway on the host) and logs every decision as JSON.
 - The TUI on the host connects with `bobi attach http://127.0.0.1:4096`.
 - Raw TCP from the server container has no route out; HTTP(S) honours `HTTP(S)_PROXY`.
+
+## Follow-up (2026-10-19)
+
+- Files and directories excluded by `.bobiignore` are covered inside the container by read-only empty bind mounts
+  (`/dev/null` for files, an empty directory for directories) – even arbitrary shell commands cannot read them.
+  Files created later during the session are not covered until the next `up`.
+- `$BOBI_HOME/trust/` is mounted read-only so the server sees the user's trust decisions (ADR-0014).

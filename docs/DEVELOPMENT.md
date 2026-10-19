@@ -50,4 +50,6 @@ sandbox/bobi-sandbox.sh status   # containers + egress decisions
 sandbox/bobi-sandbox.sh down
 ```
 
-Data: `BOBI_HOME` (default `~/.bobi`): `data/bobi.db`, snapshots, logs; `tui/` holds the terminal UI's own state.
+Data: `BOBI_HOME` (default `~/.bobi`): `config.jsonc`, `custom_modes.yaml`, `rules*/`, `trust/projects.json`,
+`data/bobi.db`, `data/shadow/` (checkpoint repositories of non-git projects), `data/log/server.log` (engine logs),
+`tui/` (the terminal UI's own state).
