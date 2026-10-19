@@ -45,3 +45,6 @@ multi-diff, and stable APIs for chat participants and language model providers. 
   A distributable Bobi IDE needs these stripped from the build (VSCodium maintains MIT-licensed patches for exactly
   this). Until then Bobi IDE runs from source (`bobi-ide`); the proprietary packages stay in the local `node_modules`
   only and are never redistributed.
+
+**Decided 2026-10-19:** run Bobi IDE from source for the research phase (option b); stripping the Copilot packages
+from the packaged build (VSCodium-style) follows when Bobi is distributed to other developers.
