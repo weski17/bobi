@@ -11,6 +11,14 @@
   { "action": "external_directory", "resource": "*", "effect": "ask" },
   // MCP tools are named <server>_<tool>; MCP resource reads leave the project as well.
   { "action": "*_*", "resource": "*", "effect": "ask" },
+  // Read-only git commands run without asking (they cannot change the repository or reach the network) …
+  { "action": "shell", "resource": "git status *", "effect": "allow" },
+  { "action": "shell", "resource": "git diff *", "effect": "allow" },
+  { "action": "shell", "resource": "git log *", "effect": "allow" },
+  { "action": "shell", "resource": "git show *", "effect": "allow" },
+  { "action": "shell", "resource": "git branch --show-current", "effect": "allow" },
+  // … except when told to write a file (git diff/log/show --output=FILE).
+  { "action": "shell", "resource": "git *--output*", "effect": "ask" },
   // Reading key material always asks, even inside the project.
   { "action": "read", "resource": "*.pem", "effect": "ask" },
   { "action": "read", "resource": "*.key", "effect": "ask" },
