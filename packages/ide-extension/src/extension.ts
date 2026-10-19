@@ -2,6 +2,7 @@
 import * as vscode from "vscode"
 import { ChatView, type FromUi } from "./chatView.ts"
 import { BobiClient } from "./client.ts"
+import { Completer } from "./completion.ts"
 import { contextFiles, literatePrompt, literateRegion, withSelection } from "./context.ts"
 import { ChatController } from "./controller.ts"
 import { DiffPresenter, SCHEME } from "./diff.ts"
@@ -9,9 +10,11 @@ import { resolveCommand, startBobi, trust, type RunningBobi } from "./server.ts"
 
 let running: RunningBobi | undefined
 let controller: ChatController | undefined
+let completer: Completer | undefined
+let lastSuggestion: string | undefined
 
 /** Returned from activate(); used by the IDE integration test. */
-export type BobiApi = { readonly started: Promise<void>; readonly controller: ChatController | undefined }
+export type BobiApi = { readonly started: Promise<void>; readonly controller: ChatController | undefined; readonly lastSuggestion: string | undefined }
 
 function config() {
   const c = vscode.workspace.getConfiguration("bobi")
@@ -106,6 +109,18 @@ export function activate(extension: vscode.ExtensionContext): BobiApi {
         }
       })
     }),
+    // Inline completion (ghost text); the server decides whether it is on (autocomplete.model in the Bobi config).
+    vscode.languages.registerInlineCompletionItemProvider(
+      { pattern: "**" },
+      {
+        async provideInlineCompletionItems(document, position, _context, token) {
+          if (!completer || document.uri.scheme !== "file" || !(vscode.workspace.getConfiguration("bobi").get<boolean>("autocomplete.enabled") ?? true)) return []
+          const text = await completer.complete(document.getText(), document.offsetAt(position), document.uri.fsPath, () => token.isCancellationRequested)
+          lastSuggestion = text
+          return text ? [new vscode.InlineCompletionItem(text, new vscode.Range(position, position))] : []
+        },
+      },
+    ),
     vscode.commands.registerCommand("bobi.restartServer", async () => {
       await stop()
       if (folder) await start(folder, view, diff)
@@ -117,6 +132,9 @@ export function activate(extension: vscode.ExtensionContext): BobiApi {
     get controller() {
       return controller
     },
+    get lastSuggestion() {
+      return lastSuggestion
+    },
   }
 }
 
@@ -125,6 +143,7 @@ async function start(folder: string, view: ChatView, diff: DiffPresenter) {
   try {
     await ensureTrust(command, folder)
     running = await startBobi(command, folder)
+    completer = new Completer(new BobiClient(running.url, running.password), { log: (m) => console.warn(m) })
     controller = new ChatController(new BobiClient(running.url, running.password), folder, {
       post: (m) => view.post(m),
       showDiff: (r) => diff.show(r),
@@ -141,6 +160,7 @@ async function start(folder: string, view: ChatView, diff: DiffPresenter) {
 async function stop() {
   controller?.stop()
   controller = undefined
+  completer = undefined
   await running?.stop()
   running = undefined
 }

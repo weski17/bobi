@@ -5,6 +5,7 @@ import { createBobiCore, type AuditSink } from "@bobi/core"
 import { CLI as CODE_GRAPH_CLI } from "@bobi/mcp-code-graph"
 import { CLI as COBOL_CLI } from "@bobi/mcp-cobol"
 import { CLI as ZOWE_CLI, zoweConfigured } from "@bobi/mcp-zowe"
+import { COMPLETE_PATH, handleCompletion } from "./complete.ts"
 import { startNodeServer, type NodeServer } from "./node-host.ts"
 import type { BobiPaths } from "./paths.ts"
 
@@ -32,15 +33,16 @@ export async function startBobiServer(options: BobiServerOptions): Promise<BobiS
   const { paths } = options
   const env = options.env ?? process.env
   const trust = new TrustStore(paths.home)
+  const projectConfig = (project: string, trusted = trust.isTrusted(project)): BobiConfig => {
+    const own = loadConfig({ cwd: project, env, trustedProject: trusted }).config
+    return { ...own, model: options.config.model, telemetry: options.config.telemetry }
+  }
   const plugin = createBobiCore({
     config: options.config,
     globalDir: paths.home,
     trusted: (project) => trust.isTrusted(project),
     // Each project gets its own auto-approvals and mode models; endpoint, model list and telemetry stay server-wide.
-    projectConfig: (project, trusted) => {
-      const own = loadConfig({ cwd: project, env, trustedProject: trusted }).config
-      return { ...own, model: options.config.model, telemetry: options.config.telemetry }
-    },
+    projectConfig: (project, trusted) => projectConfig(project, trusted),
     // Built-in code graph and COBOL MCP servers for every project (requirement 16); usable in modes with the mcp group.
     // The mainframe server only when a connection is configured (Zowe config file or ZOWE_OPT_HOST).
     builtinMcp: (project) => ({
@@ -67,6 +69,10 @@ export async function startBobiServer(options: BobiServerOptions): Promise<BobiS
     },
     paths,
     plugin,
+    routes: {
+      match: (pathname) => (pathname === COMPLETE_PATH ? "private" : undefined),
+      handle: (request) => handleCompletion(request, { projectConfig, env, mask: plugin.mask }),
+    },
     password: options.password,
     ...(options.hostname ? { hostname: options.hostname } : {}),
     ...(options.port !== undefined ? { port: options.port } : {}),

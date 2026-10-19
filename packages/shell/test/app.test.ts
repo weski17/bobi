@@ -265,5 +265,5 @@ test("bobi diagram prints Mermaid for code and COBOL projects", async () => {
   const one = io()
   expect(await runApp(["diagram", "cobol", "--program", "paycalc", cobolDir], one.io)).toBe(0)
   expect(one.out[0]).toContain("flowchart TD")
-  expect(runApp(["diagram", "cobol", "--program", "NOPE", cobolDir], io().io)).rejects.toThrow(UsageError)
+  await expect(runApp(["diagram", "cobol", "--program", "NOPE", cobolDir], io().io)).rejects.toThrow(UsageError)
 })

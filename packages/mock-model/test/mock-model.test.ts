@@ -87,3 +87,18 @@ describe("mock model", () => {
     expect((await fetch(`${mock.url}/nope`)).status).toBe(404)
   })
 })
+
+test("fill-in-the-middle completions", async () => {
+  const fixed = startMockModel()
+  const custom = startMockModel({ completion: (body) => `<${body.suffix ?? ""}>` })
+  try {
+    const call = (m: typeof fixed) =>
+      fetch(`${m.baseURL}/completions`, { method: "POST", body: JSON.stringify({ model: "m", prompt: "a", suffix: "z" }) }).then((r) => r.json() as Promise<{ choices: { text: string }[] }>)
+    expect((await call(fixed)).choices[0]!.text).toBe("completion")
+    expect((await call(custom)).choices[0]!.text).toBe("<z>")
+    expect(custom.completions[0]!.body).toMatchObject({ prompt: "a", suffix: "z" })
+  } finally {
+    await fixed.stop()
+    await custom.stop()
+  }
+})

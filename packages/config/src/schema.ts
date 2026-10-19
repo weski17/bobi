@@ -42,6 +42,8 @@ export type BobiConfig = {
   telemetry: { otlpEndpoint?: string; user?: string; auditLog?: boolean }
   checkpoints: { enabled: boolean }
   mcp: McpConfig
+  /** Inline code completion in the IDE (requirement 17). Off until a model is set. */
+  autocomplete: { model?: string; maxTokens?: number }
 }
 
 export const DEFAULTS: BobiConfig = {
@@ -57,6 +59,7 @@ export const DEFAULTS: BobiConfig = {
   telemetry: {},
   checkpoints: { enabled: true },
   mcp: { servers: {} },
+  autocomplete: {},
 }
 
 export class ConfigError extends Error {
@@ -88,7 +91,7 @@ export function validatePartial(input: unknown, source: string): DeepPartial<Bob
   if (!isObject(input)) throw new ConfigError(source, ["config must be a JSON object"])
   findSecrets(input, "", issues)
 
-  const known = new Set(["$schema", "model", "modes", "autoApprove", "telemetry", "checkpoints", "mcp"])
+  const known = new Set(["$schema", "model", "modes", "autoApprove", "telemetry", "checkpoints", "mcp", "autocomplete"])
   for (const key of Object.keys(input)) if (!known.has(key)) issues.push(`${key}: unknown key`)
 
   const model = input.model
@@ -148,6 +151,17 @@ export function validatePartial(input: unknown, source: string): DeepPartial<Bob
   }
 
   if (input.mcp !== undefined) validateMcp(input.mcp, issues)
+
+  if (input.autocomplete !== undefined) {
+    const a = input.autocomplete
+    if (!isObject(a)) issues.push("autocomplete: must be an object")
+    else {
+      for (const key of Object.keys(a)) if (key !== "model" && key !== "maxTokens") issues.push(`autocomplete.${key}: unknown key`)
+      if (a.model !== undefined && (typeof a.model !== "string" || a.model === "")) issues.push("autocomplete.model: must be a non-empty string")
+      if (a.maxTokens !== undefined && (typeof a.maxTokens !== "number" || !Number.isInteger(a.maxTokens) || a.maxTokens < 1 || a.maxTokens > 512))
+        issues.push("autocomplete.maxTokens: must be an integer between 1 and 512")
+    }
+  }
 
   if (issues.length) throw new ConfigError(source, issues)
   return input as DeepPartial<BobiConfig>

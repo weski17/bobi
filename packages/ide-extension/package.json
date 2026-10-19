@@ -79,6 +79,11 @@
           "type": "boolean",
           "default": true,
           "description": "Send the open editors and the current selection as context."
+        },
+        "bobi.autocomplete.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Inline code suggestions from Bobi. They appear only when an autocomplete model is set in the Bobi config (autocomplete.model)."
         }
       }
     },

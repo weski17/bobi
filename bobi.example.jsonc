@@ -26,6 +26,9 @@
     // "auditLog": true
   },
   "checkpoints": { "enabled": true },
+  // Inline code suggestions in Bobi IDE (fill-in-the-middle via <baseURL>/completions). Off until a model is set;
+  // the model must be model.default or listed in model.models.
+  // "autocomplete": { "model": "qwen2.5-coder", "maxTokens": 128 },
   // MCP servers. Built in (Advanced mode): "code-graph", "cobol", and "zowe" when a Zowe connection is
   // configured (zowe.config.json or ZOWE_OPT_HOST/USER/PASSWORD; datasets limited by BOBI_ZOWE_DATASETS).
   // Credentials only as ${ENV_VAR}; project servers are used only in trusted projects.
