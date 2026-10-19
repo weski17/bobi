@@ -31,6 +31,8 @@ jobs:
         run: bun run typecheck
       - name: Tests with coverage gate
         run: bun run test:coverage
+      - name: End-to-end terminal UI (approval prompt)
+        run: bun run test:e2e
 
   semgrep:
     runs-on: ubuntu-24.04
