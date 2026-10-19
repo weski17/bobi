@@ -6,6 +6,7 @@ export type Command =
   | { kind: "tui"; directory?: string; client: string[] }
   | { kind: "run"; client: string[] }
   | { kind: "serve"; hostname: string; port: number }
+  | { kind: "attach"; url: string; client: string[] }
   | { kind: "help" }
   | { kind: "version" }
 
@@ -23,6 +24,9 @@ Usage:
   bobi run [options] <message...>  Run one task headless and print the result
   bobi serve [--hostname H] [--port P]
                                    Start the Bobi server (for the IDE or a container)
+  bobi attach <url> [run options] [run <message...>]
+                                   Use a running Bobi server, e.g. in the sandbox
+                                   (password from BOBI_SERVER_PASSWORD)
   bobi --version | --help
 
 Run options:
@@ -63,6 +67,15 @@ export function parseArgs(argv: readonly string[]): Command {
     }
     if (!hostname) throw new UsageError("--hostname needs a value")
     return { kind: "serve", hostname, port }
+  }
+
+  if (first === "attach") {
+    const [url, ...more] = rest
+    if (!url || !/^https?:\/\/[^\s]+$/.test(url)) throw new UsageError("attach needs the server URL, e.g. http://127.0.0.1:4096")
+    if (more.length === 0) return { kind: "attach", url, client: [] }
+    const inner = parseArgs(more)
+    if (inner.kind !== "run") throw new UsageError("attach accepts only a run command after the URL")
+    return { kind: "attach", url, client: ["run", ...inner.client] }
   }
 
   if (first === "run") {

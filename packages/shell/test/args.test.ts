@@ -36,6 +36,18 @@ describe("parseArgs", () => {
     expect(() => parseArgs(argv)).toThrow(message)
   })
 
+  test("attach takes a server URL and optionally a run command", () => {
+    expect(parseArgs(["attach", "http://127.0.0.1:4096"])).toEqual({ kind: "attach", url: "http://127.0.0.1:4096", client: [] })
+    expect(parseArgs(["attach", "http://127.0.0.1:4096", "run", "-m", "big", "fix it"])).toEqual({
+      kind: "attach",
+      url: "http://127.0.0.1:4096",
+      client: ["run", "-m", "big", "fix it"],
+    })
+    expect(() => parseArgs(["attach"])).toThrow(/server URL/)
+    expect(() => parseArgs(["attach", "file:///x"])).toThrow(/server URL/)
+    expect(() => parseArgs(["attach", "http://h", "serve"])).toThrow(/only a run command/)
+  })
+
   test("serve defaults to loopback and a random port", () => {
     expect(parseArgs(["serve"])).toEqual({ kind: "serve", hostname: "127.0.0.1", port: 0 })
     expect(parseArgs(["serve", "--hostname", "0.0.0.0", "--port", "4096"])).toEqual({ kind: "serve", hostname: "0.0.0.0", port: 4096 })
