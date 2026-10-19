@@ -70,3 +70,10 @@ describe("HeadlessBrowser", () => {
 test("format renders untitled pages", () => {
   expect(format({ url: "http://x", title: "", text: "t", truncated: false })).toBe("# (untitled)\nURL: http://x\n\nt")
 })
+
+test("reports a missing Chromium installation clearly and can retry", async () => {
+  const b = new HeadlessBrowser({ executablePath: "/nonexistent/chromium" })
+  await expect(b.open(`${base}/`)).rejects.toThrow(/Cannot start Chromium/)
+  await expect(b.open(`${base}/`)).rejects.toThrow(/Cannot start Chromium/)
+  await b.close()
+}, 30_000)

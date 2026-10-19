@@ -1,35 +1,25 @@
 #!/usr/bin/env bun
-// `bobi` – starts the OpenCode engine configured as Bobi. Usage: bobi [run "<message>"] [opencode flags]
-import { mkdirSync } from "node:fs"
-import { ConfigError, loadConfig } from "@bobi/config"
-import { buildLaunch, LaunchError, startServer, verifyCore } from "./launcher.ts"
+// Entry point of the `bobi` application.
+import { ConfigError } from "@bobi/config"
+import { runApp } from "./app.ts"
+import { UsageError } from "./args.ts"
 
 try {
-  const cwd = process.cwd()
-  const { config } = loadConfig({ cwd })
-  const launch = buildLaunch(config, process.argv.slice(2))
-  mkdirSync(launch.env.OPENCODE_CONFIG_DIR!, { recursive: true })
-  if (!launch.session) {
-    const child = Bun.spawn(launch.argv, { cwd, env: launch.env, stdio: ["inherit", "inherit", "inherit"] })
-    process.exit(await child.exited)
-  }
-  const server = await startServer(launch, cwd)
-  try {
-    await verifyCore(server, cwd)
-  } catch (error) {
-    await server.stop()
-    throw error
-  }
-  const child = Bun.spawn([...launch.argv, "--server", server.url], {
-    cwd,
-    env: { ...launch.env, OPENCODE_PASSWORD: server.password },
-    stdio: ["inherit", "inherit", "inherit"],
+  const code = await runApp(process.argv.slice(2), {
+    cwd: process.cwd(),
+    env: process.env,
+    out: (line) => console.log(line),
+    err: (line) => console.error(line),
+    spawn: async (argv, env, cwd) => Bun.spawn(argv, { env, cwd, stdio: ["inherit", "inherit", "inherit"] }).exited,
+    untilStopped: () =>
+      new Promise((resolve) => {
+        process.once("SIGINT", () => resolve())
+        process.once("SIGTERM", () => resolve())
+      }),
   })
-  const code = await child.exited
-  await server.stop()
   process.exit(code)
 } catch (error) {
-  if (error instanceof ConfigError || error instanceof LaunchError) {
+  if (error instanceof ConfigError || error instanceof UsageError) {
     console.error(`bobi: ${error.message}`)
     process.exit(2)
   }

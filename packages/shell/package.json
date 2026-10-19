@@ -4,10 +4,10 @@
   "private": true,
   "type": "module",
   "license": "MIT",
-  "exports": { ".": "./src/launcher.ts" },
+  "exports": { ".": "./src/index.ts" },
   "bin": { "bobi": "./src/cli.ts" },
   "dependencies": {
     "@bobi/config": "workspace:*",
-    "@bobi/core": "workspace:*"
+    "@bobi/server": "workspace:*"
   }
 }
