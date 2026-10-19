@@ -7,14 +7,13 @@ import { DEFAULTS } from "@bobi/config"
 import { MemorySink } from "@bobi/core"
 import { startMockModel, type MockModel } from "@bobi/mock-model"
 import { OpenCode } from "@opencode/client"
-import { bobiPaths, createHost, serve, type Host, type RunningServer } from "../src/index.ts"
+import { bobiPaths, startBobiServer, type BobiServer } from "../src/index.ts"
 
 const password = "test-password-0123456789"
 let mock: MockModel
 let home: string
 let dir: string
-let host: Host
-let server: RunningServer
+let server: BobiServer
 const audit = new MemorySink()
 
 const client = (pw = password) =>
@@ -29,17 +28,16 @@ beforeAll(async () => {
   home = await mkdtemp(path.join(tmpdir(), "bobi-home-"))
   dir = await realpath(await mkdtemp(path.join(tmpdir(), "bobi-proj-")))
   process.env.BOBI_MODEL_API_KEY = "server-test"
-  host = await createHost({
+  server = await startBobiServer({
     config: { ...structuredClone(DEFAULTS), model: { ...DEFAULTS.model, baseURL: mock.baseURL, default: "mock-model" }, telemetry: { user: "srv" } },
     paths: bobiPaths({ BOBI_HOME: home }),
+    password,
     audit,
     browser: false,
   })
-  server = serve({ host, password })
 })
 afterAll(async () => {
   await server.stop()
-  await host.close()
   await mock.stop()
   await rm(home, { recursive: true, force: true })
   await rm(dir, { recursive: true, force: true })
@@ -51,8 +49,8 @@ test("rejects requests without the right password", async () => {
   expect((await fetch(`${server.url}/api/session`, { headers: { authorization: "Bearer x" } })).status).toBe(401)
 })
 
-test("refuses short passwords", () => {
-  expect(() => serve({ host, password: "short" })).toThrow(/16 characters/)
+test("refuses short passwords", async () => {
+  await expect(startBobiServer({ config: DEFAULTS, paths: bobiPaths({ BOBI_HOME: home }), password: "short", browser: false })).rejects.toThrow(/16 characters/)
 })
 
 test("serves sessions with bobi.core built in: writes ask for approval", async () => {
