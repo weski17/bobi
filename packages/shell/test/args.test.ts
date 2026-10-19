@@ -48,6 +48,13 @@ describe("parseArgs", () => {
     expect(() => parseArgs(["attach", "http://h", "serve"])).toThrow(/only a run command/)
   })
 
+  test("modes and --mode", () => {
+    expect(parseArgs(["modes"])).toEqual({ kind: "modes", json: false })
+    expect(parseArgs(["modes", "--json"])).toEqual({ kind: "modes", json: true })
+    expect(() => parseArgs(["modes", "--x"])).toThrow(/unknown option for modes/)
+    expect(parseArgs(["run", "--mode", "plan", "x"])).toEqual({ kind: "run", client: ["--agent", "plan", "x"] })
+  })
+
   test("trust", () => {
     expect(parseArgs(["trust"])).toEqual({ kind: "trust", action: "status" })
     expect(parseArgs(["trust", "--yes", "./p"])).toEqual({ kind: "trust", action: "yes", directory: "./p" })

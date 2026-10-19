@@ -44,5 +44,28 @@ exports.run = async function run() {
 
   assert.strictEqual(await controller.undo(), true)
   assert.strictEqual(fs.readFileSync(file, "utf8"), "export const answer = 41\n", "undo restored the file")
+
+  // Literate coding: instructions as a comment at the cursor, Cmd+Alt+Enter (bobi.literate).
+  // Type the instruction like a user does (the document may still be open from the diff).
+  const doc = await vscode.workspace.openTextDocument(file)
+  const editor = await vscode.window.showTextDocument(doc)
+  await editor.edit((e) => e.insert(new vscode.Position(doc.lineCount - 1, 0), "// double the answer\n"))
+  await doc.save()
+  const line = doc.getText().split("\n").findIndex((l) => l.includes("double the answer"))
+  editor.selection = new vscode.Selection(line, 3, line, 3)
+  const pendingBefore = controller.pending.size
+  await vscode.commands.executeCommand("bobi.literate")
+  const literate = await wait(() => [...controller.pending.keys()].slice(pendingBefore)[0] ?? [...controller.pending.keys()][0], "literate approval")
+  await controller.reply(literate, "once")
+  await wait(() => fs.readFileSync(file, "utf8").includes("export const doubled = answer * 2"), "literate edit applied")
+
+  // Commit message button in Source Control.
+  const { execFileSync } = require("node:child_process")
+  execFileSync("git", ["add", "app.ts"], { cwd: folder })
+  await controller.idle()
+  await vscode.commands.executeCommand("bobi.generateCommitMessage")
+  const git = vscode.extensions.getExtension("vscode.git").exports.getAPI(1)
+  await wait(() => git.repositories[0] && git.repositories[0].inputBox.value === "Double the answer", "commit message in the SCM input box")
+
   fs.writeFileSync(path.join(folder, ".ide-test-passed"), "ok")
 }

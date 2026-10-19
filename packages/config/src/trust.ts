@@ -33,7 +33,7 @@ export function trustFiles(project: string): string[] {
     for (const name of readdirSync(bobi).sort()) {
       const full = path.join(bobi, name)
       if (name === "config.jsonc" || name === "custom_modes.yaml") files.push(full)
-      else if ((name === "rules" || name.startsWith("rules-")) && statSync(full).isDirectory()) walk(full, files)
+      else if ((name === "rules" || name.startsWith("rules-") || name === "skills" || name === "commands") && statSync(full).isDirectory()) walk(full, files)
     }
   }
   return files

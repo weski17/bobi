@@ -2,7 +2,7 @@
 import * as vscode from "vscode"
 import { ChatView, type FromUi } from "./chatView.ts"
 import { BobiClient } from "./client.ts"
-import { contextFiles, withSelection } from "./context.ts"
+import { contextFiles, literatePrompt, literateRegion, withSelection } from "./context.ts"
 import { ChatController } from "./controller.ts"
 import { DiffPresenter, SCHEME } from "./diff.ts"
 import { resolveCommand, startBobi, trust, type RunningBobi } from "./server.ts"
@@ -70,6 +70,41 @@ export function activate(extension: vscode.ExtensionContext): BobiApi {
     vscode.commands.registerCommand("bobi.selectMode", async () => {
       const pick = await vscode.window.showQuickPick(["code", "plan", "ask", "advanced", "orchestrator"], { placeHolder: "Bobi mode" })
       if (pick) await handle({ type: "mode", mode: pick })
+    }),
+    // Literate coding: plain-language instructions at the cursor (or the selection) become code, shown as a diff.
+    vscode.commands.registerCommand("bobi.literate", async () => {
+      const editor = vscode.window.activeTextEditor
+      if (!editor || !controller || !folder) return
+      const doc = editor.document
+      const lines = Array.from({ length: doc.lineCount }, (_, i) => doc.lineAt(i).text)
+      const sel = editor.selection.isEmpty ? undefined : { start: editor.selection.start.line, end: editor.selection.end.line }
+      const region = literateRegion(lines, editor.selection.active.line, sel)
+      if (!region) {
+        void vscode.window.showInformationMessage("Write your instructions as a comment (or select them), then run Bobi: Implement Instructions Here.")
+        return
+      }
+      const text = lines.slice(region.start, region.end + 1).join("\n")
+      const file = vscode.workspace.asRelativePath(doc.uri)
+      view.reveal()
+      await handle({ type: "send", text: literatePrompt(file, region.start, region.end, text, doc.languageId) })
+    }),
+    // Commit message for the staged changes, written into the Source Control input box.
+    vscode.commands.registerCommand("bobi.generateCommitMessage", async () => {
+      if (!controller) return
+      const git = vscode.extensions.getExtension<{ getAPI(v: 1): { repositories: { rootUri: vscode.Uri; inputBox: { value: string } }[] } }>("vscode.git")
+      const api = (await git?.activate())?.getAPI(1)
+      const repo = api?.repositories.find((r) => folder && folder.startsWith(r.rootUri.fsPath)) ?? api?.repositories[0]
+      if (!repo) {
+        void vscode.window.showWarningMessage("No git repository found.")
+        return
+      }
+      await vscode.window.withProgress({ location: vscode.ProgressLocation.SourceControl, title: "Bobi is writing a commit message…" }, async () => {
+        try {
+          repo.inputBox.value = await controller!.commitMessage()
+        } catch (error) {
+          void vscode.window.showErrorMessage(`Bobi: ${(error as Error).message}`)
+        }
+      })
     }),
     vscode.commands.registerCommand("bobi.restartServer", async () => {
       await stop()

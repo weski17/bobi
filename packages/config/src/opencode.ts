@@ -14,6 +14,8 @@ export const DISABLED_PLUGINS = [
   "opencode.browser",
   // The engine's plan agent; Bobi defines its own modes (@bobi/modes), including plan.
   "opencode.plan",
+  // The engine's built-in skills (its own documentation on opencode.ai, issue reporting); Bobi loads its own skills.
+  "opencode.skill",
   "opencode.provider.amazon.bedrock",
   "opencode.provider.azure",
   "opencode.provider.cerebras",
