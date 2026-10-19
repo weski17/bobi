@@ -99,6 +99,7 @@
       },
       "dependencies": {
         "@bobi/config": "workspace:*",
+        "@bobi/modes": "workspace:*",
         "@bobi/server": "workspace:*",
       },
     },

@@ -8,6 +8,7 @@ export type Command =
   | { kind: "serve"; hostname: string; port: number }
   | { kind: "attach"; url: string; client: string[] }
   | { kind: "trust"; action: "status" | "yes" | "no"; directory?: string }
+  | { kind: "modes"; json: boolean }
   | { kind: "help" }
   | { kind: "version" }
 
@@ -34,9 +35,11 @@ Usage:
 
   --trust                          Trust the project's AGENTS.md, rules, modes and .bobi/config.jsonc
 
+  bobi modes [--json]              List the modes available in this project
+
 Run options:
+  --mode <slug>        Mode to use (code, plan, ask, advanced, orchestrator, security, own modes)
   --model, -m <id>     Model id served by the configured endpoint
-  --agent <mode>       Mode to use
   --format json        Machine-readable output
   --continue, -c       Continue the last session
   --session, -s <id>   Continue a session
@@ -46,7 +49,7 @@ Configuration: ~/.bobi/config.jsonc, <project>/.bobi/config.jsonc, BOBI_* enviro
 
 // Flags forwarded to the engine's `run` client. Anything else is refused, so no engine flag can
 // bypass Bobi (e.g. --auto, --server).
-const RUN_FLAGS_WITH_VALUE = new Set(["--model", "-m", "--agent", "--format", "--session", "-s", "--file", "-f", "--title"])
+const RUN_FLAGS_WITH_VALUE = new Set(["--model", "-m", "--agent", "--mode", "--format", "--session", "-s", "--file", "-f", "--title"])
 const RUN_FLAGS = new Set(["--continue", "-c", "--thinking"])
 
 function intFlag(value: string | undefined, name: string): number {
@@ -72,6 +75,12 @@ export function parseArgs(argv: readonly string[]): Command {
     }
     if (!hostname) throw new UsageError("--hostname needs a value")
     return { kind: "serve", hostname, port }
+  }
+
+  if (first === "modes") {
+    const unknown = rest.find((a) => a !== "--json")
+    if (unknown) throw new UsageError(`unknown option for modes: ${unknown}`)
+    return { kind: "modes", json: rest.includes("--json") }
   }
 
   if (first === "trust") {
@@ -102,7 +111,8 @@ export function parseArgs(argv: readonly string[]): Command {
       if (RUN_FLAGS_WITH_VALUE.has(arg)) {
         const value = rest[++i]
         if (value === undefined) throw new UsageError(`${arg} needs a value`)
-        client.push(arg, value)
+        // Bobi calls them modes; the engine client calls them agents.
+        client.push(arg === "--mode" ? "--agent" : arg, value)
       } else if (RUN_FLAGS.has(arg)) client.push(arg)
       else if (arg.startsWith("-")) throw new UsageError(`unknown option for run: ${arg}`)
       else client.push(arg)
