@@ -53,14 +53,21 @@ function agentsFiles(project: string, location: string): RuleFile[] {
 }
 
 /** `globalDir` is BOBI_HOME (default ~/.bobi). */
-export type RuleSources = { readonly globalDir: string; readonly project: string; readonly location?: string }
+export type RuleSources = {
+  readonly globalDir: string
+  readonly project: string
+  readonly location?: string
+  /** Load the project's AGENTS.md and .bobi/rules* (only for trusted projects). Default true. */
+  readonly includeProject?: boolean
+}
 
 export function collectRules(mode: string, sources: RuleSources): RuleFile[] {
   const globalDir = sources.globalDir
   const projectDir = path.join(sources.project, ".bobi")
+  const global = [...readDirectory(path.join(globalDir, `rules-${mode}`)), ...readDirectory(path.join(globalDir, "rules"))]
+  if (sources.includeProject === false) return global
   return [
-    ...readDirectory(path.join(globalDir, `rules-${mode}`)),
-    ...readDirectory(path.join(globalDir, "rules")),
+    ...global,
     ...readDirectory(path.join(projectDir, `rules-${mode}`)),
     ...agentsFiles(sources.project, sources.location ?? sources.project),
     ...readDirectory(path.join(projectDir, "rules")),

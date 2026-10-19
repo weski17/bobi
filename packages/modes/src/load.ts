@@ -12,6 +12,8 @@ export type LoadModesOptions = {
   readonly globalDir: string
   readonly project: string
   readonly builtinFile?: string
+  /** Load the project's .bobi/custom_modes.yaml (only for trusted projects). Default true. */
+  readonly includeProject?: boolean
 }
 
 export function modeFiles(options: LoadModesOptions): string[] {
@@ -21,7 +23,8 @@ export function modeFiles(options: LoadModesOptions): string[] {
 export function loadModes(options: LoadModesOptions): Mode[] {
   const builtinFile = options.builtinFile ?? BUILTIN_FILE
   const byslug = new Map<string, Mode>()
-  for (const file of [builtinFile, ...modeFiles(options)]) {
+  const [globalFile, projectFile] = modeFiles(options)
+  for (const file of [builtinFile, globalFile!, ...(options.includeProject === false ? [] : [projectFile!])]) {
     if (!existsSync(file)) continue
     for (const mode of parseModes(readFileSync(file, "utf8"), file)) byslug.set(mode.slug, mode)
   }

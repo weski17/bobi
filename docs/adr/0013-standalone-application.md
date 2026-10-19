@@ -33,3 +33,11 @@ The project owner asked for Bobi to be its own application rather than a plugin.
 - Bobi depends on one internal OpenCode module (`packages/sdk/src/internal/host.ts`), because the public Promise SDK does
   not expose the request handler. Guarded by integration tests; candidate for an upstream PR.
 - WebSocket endpoints (persistent terminals in the TUI) are not proxied by the Bobi HTTP front yet.
+
+## Follow-up (2026-10-19)
+
+- The Bobi server now runs the engine's embedded router on Effect's **Node HTTP server** (`packages/server/src/node-host.ts`)
+  instead of a fetch handler. Terminals opened in the UI work (WebSocket upgrade with the engine's one-time tickets).
+- Bobi no longer imports the SDK's internal host module; it uses exported modules only (`@opencode/server/routes`,
+  `@opencode/core/plugin/sdk`, …). The upstream proposal is therefore not needed.
+- Engine logs are written to `$BOBI_HOME/data/log/server.log`.

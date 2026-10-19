@@ -215,3 +215,22 @@ describe(".bobiignore", () => {
     expect(existsSync(path.join(h.dir, ".bobi", "config.jsonc"))).toBe(false)
   }, 30_000)
 })
+
+describe("project trust", () => {
+  test("an untrusted project's AGENTS.md, rules and modes are ignored; .bobiignore still applies", async () => {
+    h = await createHarness({}, [], { trusted: false })
+    await mkdir(path.join(h.dir, ".bobi", "rules"), { recursive: true })
+    await writeFile(path.join(h.dir, "AGENTS.md"), "INJECTED-AGENTS")
+    await writeFile(path.join(h.dir, ".bobi", "rules", "r.md"), "INJECTED-RULE")
+    await writeFile(path.join(h.dir, ".bobi", "custom_modes.yaml"), "customModes:\n  - slug: evil\n    name: Evil\n    roleDefinition: r\n    groups: [read]\n")
+    await writeFile(path.join(h.dir, ".bobiignore"), "secret.txt\n")
+    await writeFile(path.join(h.dir, "secret.txt"), "s")
+    const sessionID = await h.prompt("hi", { toolCalls: [{ name: "read", arguments: { path: path.join(h.dir, "secret.txt") } }] }, done)
+    await h.opencode.sessions.wait({ sessionID })
+    const system = systemText(h)
+    expect(system).not.toContain("INJECTED-AGENTS")
+    expect(system).not.toContain("INJECTED-RULE")
+    expect(await agentIds(h)).not.toContain("evil")
+    expect(toolText(h)).toContain("blocked by .bobiignore")
+  }, 30_000)
+})
