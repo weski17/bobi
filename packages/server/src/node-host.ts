@@ -14,12 +14,20 @@ import { authorizedRequest, unauthorizedResponse } from "@opencode/server/middle
 import { createEmbeddedRoutes } from "@opencode/server/routes"
 import { Global } from "@opencode/util/global"
 import { Context, Effect, Exit, Layer, Logger, ManagedRuntime, Option, References, Scope } from "effect"
-import { HttpRouter, HttpServer, HttpServerRequest } from "effect/http"
+import { HttpRouter, HttpServer, HttpServerRequest, HttpServerResponse } from "effect/http"
 import type { Plugin } from "@opencode/plugin"
 import type { BobiPaths } from "./paths.ts"
 
+/** Bobi's own HTTP routes next to the engine API (autocomplete, A2A). */
+export type BobiRoutes = {
+  /** "public" routes need no password (e.g. a discovery document); "private" ones use the server password. */
+  match(pathname: string): "public" | "private" | undefined
+  handle(request: Request): Promise<Response>
+}
+
 export type NodeServerOptions = {
   readonly engine: Record<string, unknown>
+  readonly routes?: BobiRoutes
   readonly paths: BobiPaths
   readonly plugin: Plugin.Plugin
   readonly password: string
@@ -70,6 +78,12 @@ export async function startNodeServer(options: NodeServerOptions): Promise<NodeS
           const request = yield* HttpServerRequest.HttpServerRequest
           const url = new URL(request.url, "http://localhost")
           // Terminal WebSockets authenticate with one-time tickets issued to authenticated clients.
+          const own = options.routes?.match(url.pathname)
+          if (own) {
+            if (own === "private" && !(yield* authorizedRequest(request, auth))) return unauthorizedResponse(request)
+            const web = yield* HttpServerRequest.toWeb(request)
+            return HttpServerResponse.fromWeb(yield* Effect.promise(() => options.routes!.handle(web)))
+          }
           const ticket = hasPtyConnectTicketURL(url) || hasPersistentPtyConnectTicketURL(url)
           if (!ticket && !(yield* authorizedRequest(request, auth))) return unauthorizedResponse(request)
           return yield* router

@@ -47,6 +47,7 @@ function merge(base: BobiConfig, patch: DeepPartial<BobiConfig>): BobiConfig {
       servers: { ...base.mcp.servers, ...((patch.mcp?.servers ?? {}) as BobiConfig["mcp"]["servers"]) },
       ...(patch.mcp?.timeout || base.mcp.timeout ? { timeout: { ...base.mcp.timeout, ...patch.mcp?.timeout } } : {}),
     },
+    autocomplete: { ...base.autocomplete, ...patch.autocomplete },
   }
 }
 

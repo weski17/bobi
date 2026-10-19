@@ -134,7 +134,7 @@ test("the client sends basic auth and the CSRF header; large responses are trunc
   expect(seen[0]!.headers.get("x-csrf-zosmf-header")).toBe("true")
   expect(seen[0]!.headers.get("authorization")).toBe(`Basic ${Buffer.from(`u:${password}`).toString("base64")}`)
   const plain = new MainframeClient(c.connection, { fetch: (async () => new Response("plain failure", { status: 500 })) as unknown as typeof fetch })
-  expect(plain.listJobs({})).rejects.toThrow("HTTP 500: plain failure")
+  await expect(plain.listJobs({})).rejects.toThrow("HTTP 500: plain failure")
 })
 
 test("jclDatasets skips comments, temporary datasets and backward references", () => {
