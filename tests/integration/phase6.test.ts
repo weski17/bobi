@@ -1,5 +1,5 @@
 // Phase 6: COBOL analysis and mainframe access as built-in MCP servers, with Bobi's approvals.
-import { afterAll, afterEach, beforeAll, expect, test } from "bun:test"
+import { afterAll, afterEach, beforeAll, expect, spyOn, test } from "bun:test"
 import { cpSync } from "node:fs"
 import path from "node:path"
 import { CLI as COBOL_CLI } from "@bobi/mcp-cobol"
@@ -80,3 +80,62 @@ test("mainframe: reads can be auto-approved, writes and job submission always as
   const answers = h.audit.records.filter((r) => r.name === "bobi.approval").map((r) => `${r.attributes["bobi.action"]}:${r.attributes["bobi.result"]}:${r.attributes["bobi.mode"]}`)
   expect(answers).toEqual(["zowe_write_dataset:reject:advanced", "zowe_submit_job:once:advanced"])
 }, 90_000)
+
+test("outbound A2A: only in modes with the mcp group, always asks, answer is untrusted, token from the environment", async () => {
+  const { agentCard, CARD_PATH, InboundA2a, RPC_PATH } = await import("@bobi/a2a")
+  const token = crypto.randomUUID()
+  const seen: (string | null)[] = []
+  const remote = new InboundA2a({
+    agent: "remote",
+    pollMs: 1,
+    engine: { createSession: async () => "r1", prompt: async () => {}, answer: async () => "TICKET-7 is assigned to the payments team", interrupt: async () => {} },
+  })
+  const server = Bun.serve({
+    port: 0,
+    fetch(request) {
+      const url = new URL(request.url)
+      seen.push(request.headers.get("authorization"))
+      if (url.pathname === CARD_PATH) return Response.json(agentCard({ baseUrl: url.origin, version: "1" }))
+      if (url.pathname === RPC_PATH) return remote.handle(request)
+      return new Response("not found", { status: 404 })
+    },
+  })
+  try {
+    // Even a blanket MCP auto-approval does not cover asking another agent.
+    h = await createHarness(
+      {
+        autoApprove: [{ action: "mcp", resource: "*", modes: [] }],
+        a2a: { enabled: false, agents: { tickets: { url: `http://127.0.0.1:${server.port}`, headers: { Authorization: "Bearer ${TICKETS_A2A_TOKEN}" }, description: "ticket system" } } },
+      },
+      [],
+      { env: { TICKETS_A2A_TOKEN: token } },
+    )
+    const code = await h.promptIn("code", "who owns TICKET-7?", done)
+    await h.opencode.sessions.wait({ sessionID: code })
+    expect(toolNames(h)).not.toContain("a2a")
+    const sessionID = await h.promptIn("advanced", "who owns TICKET-7?", { toolCalls: [{ name: "a2a", arguments: { agent: "tickets", message: "Who owns TICKET-7?" } }] }, done)
+    const request = await pendingPermission(h, sessionID)
+    expect(toolNames(h)).toContain("a2a")
+    expect(request).toMatchObject({ action: "a2a", resources: ["tickets"] })
+    await h.opencode.permission.reply({ sessionID, requestID: request.id, decision: "once" })
+    await h.opencode.sessions.wait({ sessionID })
+    expect(toolText(h)).toContain('<untrusted-data source=\\"a2a\\">')
+    expect(toolText(h)).toContain("TICKET-7 is assigned to the payments team")
+    expect(seen).toContain(`Bearer ${token}`)
+  } finally {
+    server.stop(true)
+  }
+}, 60_000)
+
+test("outbound A2A: an agent whose token variable is missing is not offered", async () => {
+  const warn = spyOn(console, "error").mockImplementation(() => {})
+  try {
+    h = await createHarness({ a2a: { enabled: false, agents: { tickets: { url: "http://127.0.0.1:1", headers: { Authorization: "Bearer ${NOT_SET_A2A}" } } } } }, [], { env: {} })
+    const sessionID = await h.promptIn("advanced", "x", done)
+    await h.opencode.sessions.wait({ sessionID })
+    expect(toolNames(h)).not.toContain("a2a")
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('A2A agent "tickets" disabled: missing environment variable(s) NOT_SET_A2A'))
+  } finally {
+    warn.mockRestore()
+  }
+}, 30_000)

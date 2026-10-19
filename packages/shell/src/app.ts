@@ -32,7 +32,7 @@ export async function startServer(io: Io, cwd: string, listen: { hostname: strin
   mkdirSync(paths.config, { recursive: true })
   const secret = password ?? randomBytes(24).toString("base64url")
   if (secret.length < 16) throw new Error("server password must have at least 16 characters")
-  const server = await startBobiServer({ config: loaded.config, paths, password: secret, secrets: [loaded.apiKey, secret], env: io.env, ...listen })
+  const server = await startBobiServer({ config: loaded.config, paths, password: secret, secrets: [loaded.apiKey, secret], env: io.env, directory: cwd, ...listen })
   return { server, password: secret, paths, loaded }
 }
 
@@ -90,6 +90,7 @@ export async function runApp(rawArgv: readonly string[], io: Io): Promise<number
     }
     const started = await startServer(io, io.cwd, command, password)
     io.out(JSON.stringify({ url: started.server.url }))
+    if (started.loaded.config.a2a.enabled) io.err(`bobi: A2A enabled – agent card at ${started.server.url}/.well-known/agent-card.json (tasks are read-only)`)
     if (!password) io.err(`bobi: generated server password (user "opencode"): ${started.password}`)
     await io.untilStopped()
     await stop(started)

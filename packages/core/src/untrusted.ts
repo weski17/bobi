@@ -2,7 +2,7 @@
 // Tool output is wrapped in explicit markers, and the system prompt tells the model how to treat them.
 
 /** Tools whose output originates outside the user's instruction channel. */
-export const UNTRUSTED_TOOLS = new Set(["read", "grep", "glob", "shell", "webfetch", "websearch", "browser", "opencode_read_mcp_resource", "opencode_list_mcp_resources"])
+export const UNTRUSTED_TOOLS = new Set(["read", "grep", "glob", "shell", "webfetch", "websearch", "browser", "a2a", "opencode_read_mcp_resource", "opencode_list_mcp_resources"])
 
 export function isUntrusted(tool: string): boolean {
   // MCP tools are exposed as <server>_<tool>.

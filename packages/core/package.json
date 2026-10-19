@@ -9,6 +9,7 @@
     "./bobiignore": "./src/bobiignore.ts"
   },
   "dependencies": {
+    "@bobi/a2a": "workspace:*",
     "@bobi/config": "workspace:*",
     "@bobi/browser": "workspace:*",
     "ignore": "7.0.11",

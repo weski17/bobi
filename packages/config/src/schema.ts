@@ -44,7 +44,14 @@ export type BobiConfig = {
   mcp: McpConfig
   /** Inline code completion in the IDE (requirement 17). Off until a model is set. */
   autocomplete: { model?: string; maxTokens?: number }
+  /**
+   * A2A (requirement 20). `enabled`: other agents may send read-only tasks to this server (global config or
+   * BOBI_A2A=1 only, never a project). `agents`: remote agents Bobi may call; credentials only as ${ENV_VAR}.
+   */
+  a2a: { enabled: boolean; agents: Record<string, A2aAgent> }
 }
+
+export type A2aAgent = { url: string; headers?: Record<string, string>; description?: string }
 
 export const DEFAULTS: BobiConfig = {
   model: {
@@ -60,6 +67,7 @@ export const DEFAULTS: BobiConfig = {
   checkpoints: { enabled: true },
   mcp: { servers: {} },
   autocomplete: {},
+  a2a: { enabled: false, agents: {} },
 }
 
 export class ConfigError extends Error {
@@ -91,7 +99,7 @@ export function validatePartial(input: unknown, source: string): DeepPartial<Bob
   if (!isObject(input)) throw new ConfigError(source, ["config must be a JSON object"])
   findSecrets(input, "", issues)
 
-  const known = new Set(["$schema", "model", "modes", "autoApprove", "telemetry", "checkpoints", "mcp", "autocomplete"])
+  const known = new Set(["$schema", "model", "modes", "autoApprove", "telemetry", "checkpoints", "mcp", "autocomplete", "a2a"])
   for (const key of Object.keys(input)) if (!known.has(key)) issues.push(`${key}: unknown key`)
 
   const model = input.model
@@ -163,6 +171,8 @@ export function validatePartial(input: unknown, source: string): DeepPartial<Bob
     }
   }
 
+  if (input.a2a !== undefined) validateA2a(input.a2a, issues)
+
   if (issues.length) throw new ConfigError(source, issues)
   return input as DeepPartial<BobiConfig>
 }
@@ -213,6 +223,26 @@ function validateMcp(mcp: unknown, issues: string[]) {
       if (server.headers !== undefined) validateStringMap(server.headers, `${at}.headers`, issues)
       for (const key of Object.keys(server)) if (!["type", "url", "headers", "enabled"].includes(key)) issues.push(`${at}.${key}: unknown key`)
     } else issues.push(`${at}.type: must be "local" or "remote"`)
+  }
+}
+
+function validateA2a(a2a: unknown, issues: string[]) {
+  if (!isObject(a2a)) return void issues.push("a2a: must be an object")
+  for (const key of Object.keys(a2a)) if (key !== "enabled" && key !== "agents") issues.push(`a2a.${key}: unknown key`)
+  if (a2a.enabled !== undefined && typeof a2a.enabled !== "boolean") issues.push("a2a.enabled: must be a boolean")
+  if (a2a.agents === undefined) return
+  if (!isObject(a2a.agents)) return void issues.push("a2a.agents: must be an object")
+  for (const [name, agent] of Object.entries(a2a.agents)) {
+    const at = `a2a.agents.${name}`
+    if (!/^[a-z][a-z0-9-]*$/.test(name)) issues.push(`${at}: name must be lowercase letters, digits and hyphens`)
+    if (!isObject(agent)) {
+      issues.push(`${at}: must be an object`)
+      continue
+    }
+    if (typeof agent.url !== "string" || !/^https?:\/\//.test(agent.url)) issues.push(`${at}.url: must be an http(s) URL`)
+    if (agent.headers !== undefined) validateStringMap(agent.headers, `${at}.headers`, issues)
+    if (agent.description !== undefined && typeof agent.description !== "string") issues.push(`${at}.description: must be a string`)
+    for (const key of Object.keys(agent)) if (!["url", "headers", "description"].includes(key)) issues.push(`${at}.${key}: unknown key`)
   }
 }
 

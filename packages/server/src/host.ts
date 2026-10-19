@@ -1,7 +1,8 @@
 // The Bobi server: the OpenCode engine embedded in-process with @bobi/core registered as a host plugin
 // (ADR-0013). A failing host plugin fails startup, so there is no path without Bobi's safeguards.
 import { loadConfig, SDK_OFFLINE_OPTIONS, toOpenCodeConfig, TrustStore, type BobiConfig } from "@bobi/config"
-import { createBobiCore, type AuditSink } from "@bobi/core"
+import { agentCard, CARD_PATH, httpEngine, InboundA2a, RPC_PATH } from "@bobi/a2a"
+import { A2A_AGENT, createBobiCore, type AuditSink } from "@bobi/core"
 import { CLI as CODE_GRAPH_CLI } from "@bobi/mcp-code-graph"
 import { CLI as COBOL_CLI } from "@bobi/mcp-cobol"
 import { CLI as ZOWE_CLI, zoweConfigured } from "@bobi/mcp-zowe"
@@ -25,6 +26,8 @@ export type BobiServerOptions = {
   readonly browser?: boolean
   /** Environment for per-project config loading (default process.env). */
   readonly env?: Record<string, string | undefined>
+  /** Project that tasks from other agents work on (A2A, when config.a2a.enabled). Default: the working directory. */
+  readonly directory?: string
 }
 
 export type BobiServer = NodeServer
@@ -55,7 +58,16 @@ export async function startBobiServer(options: BobiServerOptions): Promise<BobiS
     ...(options.audit ? { audit: options.audit } : {}),
     ...(options.browser === false ? { browser: false as const } : {}),
   })
-  return startNodeServer({
+  // A2A: discovery card (public) and JSON-RPC endpoint (server password), only when enabled.
+  let url = ""
+  const a2a = options.config.a2a.enabled
+    ? new InboundA2a({
+        engine: httpEngine({ url: () => url, password: options.password, directory: options.directory ?? process.cwd() }),
+        agent: A2A_AGENT,
+        mask: plugin.mask,
+      })
+    : undefined
+  const server = await startNodeServer({
     engine: {
       // Clients built from source report version "local"; matching it avoids a version-mismatch warning.
       app: { name: "bobi", version: options.engineVersion ?? "local", channel: "local" },
@@ -70,11 +82,23 @@ export async function startBobiServer(options: BobiServerOptions): Promise<BobiS
     paths,
     plugin,
     routes: {
-      match: (pathname) => (pathname === COMPLETE_PATH ? "private" : undefined),
-      handle: (request) => handleCompletion(request, { projectConfig, env, mask: plugin.mask }),
+      match: (pathname) => {
+        if (pathname === COMPLETE_PATH) return "private"
+        if (a2a && pathname === CARD_PATH) return "public"
+        if (a2a && pathname === RPC_PATH) return "private"
+        return undefined
+      },
+      handle: async (request) => {
+        const { pathname, origin } = new URL(request.url)
+        if (pathname === CARD_PATH) return Response.json(agentCard({ baseUrl: origin, version: options.engineVersion ?? "local" }))
+        if (pathname === RPC_PATH) return a2a!.handle(request)
+        return handleCompletion(request, { projectConfig, env, mask: plugin.mask })
+      },
     },
     password: options.password,
     ...(options.hostname ? { hostname: options.hostname } : {}),
     ...(options.port !== undefined ? { port: options.port } : {}),
   })
+  url = server.url
+  return server
 }
