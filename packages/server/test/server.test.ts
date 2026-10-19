@@ -81,3 +81,43 @@ test("bobiPaths defaults to ~/.bobi", () => {
   expect(bobiPaths({}).home).toEndWith("/.bobi")
   expect(bobiPaths({ BOBI_HOME: "/x" }).database).toBe("/x/data/bobi.db")
 })
+
+test("one server applies each project's own trusted config", async () => {
+  mock.clear()
+  const projects = await Promise.all(["a", "b"].map(async (name) => {
+    const p = await realpath(await mkdtemp(path.join(tmpdir(), `bobi-multi-${name}-`)))
+    Bun.spawnSync(["git", "init", "-q"], { cwd: p })
+    return p
+  }))
+  const [approved, asking] = projects as [string, string]
+  const { mkdir, writeFile } = await import("node:fs/promises")
+  await mkdir(path.join(approved, ".bobi"))
+  await writeFile(path.join(approved, ".bobi", "config.jsonc"), `{ "autoApprove": [{ "action": "edit", "resource": "*" }] }`)
+  const { TrustStore } = await import("@bobi/config")
+  new TrustStore(home).decide(approved, true)
+  try {
+    const c = client()
+    const run = async (dir: string) => {
+      mock.clear()
+      const file = path.join(dir, "out.txt")
+      mock.enqueue({ toolCalls: [{ name: "write", arguments: { path: file, content: "x" } }] }, { text: "done" })
+      const session = await c.session.create({ location: { directory: dir } })
+      await c.session.prompt({ sessionID: session.id, text: "write" })
+      for (let i = 0; i < 200; i++) {
+        const pending = (await c.permission.list({ sessionID: session.id }))[0]
+        if (pending) {
+          await c.permission.reply({ sessionID: session.id, requestID: pending.id, decision: "reject" })
+          break
+        }
+        if (existsSync(file)) break
+        await Bun.sleep(25)
+      }
+      await c.session.wait({ sessionID: session.id })
+      return existsSync(file)
+    }
+    expect(await run(approved)).toBe(true)
+    expect(await run(asking)).toBe(false)
+  } finally {
+    for (const p of projects) await rm(p, { recursive: true, force: true })
+  }
+}, 60_000)

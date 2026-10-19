@@ -3,7 +3,7 @@ import { existsSync, watch, type FSWatcher } from "node:fs"
 import os from "node:os"
 import path from "node:path"
 import type { Plugin } from "@opencode/plugin"
-import { PROVIDER_ID, type BobiConfig } from "@bobi/config"
+import { modelIds, PROVIDER_ID, TrustStore, type BobiConfig } from "@bobi/config"
 import { HeadlessBrowser, registerBrowserTool } from "@bobi/browser"
 import { DEFAULT_MODE, editAllowed, editRestriction, hiddenTools, loadModes, modeDenyRules, modeFiles, modePrompt, type Mode } from "@bobi/modes"
 import { type AuditSink, MemorySink, OtlpSink, parseOtlpHeaders } from "./audit.ts"
@@ -41,6 +41,13 @@ export type BobiCoreOptions = {
   readonly browser?: HeadlessBrowser | false
   /** BOBI_HOME: global custom_modes.yaml and rules (default ~/.bobi). */
   readonly globalDir?: string
+  /** Project trust decision; default: the trust store in globalDir. */
+  readonly trusted?: (project: string) => boolean
+  /**
+   * Config for one project (its .bobi/config.jsonc only if trusted). Lets one server serve several projects
+   * with their own auto-approvals and mode models. Default: `config` for every project.
+   */
+  readonly projectConfig?: (project: string, trusted: boolean) => BobiConfig
 }
 
 type TextContent = { type: "text"; text: string }
@@ -60,11 +67,10 @@ const inputPath = (input: unknown): string | undefined =>
   input && typeof input === "object" && typeof (input as { path?: unknown }).path === "string" ? (input as { path: string }).path : undefined
 
 export function createBobiCore(options: BobiCoreOptions): Plugin.Plugin & { readonly audit: AuditSink; readonly mask: Masker } {
-  const { config } = options
   const policy = options.policy ?? loadDefaultPolicy()
-  const audit = options.audit ?? defaultSink(config)
+  const audit = options.audit ?? defaultSink(options.config)
   const mask = createMasker(options.secrets ?? [])
-  const user = config.telemetry.user ?? "unknown"
+  const user = options.config.telemetry.user ?? "unknown"
   const globalDir = options.globalDir ?? process.env.BOBI_HOME ?? path.join(os.homedir(), ".bobi")
   const started = new Map<string, number>()
 
@@ -76,7 +82,11 @@ export function createBobiCore(options: BobiCoreOptions): Plugin.Plugin & { read
       const project = String(ctx.location.project.directory)
       const location = String(ctx.location.directory)
       const ignored = new BobiIgnore(project)
-      let modes: Mode[] = loadModes({ globalDir, project })
+      // Untrusted projects: their AGENTS.md, rules, modes and config are ignored (.bobiignore still applies).
+      const trusted = options.trusted ? options.trusted(project) : new TrustStore(globalDir).isTrusted(project)
+      const config = options.projectConfig?.(project, trusted) ?? options.config
+      const loadAllModes = () => loadModes({ globalDir, project, includeProject: trusted })
+      let modes: Mode[] = loadAllModes()
       const modeOf = (agent: string) => modes.find((m) => m.slug === agent)
 
       // 1. Modes become engine agents; every agent gets the secure policy, auto-approvals, protected rules and
@@ -109,7 +119,7 @@ export function createBobiCore(options: BobiCoreOptions): Plugin.Plugin & { read
             watch(dir, (_event, name) => {
               if (name !== path.basename(file)) return
               try {
-                modes = loadModes({ globalDir, project })
+                modes = loadAllModes()
                 void ctx.agent.reload()
               } catch (error) {
                 console.error(`bobi: ${(error as Error).message}`)
@@ -130,7 +140,11 @@ export function createBobiCore(options: BobiCoreOptions): Plugin.Plugin & { read
         const agent = String(session.agent ?? DEFAULT_MODE)
         if (lastAgent.get(sessionID) === agent) return
         lastAgent.set(sessionID, agent)
-        const target = config.modes[agent]?.model ?? config.model.default
+        // Only models the server's endpoint config declares can be selected.
+        const wanted = config.modes[agent]?.model
+        const known = modelIds(options.config)
+        if (wanted && !known.includes(wanted)) console.error(`bobi: model "${wanted}" for mode ${agent} is not in model.models of the server config; using ${config.model.default}`)
+        const target = wanted && known.includes(wanted) ? wanted : config.model.default
         if (session.model?.id === target && String(session.model.providerID) === PROVIDER_ID) return
         await ctx.session.switchModel({ sessionID, model: { providerID: PROVIDER_ID, id: target } })
       })
@@ -146,7 +160,7 @@ export function createBobiCore(options: BobiCoreOptions): Plugin.Plugin & { read
           event.system.push({ type: "text", text: modePrompt(mode) })
           for (const name of hiddenTools(mode, Object.keys(event.tools))) delete event.tools[name]
         }
-        const rules = rulesPrompt(collectRules(mode?.slug ?? String(event.agent), { globalDir, project, location }), project)
+        const rules = rulesPrompt(collectRules(mode?.slug ?? String(event.agent), { globalDir, project, location, includeProject: trusted }), project)
         if (rules) event.system.push({ type: "text", text: rules })
       })
 

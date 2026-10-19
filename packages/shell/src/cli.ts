@@ -11,6 +11,13 @@ try {
     out: (line) => console.log(line),
     err: (line) => console.error(line),
     spawn: async (argv, env, cwd) => Bun.spawn(argv, { env, cwd, stdio: ["inherit", "inherit", "inherit"] }).exited,
+    ask: process.stdin.isTTY
+      ? async (question) => {
+          process.stderr.write(question)
+          for await (const line of console) return /^y(es)?$/i.test(line.trim())
+          return false
+        }
+      : undefined,
     untilStopped: () =>
       new Promise((resolve) => {
         process.once("SIGINT", () => resolve())

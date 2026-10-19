@@ -34,6 +34,8 @@ export type MockModel = {
   readonly baseURL: string
   readonly requests: readonly RecordedRequest[]
   enqueue(...turns: Turn[]): void
+  /** Drops scripted turns that were not consumed (e.g. after a rejected tool call ended the turn). */
+  clear(): void
   stop(): Promise<void>
 }
 
@@ -139,6 +141,7 @@ export function startMockModel(options: MockModelOptions = {}): MockModel {
     baseURL: `${url}/v1`,
     requests,
     enqueue: (...turns) => void queue.push(...turns),
+    clear: () => void queue.splice(0),
     stop: async () => {
       await server.stop(true)
     },
