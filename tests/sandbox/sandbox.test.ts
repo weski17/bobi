@@ -88,6 +88,37 @@ describe.skipIf(!available)("podman sandbox", () => {
     expect(sh(["podman", "exec", "bobi-server", "git", "-C", project, "log", "--format=%s", "-1"]).out.trim()).toBe("bobi: checkpoint repository")
   }, 60_000)
 
+  test("the built-in code graph MCP server runs inside the container", async () => {
+    writeFileSync(path.join(project, "graph.ts"), "export function leaf() {}\nexport function root() { leaf() }\n")
+    const { OpenCode } = await import("@opencode/client")
+    const auth = `Basic ${btoa(`opencode:${password}`)}`
+    const c = OpenCode.make({
+      baseUrl: `http://127.0.0.1:${PORT}`,
+      fetch: ((input: RequestInfo | URL, init?: RequestInit) => fetch(input, { ...init, headers: { ...Object.fromEntries(new Headers(init?.headers)), authorization: auth } })) as typeof fetch,
+    })
+    const offered = () => mock.requests.filter((r) => r.body.tools?.length).at(-1)?.body.tools?.map((t) => t.function.name) ?? []
+    for (let i = 0; i < 40 && !offered().includes("code-graph_callers"); i++) {
+      const s = await c.session.create({ location: { directory: project }, agent: "advanced" })
+      await c.session.prompt({ sessionID: s.id, text: "probe" })
+      await c.session.wait({ sessionID: s.id })
+      await Bun.sleep(250)
+    }
+    expect(offered()).toContain("code-graph_callers")
+    mock.enqueue({ toolCalls: [{ name: "code-graph_callers", arguments: { symbol: "leaf" } }] }, { text: "done" })
+    const s = await c.session.create({ location: { directory: project }, agent: "advanced" })
+    await c.session.prompt({ sessionID: s.id, text: "who calls leaf?" })
+    for (let i = 0; i < 200; i++) {
+      const pending = (await c.permission.list({ sessionID: s.id }))[0]
+      if (pending) {
+        await c.permission.reply({ sessionID: s.id, requestID: pending.id, decision: "once" })
+        break
+      }
+      await Bun.sleep(25)
+    }
+    await c.session.wait({ sessionID: s.id })
+    expect(JSON.stringify(mock.requests.at(-1)!.body.messages)).toContain("graph.ts#root")
+  }, 120_000)
+
   test("the server runs unprivileged and sees only the project", () => {
     expect(sh(["podman", "exec", "bobi-server", "id", "-u"]).out.trim()).toBe("1000")
     expect(sh(["podman", "exec", "bobi-server", "ls", project]).code).toBe(0)

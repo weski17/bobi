@@ -6,6 +6,7 @@ import { OpenCode } from "@opencode/sdk"
 import { DEFAULTS, SDK_OFFLINE_OPTIONS, toOpenCodeConfig, type BobiConfig } from "@bobi/config"
 import { createBobiCore, MemorySink } from "@bobi/core"
 import { startMockModel, type MockModel, type Turn } from "@bobi/mock-model"
+import { CLI as CODE_GRAPH_CLI } from "@bobi/mcp-code-graph"
 
 export type Harness = {
   readonly dir: string
@@ -34,7 +35,7 @@ export async function waitFor<T>(probe: () => Promise<T | undefined>, timeoutMs 
 export async function createHarness(
   patch: Partial<BobiConfig> = {},
   secrets: string[] = [],
-  options: { browser?: boolean; trusted?: boolean } = {},
+  options: { browser?: boolean; trusted?: boolean; codeGraph?: boolean; env?: Record<string, string | undefined> } = {},
 ): Promise<Harness> {
   const mock = startMockModel({ models: ["mock-model"] })
   // Resolve symlinks (macOS: /var -> /private/var). OpenCode compares the session directory with the
@@ -56,6 +57,8 @@ export async function createHarness(
     secrets,
     globalDir,
     trusted: () => options.trusted ?? true,
+    ...(options.codeGraph ? { builtinMcp: (project: string) => ({ "code-graph": { type: "local" as const, command: [process.execPath, CODE_GRAPH_CLI, project] } }) } : {}),
+    ...(options.env ? { env: options.env } : {}),
     ...(options.browser ? {} : { browser: false }),
   })
   process.env.BOBI_MODEL_API_KEY = "it-test-key"
