@@ -144,7 +144,7 @@ Voraussetzungen und Details: `docs/DEVELOPMENT.md`.
 - Bauen: kein Build-Schritt (Bun führt TypeScript direkt aus)
 - Tests: `bun run test` (mit Abdeckung: `bun run test:coverage`; Sandbox: `bun run test:sandbox`)
 - Lint/Typprüfung: `bun run typecheck` (Semgrep läuft in der CI)
-- Bobi IDE starten: `TODO` (Phase 4)
+- Bobi IDE einrichten: `bun run ide:setup` (einmalig), starten: `bobi-ide [ordner]` bzw. `bun run ide`; IDE-Test: `bun run test:ide`
 - Bobi Shell starten: `bobi` (interaktiv), `bobi run "<Auftrag>"` (headless), `bobi serve`, `bobi attach <url>`
 - Sandbox: `podman build -f sandbox/Containerfile -t bobi:dev .` und `sandbox/bobi-sandbox.sh up <projekt>`
 
