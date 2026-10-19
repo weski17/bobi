@@ -33,6 +33,13 @@
         "@bobi/config": "workspace:*",
       },
     },
+    "packages/egress-proxy": {
+      "name": "@bobi/egress-proxy",
+      "version": "0.0.0",
+      "bin": {
+        "bobi-egress-proxy": "./src/cli.ts",
+      },
+    },
     "packages/mock-model": {
       "name": "@bobi/mock-model",
       "version": "0.0.0",
@@ -66,6 +73,8 @@
     "@bobi/config": ["@bobi/config@workspace:packages/config"],
 
     "@bobi/core": ["@bobi/core@workspace:packages/core"],
+
+    "@bobi/egress-proxy": ["@bobi/egress-proxy@workspace:packages/egress-proxy"],
 
     "@bobi/mock-model": ["@bobi/mock-model@workspace:packages/mock-model"],
 
