@@ -52,7 +52,9 @@ export class TrustStore {
   readonly file: string
 
   constructor(globalDir: string) {
-    this.file = path.join(globalDir, "trust.json")
+    // A directory of its own so the sandbox can mount it read-only (a bind-mounted single file would keep
+    // pointing at the old inode after the atomic rename in decide()).
+    this.file = path.join(globalDir, "trust", "projects.json")
   }
 
   private read(): StoreFile {
