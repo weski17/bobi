@@ -21,3 +21,10 @@ CLAUDE.md requires confirmation for every write and every shell command unless a
 ## Consequences
 
 - More prompts by default – intended. Security over speed.
+
+## Phase 1 notes (2026-10-19)
+
+- Rules are appended per agent via `ctx.agent.transform` (policy file `packages/core/defaults/permissions.jsonc`),
+  so the user's own "always" answers, evaluated after them, keep working.
+- **Fail closed:** OpenCode only warns when a configured plugin cannot be loaded. The `bobi` launcher verifies that
+  `bobi.core` is active before any session starts (`packages/shell/src/launcher.ts#verifyCore`).

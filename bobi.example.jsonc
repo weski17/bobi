@@ -1,0 +1,27 @@
+// Example Bobi configuration. Copy to ~/.bobi/config.jsonc (personal) or <project>/.bobi/config.jsonc (team, versioned).
+// Secrets are never allowed here: the API key is read from the environment variable named in model.apiKeyEnv.
+{
+  "model": {
+    // OpenAI-compatible gateway (LiteLLM default port). vLLM and Ollama also work: http://host:8000/v1, http://host:11434/v1
+    "baseURL": "http://localhost:4000/v1",
+    "protocol": "openai",            // or "anthropic" (Anthropic-compatible endpoint, not yet tested)
+    "apiKeyEnv": "BOBI_MODEL_API_KEY",
+    "default": "default",            // model id as served by the gateway
+    "models": []                     // further model ids that modes may use
+  },
+  // Model per mode (modes themselves arrive in Phase 2)
+  "modes": {
+    // "plan": { "model": "large-model" },
+    // "code": { "model": "small-model" }
+  },
+  // Explicit auto-approvals. Without them every write, shell command and network access asks.
+  "autoApprove": [
+    // { "action": "shell", "resource": "git status *" },
+    // { "action": "edit", "resource": "docs/*", "modes": ["code"] }
+  ],
+  "telemetry": {
+    // OTLP/HTTP endpoint of an OpenTelemetry collector or Langfuse; also settable via OTEL_EXPORTER_OTLP_ENDPOINT
+    // "otlpEndpoint": "http://localhost:4318"
+  },
+  "checkpoints": { "enabled": true }
+}
