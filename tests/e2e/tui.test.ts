@@ -93,6 +93,6 @@ test("the trust question is answered in the terminal before the UI starts", asyn
   })
   const [stderr, code] = await Promise.all([new Response(child.stderr).text(), child.exited])
   expect(code, stderr).toBe(0)
-  const store = JSON.parse(await Bun.file(path.join(home, "trust.json")).text())
+  const store = JSON.parse(await Bun.file(path.join(home, "trust", "projects.json")).text())
   expect(Object.values(store.projects as Record<string, { trusted: boolean }>)[0]!.trusted).toBe(true)
 }, 90_000)
