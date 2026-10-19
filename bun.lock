@@ -7,6 +7,7 @@
       "devDependencies": {
         "@bobi/config": "workspace:*",
         "@bobi/core": "workspace:*",
+        "@bobi/mcp-cobol": "workspace:*",
         "@bobi/mcp-code-graph": "workspace:*",
         "@bobi/mock-model": "workspace:*",
         "@bobi/server": "workspace:*",
@@ -14,6 +15,20 @@
         "@modelcontextprotocol/server": "2.0.0",
         "@types/bun": "1.4.0",
         "typescript": "5.8.2",
+      },
+    },
+    "mcp-servers/cobol": {
+      "name": "@bobi/mcp-cobol",
+      "version": "0.0.0",
+      "bin": {
+        "bobi-mcp-cobol": "./src/cli.ts",
+      },
+      "dependencies": {
+        "@bobi/mcp-code-graph": "workspace:*",
+        "@modelcontextprotocol/server": "2.0.0",
+      },
+      "devDependencies": {
+        "@modelcontextprotocol/client": "2.0.0",
       },
     },
     "mcp-servers/code-graph": {
@@ -88,6 +103,7 @@
       "dependencies": {
         "@bobi/config": "workspace:*",
         "@bobi/core": "workspace:*",
+        "@bobi/mcp-cobol": "workspace:*",
         "@bobi/mcp-code-graph": "workspace:*",
       },
     },
@@ -112,6 +128,8 @@
     "@bobi/core": ["@bobi/core@workspace:packages/core"],
 
     "@bobi/egress-proxy": ["@bobi/egress-proxy@workspace:packages/egress-proxy"],
+
+    "@bobi/mcp-cobol": ["@bobi/mcp-cobol@workspace:mcp-servers/cobol"],
 
     "@bobi/mcp-code-graph": ["@bobi/mcp-code-graph@workspace:mcp-servers/code-graph"],
 

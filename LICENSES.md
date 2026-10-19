@@ -5,6 +5,7 @@ Every dependency must be listed here with its license before it is added (see CL
 | Component | Version / commit | License | Use in Bobi | Checked |
 |---|---|---|---|---|
 | OpenCode (`anomalyco/opencode`) | v2.0.32 (submodule `vendor/opencode`) | MIT | Engine and server (fork, `vendor/opencode`) | 2026-10-17 |
+| AWS CardDemo (`aws-samples/aws-mainframe-modernization-carddemo`) | commit `59cc6c2` (submodule `vendor/carddemo`) | Apache-2.0 | COBOL test object for the COBOL MCP server (tests and demos only, not shipped, excluded from the sandbox image) | 2026-10-19 |
 
 Notes:
 - MIT permits forking and redistribution; the copyright notices and license texts must be kept in the forks.
