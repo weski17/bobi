@@ -1,0 +1,86 @@
+{
+  "name": "bobi-chat",
+  "displayName": "Bobi",
+  "description": "Chat with Bobi, your on-prem AI development partner",
+  "version": "0.1.0",
+  "publisher": "bobi",
+  "license": "MIT",
+  "private": true,
+  "engines": {
+    "vscode": "^1.100.0"
+  },
+  "categories": [
+    "AI",
+    "Chat"
+  ],
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "bobi",
+          "title": "Bobi",
+          "icon": "media/bobi.svg"
+        }
+      ]
+    },
+    "views": {
+      "bobi": [
+        {
+          "type": "webview",
+          "id": "bobi.chat",
+          "name": "Chat"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "bobi.newSession",
+        "title": "Bobi: New Chat"
+      },
+      {
+        "command": "bobi.selectMode",
+        "title": "Bobi: Select Mode"
+      },
+      {
+        "command": "bobi.undo",
+        "title": "Bobi: Undo Last Changes"
+      },
+      {
+        "command": "bobi.restartServer",
+        "title": "Bobi: Restart Server"
+      }
+    ],
+    "configuration": {
+      "title": "Bobi",
+      "properties": {
+        "bobi.command": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Command that starts Bobi (default: `bobi` on PATH or ~/.local/bin/bobi)."
+        },
+        "bobi.includeOpenTabs": {
+          "type": "boolean",
+          "default": true,
+          "description": "Send the open editors and the current selection as context."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "bun build src/extension.ts --target=node --format=cjs --external vscode --outfile dist/extension.js"
+  },
+  "devDependencies": {
+    "diff": "8.0.4",
+    "@types/vscode": "1.100.0",
+    "@bobi/server": "workspace:*",
+    "@bobi/config": "workspace:*",
+    "@bobi/mock-model": "workspace:*"
+  }
+}

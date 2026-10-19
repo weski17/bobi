@@ -5,7 +5,6 @@ Every dependency must be listed here with its license before it is added (see CL
 | Component | Version / commit | License | Use in Bobi | Checked |
 |---|---|---|---|---|
 | OpenCode (`anomalyco/opencode`) | v2.0.32 (submodule `vendor/opencode`) | MIT | Engine and server (fork, `vendor/opencode`) | 2026-10-17 |
-| Code-OSS (`microsoft/vscode`) | `5e1d1ea5` (analysed) | MIT | IDE base (fork, `vendor/code-oss`) | 2026-10-17 |
 
 Notes:
 - MIT permits forking and redistribution; the copyright notices and license texts must be kept in the forks.
@@ -43,3 +42,6 @@ Notes:
 | @modelcontextprotocol/client | 2.0.0 | MIT | MCP protocol tests (dev) |
 | @modelcontextprotocol/core | 2.0.0 | MIT | Transitive (MCP SDK) |
 | zod | 4.6.7 | MIT | Transitive (MCP SDK) |
+| Code-OSS (`microsoft/vscode`) | 1.141.2 (submodule `vendor/code-oss`) | MIT | Bobi IDE base; branding overlay `scripts/ide/brand.ts`, patches `patches/code-oss/` |
+| @types/vscode | 1.100.0 | MIT | Extension API types (dev) |
+| diff | 8.0.4 | BSD-3-Clause | Extension tests: produce patches like the engine (dev) |
