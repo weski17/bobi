@@ -1,6 +1,29 @@
 # Status
 
-**Current phase: 4 – Bobi IDE** · Branch `phase-4-ide` · waiting for approval
+**Current phase: 5 – shell, orchestrator, skills, git, security, literate coding** · Branch `phase-5-shell-agents` · waiting for approval
+
+## Phase 5
+
+| Task | Status | Where |
+|---|---|---|
+| Orchestrator delegates to Bobi modes (subagents); subtask approvals reach the user (TUI, IDE) | ✅ | `packages/core`, `src/controller.ts` |
+| Security mode + `/security-review` | ✅ | `packages/modes/builtin-modes.yaml`, `defaults/commands` |
+| Skills (`SKILL.md`) global and per project (trusted) | ✅ | `packages/core/src/extensions.ts` |
+| Own slash commands (`.bobi/commands/*.md`, mode + `$ARGUMENTS`) | ✅ | same |
+| Git: `/commit`, `/pr`; read-only git without asking; IDE commit message button | ✅ | `defaults/commands`, `permissions.jsonc` |
+| Literate coding in the IDE (Cmd+Alt+Enter) with diff review | ✅ | `packages/ide-extension` |
+| Shell: `bobi modes`, `bobi run --mode` | ✅ | `packages/shell` |
+| Engine's own skills (vendor docs/issue reporting) disabled | ✅ | `DISABLED_PLUGINS` |
+| Demo guide | ✅ | docs/demos/phase-5.md |
+
+Tests: **290 pass, 0 fail** + IDE integration test (incl. literate coding, commit button) + 5 terminal-UI e2e + 6 sandbox.
+
+### Phase 5 findings
+
+1. The engine shipped skills that point the model at the vendor's online documentation → disabled.
+2. A direct model call for commit messages would bypass secret masking → done through a short session instead.
+3. Skills and commands steer Bobi too → now part of the project trust fingerprint.
+4. In the IDE an approval from a subtask would have been invisible → child sessions are tracked.
 
 ## Phase 4
 
@@ -133,8 +156,7 @@ All ADRs 0001–0011 accepted. Open questions answered:
 
 1. **Logo:** waiting for the official FI SVG from the project owner (`branding/fi/icon.svg`, not committed).
    Bobi IDE picks it up with `BOBI_BRANDING_DIR=branding/fi bun run ide:setup`.
-2. **Packaged Bobi IDE.app:** strip the proprietary Copilot packages and extension from the Code-OSS build
-   (VSCodium-style patches) – or keep running from source for the research phase?
+2. ~~Packaged Bobi IDE.app~~ – decided 2026-10-19: run from source for now; packaging later (ADR-0008).
 
 ### Resolved 2026-10-19
 
