@@ -17,7 +17,7 @@
     "test:ide": "bun tests/ide/run-ide-test.ts",
     "ide:setup": "bun scripts/ide/setup.ts",
     "ide": "bun scripts/ide/run.ts",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "typecheck": "NODE_OPTIONS=--max-old-space-size=8192 tsc -p tsconfig.json --noEmit",
     "browser:install": "bun packages/browser/node_modules/playwright-core/cli.js install chromium-headless-shell"
   },
   "devDependencies": {
