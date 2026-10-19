@@ -1,6 +1,31 @@
 # Status
 
-**Current phase: 1 – core** · Branch `phase-1-core` · waiting for approval
+**Current phase: 2 – modes, rules, AGENTS.md, .bobiignore** · Branch `phase-2-modes` · waiting for approval
+
+## Phase 2
+
+| Task | Status | Where |
+|---|---|---|
+| Built-in modes code, plan, ask, advanced, orchestrator (engine build/plan replaced) | ✅ | `packages/modes/builtin-modes.yaml` |
+| Custom modes `$BOBI_HOME/custom_modes.yaml`, `.bobi/custom_modes.yaml`; same slug overrides; reload on change | ✅ | `packages/modes` |
+| Tool groups enforced: deny rules (win over auto-approve), hidden tools, `fileRegex` for edits | ✅ | `packages/modes/src/rules.ts`, `packages/core/src/plugin.ts` |
+| Model per mode (was configured but ineffective since phase 1 – fixed) | ✅ | `packages/core/src/plugin.ts` |
+| Rules `.bobi/rules/`, `.bobi/rules-{mode}/`, global rules, AGENTS.md | ✅ | `packages/core/src/rules.ts` |
+| `/init` with Bobi's own prompt | ✅ | `packages/core/src/init.ts` |
+| `.bobiignore`: file tools, search results, file-reading shell commands | ✅ | `packages/core/src/bobiignore.ts` |
+| Bobi identity in the system prompt (no upstream patch) | ✅ | `packages/core/src/identity.ts` |
+| Edits to `.bobi/**` and `.bobiignore` always ask | ✅ | `PROTECTED_RULES` |
+| Terminal UI: starts in Code, Shift+Tab switches modes (e2e) | ✅ | `tests/e2e/tui.test.ts` |
+| Demo guide | ✅ | docs/demos/phase-2.md |
+
+Tests: **193 pass, 0 fail** + 3 terminal-UI e2e · line coverage 99.8 % · typecheck clean.
+
+### Phase 2 findings
+
+1. Since the phase-1 security fix (`project: false`) the engine no longer read the project's AGENTS.md → Bobi loads it.
+2. The engine ignores agent models for turns → per-mode models were ineffective; fixed via the `prompt` hook.
+3. The engine's plan agent injects its own reminders → its plugin is disabled; Bobi's plan mode replaces it.
+4. Mode switching in the UI is Shift+Tab (the UI's own key binding).
 
 ## Phase 1
 
@@ -65,6 +90,12 @@ All ADRs 0001–0011 accepted. Open questions answered:
 Decided 2026-10-19: checkpoints without git (hidden repository + `.git` pointer), license MIT © Finanz Informatik GmbH & Co. KG.
 
 ## Risks
+
+- AGENTS.md and rule files come from the repository: a foreign repository can try to steer the model through them.
+  They cannot change permissions (engine-enforced); the prompt states this explicitly.
+- `.bobiignore` in the terminal tool covers only common file-reading commands; the sandbox is the boundary.
+- `bobi serve` serving several projects loads modes per project, but the per-mode model config comes from the
+  directory the server was started in.
 
 - Very high upstream churn (OpenCode near-daily, V2 API not yet stable).
 - IDE depends on proposed Code-OSS chat APIs.
