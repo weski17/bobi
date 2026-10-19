@@ -3,13 +3,13 @@
 Usage: python3 -I tui_driver.py <cwd> <step>... where a step is
   wait:<text>   wait until <text> appears on screen (timeout 30 s)
   type:<text>   type text
-  key:<name>    press enter|esc|tab|left|right|up|down
+  key:<name>    press enter|esc|tab|shift-tab|left|right|up|down
   dump          print the visible text
 The command to run comes from BOBI_TUI_CMD (JSON array). Exit code 0 when all steps succeed.
 """
 import json, os, pty, re, select, sys, time
 
-KEYS = {"enter": b"\r", "esc": b"\x1b", "tab": b"\t", "left": b"\x1b[D", "right": b"\x1b[C", "up": b"\x1b[A", "down": b"\x1b[B"}
+KEYS = {"enter": b"\r", "esc": b"\x1b", "tab": b"\t", "shift-tab": b"\x1b[Z", "left": b"\x1b[D", "right": b"\x1b[C", "up": b"\x1b[A", "down": b"\x1b[B"}
 ANSI = re.compile(rb"\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b\][^\x07]*(\x07|\x1b\\)|\x1b[()][0-9A-Za-z]|\x1b[=>78]")
 
 def main():

@@ -38,3 +38,4 @@ Notes:
 |---|---|---|---|
 | Semgrep CE (`semgrep/semgrep` image) | 1.178.0 | LGPL-2.1 (engine); rules from the Semgrep Registry under their own terms | Static analysis in CI |
 | GitHub Actions `actions/checkout`, `oven-sh/setup-bun` | v4, v2 | MIT | CI |
+| ignore | 7.0.11 | MIT | `.bobiignore` matching with gitignore semantics (`@bobi/core`) |

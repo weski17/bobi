@@ -12,6 +12,8 @@ export const PROVIDER_ID = "bobi"
 export const DISABLED_PLUGINS = [
   // Desktop-attached browser; Bobi ships its own headless browser tool (@bobi/browser).
   "opencode.browser",
+  // The engine's plan agent; Bobi defines its own modes (@bobi/modes), including plan.
+  "opencode.plan",
   "opencode.provider.amazon.bedrock",
   "opencode.provider.azure",
   "opencode.provider.cerebras",

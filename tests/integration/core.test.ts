@@ -79,7 +79,7 @@ test("tool calls and permission decisions are audited with user, mode, tool and 
   const sessionID = await h.prompt("create a file", write(path.join(h.dir, "audited.txt")), done)
   await h.opencode.sessions.wait({ sessionID })
   const tool = h.audit.records.find((r) => r.name === "bobi.tool" && r.attributes["bobi.tool"] === "write")
-  expect(tool?.attributes).toMatchObject({ "bobi.user": "tester", "bobi.mode": "build", "bobi.session": sessionID, "bobi.result": "completed" })
+  expect(tool?.attributes).toMatchObject({ "bobi.user": "tester", "bobi.mode": "code", "bobi.session": sessionID, "bobi.result": "completed" })
   const permission = h.audit.records.find((r) => r.name === "bobi.permission" && r.attributes["bobi.action"] === "edit")
   expect(permission?.attributes["bobi.result"]).toBe("allow")
 }, 30_000)

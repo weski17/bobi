@@ -21,7 +21,13 @@ bobi run "explain this repository"  # headless
 ```
 
 Configuration: [`bobi.example.jsonc`](bobi.example.jsonc). Sandbox: [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md#sandbox-podman).
-Demo: [`docs/demos/phase-1.md`](docs/demos/phase-1.md).
+Demos: [phase 1](docs/demos/phase-1.md), [phase 2](docs/demos/phase-2.md).
+
+## Modes
+
+`code` (default), `plan`, `ask`, `advanced`, `orchestrator` – switch with Shift+Tab. Own modes in
+`.bobi/custom_modes.yaml` ([example](docs/examples/custom_modes.yaml)), rules in `.bobi/rules/` and `AGENTS.md`
+(`/init` writes it), exclusions in `.bobiignore`. Demo: [`docs/demos/phase-2.md`](docs/demos/phase-2.md).
 
 ## Safeguards
 
