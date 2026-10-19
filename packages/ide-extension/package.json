@@ -71,6 +71,9 @@
           "description": "Send the open editors and the current selection as context."
         }
       }
+    },
+    "configurationDefaults": {
+      "chat.disableAIFeatures": true
     }
   },
   "scripts": {
