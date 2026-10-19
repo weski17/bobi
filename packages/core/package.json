@@ -9,6 +9,8 @@
   },
   "dependencies": {
     "@bobi/config": "workspace:*",
-    "@bobi/browser": "workspace:*"
+    "@bobi/browser": "workspace:*",
+    "ignore": "7.0.11",
+    "@bobi/modes": "workspace:*"
   }
 }
