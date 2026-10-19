@@ -4,6 +4,7 @@ import { mkdirSync, realpathSync, statSync } from "node:fs"
 import path from "node:path"
 import { findProjectRoot, loadConfig, TrustStore, trustFiles, type LoadedConfig } from "@bobi/config"
 import { bobiPaths, ensureCheckpointRepo, startBobiServer, type BobiPaths, type BobiServer } from "@bobi/server"
+import { loadModes, mcpServers, type Mode } from "@bobi/modes"
 import { HELP, parseArgs, UsageError, VERSION, type Command } from "./args.ts"
 import { clientSpec } from "./client.ts"
 
@@ -89,6 +90,16 @@ export async function runApp(rawArgv: readonly string[], io: Io): Promise<number
     if (!password) io.err(`bobi: generated server password (user "opencode"): ${started.password}`)
     await io.untilStopped()
     await stop(started)
+    return 0
+  }
+
+  if (command.kind === "modes") {
+    const project = findProjectRoot(io.cwd)
+    const paths = bobiPaths(io.env)
+    const modes = loadModes({ globalDir: paths.home, project, includeProject: new TrustStore(paths.home).isTrusted(project) })
+    const groups = (m: Mode) => m.groups.map((g) => (Array.isArray(g) ? (g[0] === "edit" ? `edit(${g[1].fileRegex})` : `mcp(${mcpServers(m)})`) : g)).join(", ")
+    if (command.json) io.out(JSON.stringify(modes.map((m) => ({ slug: m.slug, name: m.name, description: m.description, groups: m.groups, source: m.source }))))
+    else for (const m of modes) io.out(`${m.slug.padEnd(14)} ${m.name.padEnd(14)} ${groups(m)}`)
     return 0
   }
 
