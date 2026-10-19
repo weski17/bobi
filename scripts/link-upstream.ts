@@ -22,6 +22,8 @@ function link(target: string, at: string) {
 for (const name of packages) {
   link(path.join(vendor, "packages", name), path.join(root, "node_modules", "@opencode", name))
 }
+// The Bobi server runs the engine's router on Effect's Node HTTP server (WebSocket support).
+link(realpathSync(path.join(vendor, "packages", "server", "node_modules", "@effect", "platform-node")), path.join(root, "node_modules", "@effect", "platform-node"))
 // Plugins must share the host's effect instance (see vendor/opencode/packages/plugin/src/runtime.ts).
 link(realpathSync(path.join(vendor, "packages", "plugin", "node_modules", "effect")), path.join(root, "node_modules", "effect"))
 
