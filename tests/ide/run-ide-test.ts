@@ -5,12 +5,14 @@ import { mkdtemp, realpath, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { startMockModel } from "@bobi/mock-model"
+import { ideEnv } from "../../scripts/ide/env.ts"
 
 const ROOT = path.resolve(import.meta.dir, "..", "..")
 const CODE_OSS = path.join(ROOT, "vendor", "code-oss")
 const EXTENSION = path.join(CODE_OSS, "extensions", "bobi-chat")
 
 export async function runIdeTest(): Promise<{ passed: boolean; code: number; output: string }> {
+  Bun.spawnSync(["bun", path.join(ROOT, "scripts", "ide", "prepare.ts")], { stdout: "ignore", stderr: "inherit" })
   const project = await realpath(await mkdtemp(path.join(tmpdir(), "bobi-ide-it-")))
   const userData = await mkdtemp(path.join(tmpdir(), "bobi-ide-user-"))
   const home = await mkdtemp(path.join(tmpdir(), "bobi-ide-home-"))
@@ -35,8 +37,7 @@ export async function runIdeTest(): Promise<{ passed: boolean; code: number; out
       {
         cwd: CODE_OSS,
         env: {
-          ...process.env,
-          PATH: `/opt/homebrew/opt/node@24/bin:/opt/homebrew/bin:${process.env.PATH}`,
+          ...ideEnv(),
           BOBI_HOME: home,
           BOBI_MODEL_BASE_URL: mock.baseURL,
           BOBI_MODEL: "mock-model",

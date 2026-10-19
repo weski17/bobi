@@ -9,5 +9,10 @@ cat > "$bin/bobi" <<WRAPPER
 exec bun "$repo/packages/shell/src/cli.ts" "\$@"
 WRAPPER
 chmod +x "$bin/bobi"
-echo "installed $bin/bobi -> $repo"
+cat > "$bin/bobi-ide" <<WRAPPER
+#!/usr/bin/env bash
+exec bun "$repo/scripts/ide/run.ts" "\$@"
+WRAPPER
+chmod +x "$bin/bobi-ide"
+echo "installed $bin/bobi and $bin/bobi-ide -> $repo"
 case ":$PATH:" in *":$bin:"*) ;; *) echo "add $bin to PATH to use 'bobi' from anywhere" ;; esac

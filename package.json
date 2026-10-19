@@ -14,6 +14,9 @@
     "test:coverage": "bun test --coverage ./packages ./mcp-servers ./tests/integration",
     "test:sandbox": "bun test ./tests/sandbox",
     "test:e2e": "bun test ./tests/e2e",
+    "test:ide": "bun tests/ide/run-ide-test.ts",
+    "ide:setup": "bun scripts/ide/setup.ts",
+    "ide": "bun scripts/ide/run.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "browser:install": "bun packages/browser/node_modules/playwright-core/cli.js install chromium-headless-shell"
   },
