@@ -1,4 +1,4 @@
-// End-to-end: the `bobi` command runs the real OpenCode CLI + server with @bobi/core against the mock model.
+// End-to-end: the `bobi` application (own server with the engine and @bobi/core, engine terminal client) against the mock model.
 import { afterAll, beforeAll, expect, test } from "bun:test"
 import { existsSync } from "node:fs"
 import { mkdtemp, realpath, rm } from "node:fs/promises"
@@ -33,7 +33,7 @@ async function bobi(...args: string[]) {
       BOBI_MODEL_BASE_URL: mock.baseURL,
       BOBI_MODEL: "mock-model",
       BOBI_MODEL_API_KEY: "shell-test",
-      BOBI_OPENCODE_CONFIG_DIR: configDir,
+      BOBI_HOME: configDir,
       NO_COLOR: "1",
     },
   })
@@ -59,8 +59,14 @@ test("bobi run without a TTY rejects writes instead of performing them", async (
   expect(existsSync(target)).toBe(false)
 }, 90_000)
 
-test("bobi refuses commands that bypass its safeguards", async () => {
-  const { output, code } = await bobi("run", "--auto", "x")
-  expect(code).toBe(2)
-  expect(output).toContain("--auto is not available in Bobi")
+test("bobi refuses commands and flags that bypass its safeguards", async () => {
+  for (const args of [["run", "--auto", "x"], ["run", "--server", "http://127.0.0.1:1", "x"], ["upgrade", "now"]]) {
+    const { output, code } = await bobi(...args)
+    expect(code).toBe(2)
+    expect(output).toMatch(/^bobi: /m)
+  }
 }, 30_000)
+
+test("bobi keeps its data under BOBI_HOME", () => {
+  expect(existsSync(path.join(configDir, "data", "bobi.db"))).toBe(true)
+})

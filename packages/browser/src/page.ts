@@ -7,7 +7,10 @@ export type PageResult = { url: string; title: string; text: string; truncated: 
 export type PageOptions = { timeoutMs?: number; maxChars?: number }
 
 export class BrowserError extends Error {
-  override name = "BrowserError"
+  constructor(message: string) {
+    super(message)
+    this.name = "BrowserError"
+  }
 }
 
 export function assertWebUrl(raw: string): URL {
@@ -22,12 +25,19 @@ export function assertWebUrl(raw: string): URL {
   return url
 }
 
+export type BrowserOptions = {
+  /** Use a preinstalled Chromium (e.g. in the container image) instead of Playwright's download. */
+  readonly executablePath?: string
+}
+
 export class HeadlessBrowser {
   private browser: Promise<Browser> | undefined
 
+  constructor(private readonly options: BrowserOptions = {}) {}
+
   private launch(): Promise<Browser> {
     this.browser ??= import("playwright-core").then(({ chromium }) =>
-      chromium.launch({ headless: true }).catch((error: Error) => {
+      chromium.launch({ headless: true, ...(this.options.executablePath ? { executablePath: this.options.executablePath } : {}) }).catch((error: Error) => {
         this.browser = undefined
         throw new BrowserError(`Cannot start Chromium. Install it with "bun run browser:install". ${error.message.split("\n")[0]}`)
       }),
