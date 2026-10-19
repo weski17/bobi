@@ -54,3 +54,22 @@ test("Allow once lets the write through", async () => {
   expect(result.code, result.stderr).toBe(0)
   expect(await readFile(result.file, "utf8")).toBe("from the agent")
 }, 90_000)
+
+test("the terminal UI starts in Code mode and Shift+Tab switches to the next Bobi mode", async () => {
+  dir = await realpath(await mkdtemp(path.join(tmpdir(), "bobi-tui-")))
+  mock = startMockModel()
+  const child = Bun.spawn(["python3", "-I", DRIVER, dir, "wait:Code", "key:shift-tab", "wait:Plan"], {
+    env: {
+      ...process.env,
+      BOBI_TUI_CMD: JSON.stringify(["bun", CLI]),
+      BOBI_MODEL_BASE_URL: mock.baseURL,
+      BOBI_MODEL: "mock-model",
+      BOBI_MODEL_API_KEY: "tui-test",
+      BOBI_HOME: path.join(dir, ".bobi-home"),
+    },
+    stdout: "pipe",
+    stderr: "pipe",
+  })
+  const [stderr, code] = await Promise.all([new Response(child.stderr).text(), child.exited])
+  expect(code, stderr).toBe(0)
+}, 90_000)
