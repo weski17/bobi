@@ -16,5 +16,6 @@
 | [0012](0012-configurable-branding.md) | Configurable branding | Accepted |
 | [0013](0013-standalone-application.md) | Bobi as a standalone application | Accepted |
 | [0014](0014-project-trust.md) | Project trust | Accepted |
+| [0015](0015-mcp.md) | MCP client and the code graph server | Accepted |
 
 New ADRs: copy [`0000-template.md`](0000-template.md), next free number.

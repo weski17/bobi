@@ -23,5 +23,13 @@
     // OTLP/HTTP endpoint of an OpenTelemetry collector or Langfuse; also settable via OTEL_EXPORTER_OTLP_ENDPOINT
     // "otlpEndpoint": "http://localhost:4318"
   },
-  "checkpoints": { "enabled": true }
+  "checkpoints": { "enabled": true },
+  // MCP servers. The built-in "code-graph" server is always available (Advanced mode).
+  // Credentials only as ${ENV_VAR}; project servers are used only in trusted projects.
+  "mcp": {
+    "servers": {
+      // "jira": { "type": "remote", "url": "https://jira.intranet/mcp", "headers": { "Authorization": "Bearer ${JIRA_TOKEN}" } },
+      // "docs": { "type": "local", "command": ["bunx", "my-docs-mcp"], "env": { "DOCS_TOKEN": "${DOCS_TOKEN}" } }
+    }
+  }
 }
