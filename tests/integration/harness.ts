@@ -12,8 +12,12 @@ export type Harness = {
   readonly mock: MockModel
   readonly audit: MemorySink
   readonly opencode: Awaited<ReturnType<typeof OpenCode.create>>
+  /** BOBI_HOME used for global modes and rules in this harness. */
+  readonly globalDir: string
   /** Starts a session in `dir`, sends one prompt and returns the session id. */
   prompt(text: string, ...turns: Turn[]): Promise<string>
+  /** Like prompt, in a given mode. */
+  promptIn(mode: string, text: string, ...turns: Turn[]): Promise<string>
   close(): Promise<void>
 }
 
@@ -33,6 +37,7 @@ export async function createHarness(patch: Partial<BobiConfig> = {}, secrets: st
   // real git worktree path and silently skips snapshots when they differ.
   const dir = await realpath(await mkdtemp(path.join(tmpdir(), "bobi-it-")))
   const configDir = await mkdtemp(path.join(tmpdir(), "bobi-it-config-"))
+  const globalDir = await mkdtemp(path.join(tmpdir(), "bobi-it-global-"))
   const config: BobiConfig = {
     ...structuredClone(DEFAULTS),
     ...patch,
@@ -41,7 +46,7 @@ export async function createHarness(patch: Partial<BobiConfig> = {}, secrets: st
   }
   const audit = new MemorySink()
   // The browser tool is only registered where a test needs it, so other tests don't depend on Chromium.
-  const core = createBobiCore({ config, audit, secrets, ...(options.browser ? {} : { browser: false }) })
+  const core = createBobiCore({ config, audit, secrets, globalDir, ...(options.browser ? {} : { browser: false }) })
   process.env.BOBI_MODEL_API_KEY = "it-test-key"
   const opencode = await OpenCode.create({
     config: { directory: configDir, project: false, content: JSON.stringify(toOpenCodeConfig(config)) },
@@ -54,9 +59,16 @@ export async function createHarness(patch: Partial<BobiConfig> = {}, secrets: st
     mock,
     audit,
     opencode,
+    globalDir,
     async prompt(text, ...turns) {
       mock.enqueue(...turns)
       const session = await opencode.sessions.create({ location: { directory: dir } })
+      await opencode.sessions.prompt({ sessionID: session.id, text })
+      return session.id
+    },
+    async promptIn(mode, text, ...turns) {
+      mock.enqueue(...turns)
+      const session = await opencode.sessions.create({ location: { directory: dir }, agent: mode })
       await opencode.sessions.prompt({ sessionID: session.id, text })
       return session.id
     },
@@ -65,6 +77,7 @@ export async function createHarness(patch: Partial<BobiConfig> = {}, secrets: st
       await mock.stop()
       await rm(dir, { recursive: true, force: true })
       await rm(configDir, { recursive: true, force: true })
+      await rm(globalDir, { recursive: true, force: true })
     },
   }
 }
