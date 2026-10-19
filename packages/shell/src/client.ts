@@ -16,6 +16,7 @@ export function clientSpec(
   args: readonly string[],
   server: { url: string; password: string },
   paths: BobiPaths,
+  cwd: string,
   baseEnv: Record<string, string | undefined> = process.env,
 ): ClientSpec {
   const env: Record<string, string> = {}
@@ -23,6 +24,9 @@ export function clientSpec(
   // The client process only renders; tools run in the server. Its own state goes under ~/.bobi/tui.
   const tui = path.join(paths.home, "tui")
   Object.assign(env, {
+    // The engine client takes the project directory from $PWD before process.cwd(); an inherited PWD
+    // would open the session in the wrong directory.
+    PWD: cwd,
     OPENCODE_PASSWORD: server.password,
     OPENCODE_CLIENT: "bobi",
     OPENCODE_DISABLE_AUTOUPDATE: "1",

@@ -70,7 +70,7 @@ export async function runApp(argv: readonly string[], io: Io): Promise<number> {
       io.err(`bobi: cannot reach a Bobi server at ${command.url} (${health ? `HTTP ${health.status}` : "no connection"})`)
       return 2
     }
-    const spec = clientSpec(command.client, { url: command.url, password }, bobiPaths(io.env), io.env)
+    const spec = clientSpec(command.client, { url: command.url, password }, bobiPaths(io.env), io.cwd, io.env)
     return io.spawn(spec.argv, spec.env, io.cwd)
   }
 
@@ -81,7 +81,7 @@ export async function runApp(argv: readonly string[], io: Io): Promise<number> {
   const started = await startServer(io, directory, { hostname: "127.0.0.1", port: 0 })
   try {
     const args = command.kind === "run" ? ["run", ...command.client] : []
-    const spec = clientSpec(args, { url: started.server.url, password: started.password }, started.paths, io.env)
+    const spec = clientSpec(args, { url: started.server.url, password: started.password }, started.paths, directory, io.env)
     return await io.spawn(spec.argv, spec.env, directory)
   } finally {
     await stop(started)
