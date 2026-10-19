@@ -12,6 +12,8 @@ import {
   ModeError,
   modeDenyRules,
   modePrompt,
+  mcpServerOf,
+  mcpServers,
   parseModes,
   type Mode,
 } from "../src/index.ts"
@@ -65,7 +67,7 @@ describe("parseModes", () => {
         "edit restriction needs fileRegex",
         "invalid fileRegex",
         "description must be a string",
-        'a group is a name or ["edit", { fileRegex }]',
+        'a group is a name, ["edit", { fileRegex }] or ["mcp", { servers }]',
         "customModes[0].extra: unknown key",
         "customModes[0].whenToUse: must be a string",
         'duplicate slug "dup"',
@@ -123,15 +125,18 @@ describe("groups", () => {
   })
 
   test("a mode with edit but without MCP keeps engine worktree tools on approval", () => {
-    expect(modeDenyRules(mode(["read", "edit"])).slice(-2)).toEqual([
+    expect(modeDenyRules(mode(["read", "edit"])).slice(-4)).toEqual([
       { action: "external_directory", resource: "*", effect: "ask" },
-      { action: "opencode_*", resource: "*", effect: "ask" },
+      { action: "opencode_session_*", resource: "*", effect: "ask" },
+      { action: "opencode_worktree_*", resource: "*", effect: "ask" },
+      { action: "opencode_models", resource: "*", effect: "ask" },
     ])
   })
 
   test("hidden tools", () => {
-    const names = ["read", "write", "shell", "browser", "subagent", "question", "github_create_issue", "opencode_worktree_create", "opencode_session_rename"]
-    expect(hiddenTools(mode(["read"]), names).sort()).toEqual(["browser", "github_create_issue", "opencode_worktree_create", "shell", "subagent", "write"])
+    const names = ["read", "write", "shell", "browser", "subagent", "question", "github_create_issue", "opencode_worktree_create", "opencode_session_rename", "opencode_read_mcp_resource", "opencode_list_mcp_resources"]
+    expect(hiddenTools(mode(["read"]), names).sort()).toEqual(["browser", "github_create_issue", "opencode_list_mcp_resources", "opencode_read_mcp_resource", "opencode_worktree_create", "shell", "subagent", "write"])
+    expect(hiddenTools(mode(["read", "edit"]), names)).toContain("opencode_read_mcp_resource")
     expect(hiddenTools(mode(["read", "edit", "execute", "browser", "mcp", "subtask"]), names)).toEqual([])
     expect(isMcpTool("codegraph_callers")).toBe(true)
     expect(isMcpTool("opencode_read_mcp_resource")).toBe(false)
@@ -147,4 +152,28 @@ describe("groups", () => {
 test("the documented example file is valid", async () => {
   const file = path.resolve(import.meta.dir, "..", "..", "..", "docs", "examples", "custom_modes.yaml")
   expect(parseModes(await Bun.file(file).text(), file).map((m) => m.slug)).toEqual(["ask", "reviewer"])
+})
+
+describe("mcp restrictions", () => {
+  test("parses server lists and rejects bad ones", () => {
+    const [m] = parseModes("customModes:\n  - slug: x\n    name: X\n    roleDefinition: r\n    groups:\n      - read\n      - - mcp\n        - servers: [code-graph, jira]\n", "f")
+    expect(mcpServers(m!)).toEqual(["code-graph", "jira"])
+    expect(() => parseModes("customModes:\n  - slug: x\n    name: X\n    roleDefinition: r\n    groups: [[mcp, { servers: [] }]]\n", "f")).toThrow(/mcp restriction needs servers/)
+    expect(() => parseModes("customModes:\n  - slug: x\n    name: X\n    roleDefinition: r\n    groups: [[mcp, { servers: [Bad_Name] }]]\n", "f")).toThrow(/mcp restriction/)
+  })
+
+  test("all, none and named servers", () => {
+    expect(mcpServers(mode(["mcp"]))).toBe("all")
+    expect(mcpServers(mode(["read"]))).toBe("none")
+    expect(mcpServers(mode([["mcp", { servers: ["a"] }], ["mcp", { servers: ["b", "a"] }]]))).toEqual(["a", "b"])
+  })
+
+  test("deny rules and hidden tools follow the server list", () => {
+    const m = mode(["read", ["mcp", { servers: ["code-graph"] }]])
+    expect(modeDenyRules(m, ["code-graph", "jira"]).filter((r) => r.action.endsWith("_*") && r.action !== "opencode_*")).toEqual([{ action: "jira_*", resource: "*", effect: "deny" }])
+    expect(hiddenTools(m, ["code-graph_callers", "jira_search", "opencode_session_rename", "read"])).toEqual(["jira_search"])
+    expect(modeDenyRules(mode(["mcp"]), ["jira"]).some((r) => r.action === "jira_*")).toBe(false)
+    expect(mcpServerOf("code-graph_find_symbol")).toBe("code-graph")
+    expect(mcpServerOf("read")).toBeUndefined()
+  })
 })
