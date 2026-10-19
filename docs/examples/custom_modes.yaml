@@ -1,0 +1,22 @@
+# Example: <project>/.bobi/custom_modes.yaml (or $BOBI_HOME/custom_modes.yaml for all projects)
+customModes:
+  # Same slug as a built-in mode: replaces it.
+  - slug: ask
+    name: Ask
+    description: Answer questions; may fix typos in documentation
+    roleDefinition: You explain this code base and may correct documentation, but never source code.
+    groups:
+      - read
+      - - edit
+        - fileRegex: ^docs/.*\.md$
+          description: Documentation only
+
+  # A new mode.
+  - slug: reviewer
+    name: Reviewer
+    description: Review changes for bugs, security issues and style
+    roleDefinition: >-
+      You are a strict code reviewer. Read the changes, run the tests, and report findings with file and line.
+      You do not change files.
+    whenToUse: Before merging a branch.
+    groups: [read, execute]
