@@ -1,0 +1,19 @@
+// Bobi default permission policy (ADR-0005). Versioned and reviewed via pull request.
+// Appended after every agent's own rules; OpenCode evaluates rules last-match-wins, and rules a
+// user saves with "always" are evaluated after these, so explicit user choices still apply.
+[
+  // Every write, every shell command and every network or external action needs confirmation.
+  { "action": "edit", "resource": "*", "effect": "ask" },
+  { "action": "shell", "resource": "*", "effect": "ask" },
+  { "action": "webfetch", "resource": "*", "effect": "ask" },
+  { "action": "websearch", "resource": "*", "effect": "ask" },
+  { "action": "browser", "resource": "*", "effect": "ask" },
+  { "action": "external_directory", "resource": "*", "effect": "ask" },
+  // MCP tools are named <server>_<tool>; MCP resource reads leave the project as well.
+  { "action": "*_*", "resource": "*", "effect": "ask" },
+  // Reading key material always asks, even inside the project.
+  { "action": "read", "resource": "*.pem", "effect": "ask" },
+  { "action": "read", "resource": "*.key", "effect": "ask" },
+  { "action": "read", "resource": "*id_rsa*", "effect": "ask" },
+  { "action": "read", "resource": "*id_ed25519*", "effect": "ask" }
+]

@@ -13,6 +13,7 @@
 | [0009](0009-shell.md) | Bobi Shell | Accepted |
 | [0010](0010-observability-and-audit.md) | Observability and audit logging | Accepted |
 | [0011](0011-testing-strategy.md) | Testing strategy | Accepted |
-| [0012](0012-configurable-branding.md) | Configurable branding | Proposed |
+| [0012](0012-configurable-branding.md) | Configurable branding | Accepted |
+| [0013](0013-standalone-application.md) | Bobi as a standalone application | Accepted |
 
 New ADRs: copy [`0000-template.md`](0000-template.md), next free number.

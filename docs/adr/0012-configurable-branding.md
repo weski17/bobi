@@ -1,6 +1,6 @@
 # ADR-0012: Configurable branding
 
-- Status: Proposed
+- Status: Accepted (2026-10-19) – internal FI experiment; logo kept out of the repo
 - Date: 2026-10-19
 
 ## Context

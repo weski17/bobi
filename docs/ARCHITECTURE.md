@@ -1,6 +1,6 @@
 # Bobi – Architecture (proposal, Phase 0)
 
-Status: **Proposed** – awaiting approval. Decisions are recorded in [`docs/adr/`](adr/).
+Status: **Accepted**, updated after Phase 1 (ADR-0013: Bobi is a standalone application). Decisions are recorded in [`docs/adr/`](adr/).
 Analysis inputs: [OpenCode](analysis/opencode.md), [Code-OSS](analysis/code-oss.md).
 
 ## 1. Overview
@@ -13,15 +13,16 @@ flowchart LR
   end
 
   subgraph Sandbox["Container sandbox (egress allowlist)"]
-    SERVER["Bobi Server<br/>= OpenCode server<br/>+ @bobi/core plugin"]
+    SERVER["Bobi Server (@bobi/server)<br/>engine embedded in-process<br/>+ @bobi/core as host plugin"]
     TOOLS["Tools: read/write/edit,<br/>grep/glob, shell, browser"]
     SNAP["Checkpoints<br/>(shadow git)"]
     SERVER --> TOOLS
     SERVER --> SNAP
   end
 
-  IDE -- "HTTP + SSE<br/>(@opencode/client)" --> SERVER
-  SHELL -- "in-process SDK<br/>or HTTP" --> SERVER
+  IDE -- "HTTP + SSE, password<br/>(@opencode/client)" --> SERVER
+  SHELL -- "HTTP + SSE, password<br/>(bobi / bobi attach)" --> SERVER
+  SERVER -- "only via egress proxy<br/>(allowlist)" --> GW
   SERVER -- "OpenAI-/Anthropic-<br/>compatible API" --> GW["Model gateway<br/>(LiteLLM / vLLM / Ollama)"]
   SERVER -- "MCP (stdio / HTTP)" --> MCP["MCP servers<br/>(code-graph, COBOL, Zowe, …)"]
   SERVER -- "OTLP" --> OTEL["OTel collector<br/>→ Langfuse / any backend"]
@@ -35,9 +36,12 @@ IDE and Shell are thin clients; they never implement agent logic themselves.
 | Layer | What | Where | Upstream change |
 |---|---|---|---|
 | Engine | Agent loop, tools, permissions, snapshots, MCP, SQLite, HTTP API | `vendor/opencode` (fork, pinned tag) | Minimal patch series only |
-| **Bobi core** | Modes, `.bobi/` loader, `.bobiignore`, secure defaults, secret masking, audit spans, model routing, browser tool | `packages/core` (`@bobi/core`, an OpenCode plugin) | None – uses plugin API |
-| Config | `bobi.jsonc` + env → OpenCode config | `packages/config` (`@bobi/config`) | None |
-| Shell | `bobi` binary: starts engine with Bobi plugin + env, rebranded TUI/CLI | `packages/shell` (`@bobi/shell`) | Small branding patches |
+| **Bobi core** | Secure defaults, secret masking, untrusted-data marking, audit spans; later modes, `.bobi/` loader, `.bobiignore` | `packages/core` (`@bobi/core`, registered as host plugin – never optional) | None – uses plugin API |
+| Config | `bobi.jsonc` + env → engine config, offline switches | `packages/config` (`@bobi/config`) | None |
+| Server | Embeds the engine, own data dir `~/.bobi`, password-protected HTTP front | `packages/server` (`@bobi/server`) | None (uses one internal SDK module) |
+| Browser tool | Headless Chromium via Playwright, approval per page | `packages/browser` (`@bobi/browser`) | None |
+| Shell | `bobi`, `bobi run`, `bobi serve`, `bobi attach`; engine TUI as client | `packages/shell` (`@bobi/shell`) | Branding patch `patches/opencode/0001-*` |
+| Sandbox | Podman container + `@bobi/egress-proxy` allowlist | `sandbox/`, `packages/egress-proxy` | None |
 | IDE | Code-OSS fork with Bobi branding; chat panel as built-in extension | `vendor/code-oss` + `packages/ide-extension` → `extensions/bobi-chat` | `product.json` overlay + small patch series |
 | MCP servers | code-graph, COBOL, Zowe | `mcp-servers/*` | – |
 

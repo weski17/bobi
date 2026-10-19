@@ -1,0 +1,44 @@
+name: ci
+
+on:
+  push:
+    branches: [main, "phase-*"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.3
+      - name: Install ripgrep (OpenCode must not download it at runtime)
+        run: sudo apt-get update && sudo apt-get install -y ripgrep
+      - name: Install upstream
+        run: cd vendor/opencode && bun install --frozen-lockfile
+      - name: Install Bobi
+        run: bun install --frozen-lockfile
+      - name: Install headless Chromium
+        run: bun run browser:install --with-deps
+      - name: Typecheck
+        run: bun run typecheck
+      - name: Tests with coverage gate
+        run: bun run test:coverage
+      - name: End-to-end terminal UI (approval prompt)
+        run: bun run test:e2e
+
+  semgrep:
+    runs-on: ubuntu-24.04
+    container:
+      image: semgrep/semgrep:1.178.0
+    steps:
+      - uses: actions/checkout@v4
+      - name: Semgrep (Bobi code only)
+        run: semgrep scan --config p/typescript --config p/secrets --error --exclude vendor --exclude .upstream packages tests scripts
