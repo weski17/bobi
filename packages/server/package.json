@@ -11,6 +11,7 @@
     "@bobi/config": "workspace:*",
     "@bobi/core": "workspace:*",
     "@bobi/mcp-cobol": "workspace:*",
-    "@bobi/mcp-code-graph": "workspace:*"
+    "@bobi/mcp-code-graph": "workspace:*",
+    "@bobi/mcp-zowe": "workspace:*"
   }
 }

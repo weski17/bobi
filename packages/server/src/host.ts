@@ -4,6 +4,7 @@ import { loadConfig, SDK_OFFLINE_OPTIONS, toOpenCodeConfig, TrustStore, type Bob
 import { createBobiCore, type AuditSink } from "@bobi/core"
 import { CLI as CODE_GRAPH_CLI } from "@bobi/mcp-code-graph"
 import { CLI as COBOL_CLI } from "@bobi/mcp-cobol"
+import { CLI as ZOWE_CLI, zoweConfigured } from "@bobi/mcp-zowe"
 import { startNodeServer, type NodeServer } from "./node-host.ts"
 import type { BobiPaths } from "./paths.ts"
 
@@ -41,9 +42,11 @@ export async function startBobiServer(options: BobiServerOptions): Promise<BobiS
       return { ...own, model: options.config.model, telemetry: options.config.telemetry }
     },
     // Built-in code graph and COBOL MCP servers for every project (requirement 16); usable in modes with the mcp group.
+    // The mainframe server only when a connection is configured (Zowe config file or ZOWE_OPT_HOST).
     builtinMcp: (project) => ({
       "code-graph": { type: "local", command: [process.execPath, CODE_GRAPH_CLI, project] },
       cobol: { type: "local", command: [process.execPath, COBOL_CLI, project] },
+      ...(zoweConfigured(project, env) ? { zowe: { type: "local" as const, command: [process.execPath, ZOWE_CLI, project] } } : {}),
     }),
     env,
     secrets: options.secrets ?? [],
