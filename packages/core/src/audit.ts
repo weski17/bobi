@@ -1,9 +1,13 @@
 // Audit trail (ADR-0010): every tool call and every permission decision becomes a record with
 // user, mode, tool and result. Records are exported as OTLP/HTTP JSON spans so any OpenTelemetry
-// backend (collector, Langfuse, ...) can ingest them. No OpenTelemetry SDK dependency.
+// backend (collector, Langfuse, ...) can ingest them, and appended to a local JSONL log for audit reports.
+// No OpenTelemetry SDK dependency.
+import { appendFileSync, mkdirSync } from "node:fs"
+import path from "node:path"
 
 export type AuditRecord = {
-  readonly name: "bobi.tool" | "bobi.permission"
+  /** A tool call, a permission evaluation, or the user's answer to an approval request. */
+  readonly name: "bobi.tool" | "bobi.permission" | "bobi.approval"
   readonly start: number
   readonly end: number
   readonly attributes: {
@@ -13,7 +17,7 @@ export type AuditRecord = {
     readonly "bobi.tool"?: string
     readonly "bobi.action"?: string
     readonly "bobi.resources"?: string
-    readonly "bobi.result": "completed" | "error" | "allow" | "ask" | "deny"
+    readonly "bobi.result": "completed" | "error" | "allow" | "ask" | "deny" | "once" | "always" | "reject"
     readonly "bobi.error"?: string
   }
 }
@@ -29,6 +33,40 @@ export class MemorySink implements AuditSink {
     this.records.push(entry)
   }
   async flush() {}
+}
+
+/** Appends records as JSON lines to <dir>/<YYYY-MM-DD>.jsonl (UTC), readable only by the user. */
+export class FileSink implements AuditSink {
+  private failed = false
+
+  constructor(
+    readonly dir: string,
+    private readonly now: () => Date = () => new Date(),
+  ) {}
+
+  record(entry: AuditRecord) {
+    try {
+      mkdirSync(this.dir, { recursive: true, mode: 0o700 })
+      appendFileSync(path.join(this.dir, `${this.now().toISOString().slice(0, 10)}.jsonl`), `${JSON.stringify(entry)}\n`, { mode: 0o600 })
+    } catch (error) {
+      // Like OTLP export, a failing audit log must not break a session; it is reported once.
+      if (!this.failed) console.error(`bobi audit: cannot write ${this.dir}: ${(error as Error).message}`)
+      this.failed = true
+    }
+  }
+
+  async flush() {}
+}
+
+/** Sends every record to several sinks. */
+export class MultiSink implements AuditSink {
+  constructor(readonly sinks: readonly AuditSink[]) {}
+  record(entry: AuditRecord) {
+    for (const sink of this.sinks) sink.record(entry)
+  }
+  async flush() {
+    await Promise.all(this.sinks.map((s) => s.flush()))
+  }
 }
 
 const hex = (bytes: number) => Array.from(crypto.getRandomValues(new Uint8Array(bytes)), (b) => b.toString(16).padStart(2, "0")).join("")

@@ -76,4 +76,7 @@ test("mainframe: reads can be auto-approved, writes and job submission always as
   await h.opencode.permission.reply({ sessionID: submit, requestID: submitRequest.id, decision: "once" })
   await h.opencode.sessions.wait({ sessionID: submit })
   expect(mainframe.jobs.map((j) => j.jobname)).toContain("T")
+  // The user's answers are part of the audit trail.
+  const answers = h.audit.records.filter((r) => r.name === "bobi.approval").map((r) => `${r.attributes["bobi.action"]}:${r.attributes["bobi.result"]}:${r.attributes["bobi.mode"]}`)
+  expect(answers).toEqual(["zowe_write_dataset:reject:advanced", "zowe_submit_job:once:advanced"])
 }, 90_000)

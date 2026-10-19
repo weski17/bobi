@@ -99,3 +99,15 @@ describe("freshness", () => {
     expect(listSourceFiles(copy).map((f) => path.relative(copy, f))).toEqual(["src/extra.ts", "src/main.ts", "src/user.ts"])
   })
 })
+
+test("dependency diagram: files by directory, or directories for large projects", async () => {
+  const { dependencyDiagram } = await import("../src/index.ts")
+  const graph = CodeGraph.build(path.join(import.meta.dir, "fixture"))
+  const files = dependencyDiagram(graph)
+  expect(files.startsWith("flowchart LR")).toBe(true)
+  expect(files).toContain('subgraph n_dir_src_util["src/util"]')
+  expect(files).toContain("n_src_main_ts --> n_src_util_math_ts")
+  const dirs = dependencyDiagram(graph, { maxNodes: 1, depth: 1 })
+  expect(dirs).toContain('n_src["src/"]')
+  expect(dirs).not.toContain("subgraph")
+})

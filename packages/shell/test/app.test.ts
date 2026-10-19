@@ -224,3 +224,46 @@ test("clientSpec drops unset variables and appends the server URL", () => {
   expect(spec.argv.slice(-2)).toEqual(["--server", "http://127.0.0.1:1"])
   expect(spec.env.OPENCODE_PASSWORD).toBe("p")
 })
+
+test("bobi audit renders the local audit log as Markdown or JSON", async () => {
+  const { mkdir, writeFile } = await import("node:fs/promises")
+  const auditHome = await mkdtemp(path.join(tmpdir(), "bobi-audit-home-"))
+  try {
+    const t = io({ env: { BOBI_HOME: auditHome } })
+    expect(await runApp(["audit"], t.io)).toBe(0)
+    expect(t.err[0]).toContain("no audit records")
+    await mkdir(path.join(auditHome, "audit"))
+    const at = Date.parse("2026-10-19T10:00:00Z")
+    const base = { "bobi.user": "anna", "bobi.mode": "code", "bobi.session": "s1" }
+    const lines = [
+      { name: "bobi.permission", start: at, end: at, attributes: { ...base, "bobi.action": "shell", "bobi.resources": "npm test", "bobi.result": "ask" } },
+      { name: "bobi.approval", start: at + 1, end: at + 1, attributes: { ...base, "bobi.action": "shell", "bobi.resources": "npm test", "bobi.result": "once" } },
+      { name: "bobi.tool", start: at + 2, end: at + 3, attributes: { ...base, "bobi.tool": "shell", "bobi.result": "completed" } },
+    ]
+    await writeFile(path.join(auditHome, "audit", "2026-10-19.jsonl"), lines.map((l) => JSON.stringify(l)).join("\n"))
+    const md = io({ env: { BOBI_HOME: auditHome } })
+    expect(await runApp(["audit", "--from", "2026-10-19"], md.io)).toBe(0)
+    expect(md.out[0]).toContain("# Bobi audit report")
+    expect(md.out[0]).toContain("| shell | 1 | 0 |")
+    const json = io({ env: { BOBI_HOME: auditHome } })
+    await runApp(["audit", "--format", "json", "--user", "anna"], json.io)
+    expect(JSON.parse(json.out[0]!).totals).toMatchObject({ users: 1, sessions: 1, toolCalls: 1 })
+  } finally {
+    await rm(auditHome, { recursive: true, force: true })
+  }
+})
+
+test("bobi diagram prints Mermaid for code and COBOL projects", async () => {
+  const repo = path.resolve(import.meta.dir, "..", "..", "..")
+  const code = io()
+  expect(await runApp(["diagram", "--depth", "1", path.join(repo, "mcp-servers", "code-graph", "test", "fixture")], code.io)).toBe(0)
+  expect(code.out[0]).toStartWith("flowchart LR")
+  const cobolDir = path.join(repo, "mcp-servers", "cobol", "test", "fixture")
+  const system = io()
+  expect(await runApp(["diagram", "cobol", cobolDir], system.io)).toBe(0)
+  expect(system.out[0]).toContain("PAYCALC -->|call| TAXCALC")
+  const one = io()
+  expect(await runApp(["diagram", "cobol", "--program", "paycalc", cobolDir], one.io)).toBe(0)
+  expect(one.out[0]).toContain("flowchart TD")
+  expect(runApp(["diagram", "cobol", "--program", "NOPE", cobolDir], io().io)).rejects.toThrow(UsageError)
+})
