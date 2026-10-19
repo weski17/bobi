@@ -12,3 +12,5 @@ export { BOBI_IDENTITY, brandSystemPrompt, ENGINE_IDENTITY } from "./identity.ts
 export { INIT_PROMPT, initPrompt } from "./init.ts"
 export { collectRules, rulesPrompt } from "./rules.ts"
 export type { RuleFile, RuleSources } from "./rules.ts"
+export { resolveMcpServers } from "./mcp.ts"
+export type { EngineMcpServer, ResolvedMcp } from "./mcp.ts"

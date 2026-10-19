@@ -1,0 +1,18 @@
+{
+  "name": "@bobi/mcp-code-graph",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "exports": { ".": "./src/index.ts" },
+  "bin": { "bobi-mcp-code-graph": "./src/cli.ts" },
+  "dependencies": {
+    "@bobi/core": "workspace:*",
+    "@modelcontextprotocol/server": "2.0.0",
+    "ignore": "7.0.11",
+    "typescript": "5.8.2"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/client": "2.0.0"
+  }
+}

@@ -5,12 +5,13 @@
   "license": "MIT",
   "packageManager": "bun@1.4.3",
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "mcp-servers/*"
   ],
   "scripts": {
     "postinstall": "bun scripts/apply-patches.ts && bun scripts/link-upstream.ts",
-    "test": "bun test ./packages ./tests/integration",
-    "test:coverage": "bun test --coverage ./packages ./tests/integration",
+    "test": "bun test ./packages ./mcp-servers ./tests/integration",
+    "test:coverage": "bun test --coverage ./packages ./mcp-servers ./tests/integration",
     "test:sandbox": "bun test ./tests/sandbox",
     "test:e2e": "bun test ./tests/e2e",
     "typecheck": "tsc -p tsconfig.json --noEmit",
@@ -19,9 +20,11 @@
   "devDependencies": {
     "@bobi/config": "workspace:*",
     "@bobi/core": "workspace:*",
+    "@bobi/mcp-code-graph": "workspace:*",
     "@bobi/mock-model": "workspace:*",
     "@bobi/server": "workspace:*",
     "@bobi/shell": "workspace:*",
+    "@modelcontextprotocol/server": "2.0.0",
     "@types/bun": "1.4.0",
     "typescript": "5.8.2"
   }

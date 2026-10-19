@@ -6,7 +6,9 @@ export type Group = (typeof GROUPS)[number]
 
 /** `edit` may be limited to files whose project-relative path matches `fileRegex`. */
 export type EditRestriction = { fileRegex: string; description?: string }
-export type GroupEntry = Group | ["edit", EditRestriction]
+/** `mcp` may be limited to named servers. */
+export type McpRestriction = { servers: string[] }
+export type GroupEntry = Group | ["edit", EditRestriction] | ["mcp", McpRestriction]
 
 export type Mode = {
   slug: string
@@ -39,6 +41,12 @@ function parseGroup(entry: unknown, at: string, issues: string[]): GroupEntry | 
     issues.push(`${at}: unknown group "${entry}" (known: ${GROUPS.join(", ")})`)
     return undefined
   }
+  if (Array.isArray(entry) && entry[0] === "mcp" && isObject(entry[1])) {
+    const { servers } = entry[1]
+    if (!Array.isArray(servers) || servers.length === 0 || servers.some((s) => typeof s !== "string" || !/^[a-z][a-z0-9-]*$/.test(s)))
+      return void issues.push(`${at}: mcp restriction needs servers: a non-empty list of server names`)
+    return ["mcp", { servers: [...servers] as string[] }]
+  }
   if (Array.isArray(entry) && entry[0] === "edit" && isObject(entry[1])) {
     const { fileRegex, description } = entry[1]
     if (typeof fileRegex !== "string" || fileRegex === "") return void issues.push(`${at}: edit restriction needs fileRegex`)
@@ -50,7 +58,7 @@ function parseGroup(entry: unknown, at: string, issues: string[]): GroupEntry | 
     if (!optionalString(description)) return void issues.push(`${at}: description must be a string`)
     return ["edit", { fileRegex, ...(description ? { description } : {}) }]
   }
-  issues.push(`${at}: a group is a name or ["edit", { fileRegex }]`)
+  issues.push(`${at}: a group is a name, ["edit", { fileRegex }] or ["mcp", { servers }]`)
   return undefined
 }
 
@@ -110,6 +118,13 @@ export function hasGroup(mode: Mode, group: Group): boolean {
 /** The edit restriction of a mode, if its edit group is limited by fileRegex. */
 export function editRestriction(mode: Mode): EditRestriction | undefined {
   if (mode.groups.includes("edit")) return undefined
-  const entry = mode.groups.find((g): g is ["edit", EditRestriction] => Array.isArray(g))
+  const entry = mode.groups.find((g): g is ["edit", EditRestriction] => Array.isArray(g) && g[0] === "edit")
   return entry?.[1]
+}
+
+/** MCP servers the mode may use: "all", "none", or a list of server names. */
+export function mcpServers(mode: Mode): "all" | "none" | string[] {
+  if (mode.groups.includes("mcp")) return "all"
+  const entries = mode.groups.filter((g): g is ["mcp", McpRestriction] => Array.isArray(g) && g[0] === "mcp")
+  return entries.length ? [...new Set(entries.flatMap((e) => e[1].servers))] : "none"
 }

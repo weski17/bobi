@@ -2,6 +2,7 @@
 // (ADR-0013). A failing host plugin fails startup, so there is no path without Bobi's safeguards.
 import { loadConfig, SDK_OFFLINE_OPTIONS, toOpenCodeConfig, TrustStore, type BobiConfig } from "@bobi/config"
 import { createBobiCore, type AuditSink } from "@bobi/core"
+import { CLI as CODE_GRAPH_CLI } from "@bobi/mcp-code-graph"
 import { startNodeServer, type NodeServer } from "./node-host.ts"
 import type { BobiPaths } from "./paths.ts"
 
@@ -38,6 +39,9 @@ export async function startBobiServer(options: BobiServerOptions): Promise<BobiS
       const own = loadConfig({ cwd: project, env, trustedProject: trusted }).config
       return { ...own, model: options.config.model, telemetry: options.config.telemetry }
     },
+    // Built-in code graph MCP server for every project (requirement 16); usable in modes with the mcp group.
+    builtinMcp: (project) => ({ "code-graph": { type: "local", command: [process.execPath, CODE_GRAPH_CLI, project] } }),
+    env,
     secrets: options.secrets ?? [],
     ...(options.audit ? { audit: options.audit } : {}),
     ...(options.browser === false ? { browser: false as const } : {}),

@@ -1,6 +1,28 @@
 # Status
 
-**Current phase: 2 (follow-ups)** · Branch `phase-2-followups` · waiting for approval, then phase 3 (MCP)
+**Current phase: 3 – MCP client and code graph** · Branch `phase-3-mcp` · waiting for approval
+
+## Phase 3
+
+| Task | Status | Where |
+|---|---|---|
+| MCP servers in config (local/remote, global/project), credentials only as `${ENV}` | ✅ | `packages/config` |
+| Registration per project, individual tools (no Code Mode), OAuth off | ✅ | `packages/core/src/mcp.ts` |
+| MCP per mode: `mcp` or `[mcp, { servers }]`; others denied and hidden | ✅ | `packages/modes` |
+| MCP calls ask; auto-approve per server; results marked untrusted | ✅ | `tests/integration/mcp.test.ts` |
+| Remote MCP server with token from the environment; missing variable disables the server | ✅ | `tests/integration/mcp.test.ts` |
+| Code graph MCP server (TS/JS): symbols, callers/callees, call paths, file dependencies | ✅ | `mcp-servers/code-graph` |
+| Code graph built in for every project; runs inside the sandbox | ✅ | `packages/server/src/host.ts`, `tests/sandbox` |
+| Demo guide | ✅ | docs/demos/phase-3.md |
+
+Tests: **242 pass, 0 fail** + 4 terminal-UI e2e + 6 sandbox · line coverage 99.7 % · typecheck clean.
+
+### Phase 3 findings
+
+1. The engine offers MCP tools only through Code Mode by default → `codemode: false`, so modes and approvals work per tool.
+2. Modes with edit but without MCP could read MCP resources through the engine's `opencode_*_mcp_resource` tools
+   (phase 2 rule re-allowed all `opencode_*`) → fixed.
+3. MCP tools appear a moment after the server connects; the first message right after start may not offer them.
 
 ## Phase 2
 
