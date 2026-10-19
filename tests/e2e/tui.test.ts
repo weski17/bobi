@@ -73,3 +73,26 @@ test("the terminal UI starts in Code mode and Shift+Tab switches to the next Bob
   const [stderr, code] = await Promise.all([new Response(child.stderr).text(), child.exited])
   expect(code, stderr).toBe(0)
 }, 90_000)
+
+test("the trust question is answered in the terminal before the UI starts", async () => {
+  dir = await realpath(await mkdtemp(path.join(tmpdir(), "bobi-tui-")))
+  await Bun.write(path.join(dir, "AGENTS.md"), "Use tabs.")
+  mock = startMockModel()
+  const home = path.join(dir, ".bobi-home")
+  const child = Bun.spawn(["python3", "-I", DRIVER, dir, "wait:Trust this project?", "type:y", "key:enter", "wait:Ask anything"], {
+    env: {
+      ...process.env,
+      BOBI_TUI_CMD: JSON.stringify(["bun", CLI]),
+      BOBI_MODEL_BASE_URL: mock.baseURL,
+      BOBI_MODEL: "mock-model",
+      BOBI_MODEL_API_KEY: "tui-test",
+      BOBI_HOME: home,
+    },
+    stdout: "pipe",
+    stderr: "pipe",
+  })
+  const [stderr, code] = await Promise.all([new Response(child.stderr).text(), child.exited])
+  expect(code, stderr).toBe(0)
+  const store = JSON.parse(await Bun.file(path.join(home, "trust.json")).text())
+  expect(Object.values(store.projects as Record<string, { trusted: boolean }>)[0]!.trusted).toBe(true)
+}, 90_000)
