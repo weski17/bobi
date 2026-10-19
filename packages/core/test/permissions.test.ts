@@ -18,7 +18,7 @@ describe("default policy", () => {
     for (const [action, resource] of [
       ["edit", "/repo/src/a.ts"],
       ["shell", "rm -rf /"],
-      ["shell", "git status"],
+      ["shell", "git push"],
       ["webfetch", "https://example.com"],
       ["websearch", "query"],
       ["browser", "https://intranet"],
@@ -42,9 +42,23 @@ describe("default policy", () => {
       expect(evaluate("read", file, rules)).toBe("ask")
   })
 
-  test("upstream deny rules are kept (deny is evaluated before Bobi's rules)", () => {
-    // OpenCode checks configured deny rules first; Bobi only appends ask/allow rules.
-    expect(policy.every((r) => r.effect !== "allow")).toBe(true)
+  test("the policy never denies (engine denies are checked first) and allows only read-only git", () => {
+    expect(policy.some((r) => r.effect === "deny")).toBe(false)
+    expect(policy.filter((r) => r.effect === "allow").every((r) => r.action === "shell" && r.resource.startsWith("git "))).toBe(true)
+  })
+})
+
+describe("read-only git", () => {
+  test("status, diff, log and show run without asking", () => {
+    const rules = effective()
+    for (const cmd of ["git status", "git status --short", "git diff", "git diff --staged", "git log -n 10 --format=%s", "git show HEAD", "git branch --show-current"])
+      expect(evaluate("shell", cmd, rules)).toBe("allow")
+  })
+
+  test("writing or changing git commands still ask", () => {
+    const rules = effective()
+    for (const cmd of ["git commit -m x", "git push", "git branch -D main", "git diff --output=/tmp/x", "git log --output=out.txt", "git checkout .", "git reset --hard"])
+      expect(evaluate("shell", cmd, rules)).toBe("ask")
   })
 })
 
