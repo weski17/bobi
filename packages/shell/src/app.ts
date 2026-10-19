@@ -3,7 +3,7 @@ import { randomBytes } from "node:crypto"
 import { mkdirSync, realpathSync, statSync } from "node:fs"
 import path from "node:path"
 import { loadConfig, TrustStore, trustFiles, type LoadedConfig } from "@bobi/config"
-import { bobiPaths, createHost, ensureCheckpointRepo, serve, type BobiPaths, type Host, type RunningServer } from "@bobi/server"
+import { bobiPaths, ensureCheckpointRepo, startBobiServer, type BobiPaths, type BobiServer } from "@bobi/server"
 import { HELP, parseArgs, UsageError, VERSION, type Command } from "./args.ts"
 import { clientSpec } from "./client.ts"
 
@@ -20,21 +20,16 @@ export type Io = {
   readonly ask?: (question: string) => Promise<boolean>
 }
 
-export type Started = { host: Host; server: RunningServer; password: string; paths: BobiPaths; loaded: LoadedConfig }
+export type Started = { server: BobiServer; password: string; paths: BobiPaths; loaded: LoadedConfig }
 
 export async function startServer(io: Io, cwd: string, listen: { hostname: string; port: number }, password?: string): Promise<Started> {
   const paths = bobiPaths(io.env)
   const loaded = loadConfig({ cwd, env: io.env, trustedProject: new TrustStore(paths.home).isTrusted(cwd) })
   mkdirSync(paths.config, { recursive: true })
   const secret = password ?? randomBytes(24).toString("base64url")
-  const host = await createHost({ config: loaded.config, paths, secrets: [loaded.apiKey, secret], env: io.env })
-  try {
-    const server = serve({ host, password: secret, ...listen })
-    return { host, server, password: secret, paths, loaded }
-  } catch (error) {
-    await host.close()
-    throw error
-  }
+  if (secret.length < 16) throw new Error("server password must have at least 16 characters")
+  const server = await startBobiServer({ config: loaded.config, paths, password: secret, secrets: [loaded.apiKey, secret], env: io.env, ...listen })
+  return { server, password: secret, paths, loaded }
 }
 
 /**
@@ -74,7 +69,6 @@ function announce(io: Io, repo: ReturnType<typeof ensureCheckpointRepo>) {
 
 async function stop(started: Started) {
   await started.server.stop()
-  await started.host.close()
 }
 
 export async function runApp(rawArgv: readonly string[], io: Io): Promise<number> {
