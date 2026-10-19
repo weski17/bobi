@@ -18,7 +18,8 @@ bash scripts/install.sh            # `bobi` in ~/.local/bin
 
 ```bash
 bun run typecheck
-bun run test:coverage              # 136 pass, 1 todo
+bun run test:coverage              # 143 pass
+bun run test:e2e                   # terminal UI: approval prompt answered by keyboard
 ```
 
 ## 2. Mock model (terminal 1)
@@ -73,7 +74,7 @@ sandbox/bobi-sandbox.sh status                   # egress decisions, e.g. exampl
 sandbox/bobi-sandbox.sh down
 ```
 
-Automated: `bun run test:sandbox` (3 tests: answers via allowed endpoint, blocked egress, unprivileged).
+Automated: `bun run test:sandbox` (4 tests: answers via allowed endpoint, blocked egress, checkpoint repository, unprivileged).
 
 ## 7. Real model
 
