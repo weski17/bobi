@@ -7,9 +7,12 @@ RUN apt-get update \
  && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /opt/bobi
-# Upstream first: its install takes minutes and only changes when the submodule moves.
+# Upstream first: its install only changes when the submodule moves. The server needs only the engine
+# packages (no terminal UI, web app, desktop or SaaS tooling). Not --production: the engine imports some
+# of its devDependencies at runtime (e.g. @effect/platform-node).
 COPY vendor/opencode vendor/opencode
-RUN cd vendor/opencode && bun install --frozen-lockfile
+RUN cd vendor/opencode && bun install --frozen-lockfile \
+      --filter "@opencode/sdk" --filter "@opencode/core" --filter "@opencode/server" --filter "@opencode/plugin"
 COPY . .
 RUN bun install --frozen-lockfile \
  && bun packages/browser/node_modules/playwright-core/cli.js install --with-deps chromium-headless-shell \
