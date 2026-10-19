@@ -17,7 +17,7 @@
 | Secret masking, untrusted-data marking, audit via OTLP | ✅ | `packages/core` |
 | Browser tool (headless Playwright, approval per page) | ✅ | `packages/browser` |
 | Checkpoints + undo in git projects | ✅ | `tests/integration/checkpoints.test.ts` |
-| Checkpoints in projects **without git** | ⏳ decision needed | open questions |
+| Checkpoints in projects without git (hidden repository + `.git` pointer) | ✅ | `packages/server/src/checkpoints.ts` |
 | Sandbox: Podman container, unprivileged, internal network, egress allowlist proxy | ✅ | `sandbox/`, `packages/egress-proxy`, `tests/sandbox` |
 | CI: typecheck, tests, coverage gate, Semgrep | ✅ green on GitHub | `.github/workflows/ci.yml` |
 | Repository on GitHub (private) | ✅ | https://github.com/weski17/bobi |
