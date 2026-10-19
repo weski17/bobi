@@ -1,6 +1,33 @@
 # Status
 
-**Current phase: 3 – MCP client and code graph** · Branch `phase-3-mcp` · waiting for approval
+**Current phase: 4 – Bobi IDE** · Branch `phase-4-ide` · waiting for approval
+
+## Phase 4
+
+| Task | Status | Where |
+|---|---|---|
+| Code-OSS 1.141.2 as pinned submodule, builds from source on macOS | ✅ | `vendor/code-oss`, `bun run ide:setup` |
+| Branding "Bobi IDE" (name, ids, icon, branding pack), Copilot/outbound product keys removed | ✅ | `scripts/ide/brand.ts` |
+| Two minimal Code-OSS patches (Copilot onboarding, default account) | ✅ | `patches/code-oss/` |
+| Chat panel (webview): streaming, modes, new chat, stop, undo | ✅ | `packages/ide-extension` |
+| Server per workspace, project trust dialog (`bobi trust`) | ✅ | `src/server.ts`, `packages/shell` |
+| Context from open tabs and selection | ✅ | `src/context.ts` |
+| Diff before apply: proposal in the diff editor, written only after Accept | ✅ | `src/diff.ts`, `src/patch.ts` |
+| Integration test inside the real IDE (diff, accept, write, undo) | ✅ | `tests/ide`, `bun run test:ide` |
+| Built-in Copilot chat features off; idle IDE opens no outbound connections (measured) | ✅ | ADR-0008 |
+| Packaged `Bobi IDE.app` | ⏳ blocked: Code-OSS bundles proprietary Copilot packages | ADR-0008, open questions |
+| Demo guide | ✅ | docs/demos/phase-4.md |
+
+Tests: **271 pass, 0 fail** + IDE integration test + 4 terminal-UI e2e + 6 sandbox · line coverage 99.6 %.
+
+### Phase 4 findings
+
+1. Removing `product.defaultChatAgent` crashed the workbench (onboarding, default account) → two small patches.
+2. `builtInExtensionsEnabledWithAutoUpdates` must exist (empty list) or no extension loads.
+3. Code-OSS 1.141 depends on proprietary GitHub Copilot packages and starts a local "agent host" (Copilot, Claude,
+   Codex providers). It stays local without sign-in (measured), but a distributable app must strip it.
+4. A leftover macOS SDK newer than the Command Line Tools breaks native builds → automatic `SDKROOT`.
+5. Undo right after an approval hit "session busy" → undo waits until the request has finished.
 
 ## Phase 3
 
@@ -105,6 +132,9 @@ All ADRs 0001–0011 accepted. Open questions answered:
 ## Open questions
 
 1. **Logo:** waiting for the official FI SVG from the project owner (`branding/fi/icon.svg`, not committed).
+   Bobi IDE picks it up with `BOBI_BRANDING_DIR=branding/fi bun run ide:setup`.
+2. **Packaged Bobi IDE.app:** strip the proprietary Copilot packages and extension from the Code-OSS build
+   (VSCodium-style patches) – or keep running from source for the research phase?
 
 ### Resolved 2026-10-19
 
