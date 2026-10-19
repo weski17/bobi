@@ -61,13 +61,14 @@ export function startBobi(command: readonly string[], directory: string, timeout
       reject(new Error(`${error.message}${stderr ? `\n${stderr.trim()}` : ""}`))
     }
     child.on("error", fail)
-    child.on("exit", (code) => fail(new Error(`Bobi server exited with code ${code}`)))
+    // "close" (not "exit") fires after stdout/stderr are drained, so the error output is complete.
+    child.on("close", (code) => fail(new Error(`Bobi server exited with code ${code}`)))
     child.stdout?.on("data", (data) => {
       buffer += data
       const line = buffer.split("\n").find((l) => l.trim().startsWith("{"))
       if (!line) return
       clearTimeout(timer)
-      child.removeAllListeners("exit")
+      child.removeAllListeners("close")
       const { url } = JSON.parse(line) as { url: string }
       resolve({
         url,
