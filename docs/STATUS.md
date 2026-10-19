@@ -19,11 +19,12 @@
 | Checkpoints + undo in git projects | ✅ | `tests/integration/checkpoints.test.ts` |
 | Checkpoints in projects without git (hidden repository + `.git` pointer) | ✅ | `packages/server/src/checkpoints.ts` |
 | Sandbox: Podman container, unprivileged, internal network, egress allowlist proxy | ✅ | `sandbox/`, `packages/egress-proxy`, `tests/sandbox` |
-| CI: typecheck, tests, coverage gate, Semgrep | ✅ green on GitHub | `.github/workflows/ci.yml` |
+| CI: typecheck, tests, coverage gate, terminal-UI e2e, Semgrep | ✅ green on GitHub | `.github/workflows/ci.yml` |
 | Repository on GitHub (private) | ✅ | https://github.com/weski17/bobi |
+| Approval prompt in the terminal UI tested by keyboard (reject / allow once) | ✅ | `tests/e2e` |
 | Demo guide | ✅ | docs/demos/phase-1.md |
 
-Tests: **136 pass, 1 todo, 0 fail** (+ 3 sandbox tests) · line coverage 99.7 % · typecheck clean · CI green.
+Tests: **143 pass, 0 fail** + 4 sandbox + 2 terminal-UI end-to-end tests · line coverage 99.7 % · typecheck clean · CI green.
 
 ## Phase 1 findings
 
@@ -50,20 +51,18 @@ All ADRs 0001–0011 accepted. Open questions answered:
 2. **Upstreams:** `vendor/opencode` as submodule in Phase 1; `vendor/code-oss` only in Phase 4.
 3. **Default model endpoint:** **LiteLLM** at `http://localhost:4000/v1`.
 4. **Non-git projects:** auto-create a private shadow repo for checkpoints.
-5. **Container runtime:** Podman (neither Docker nor Podman is installed yet).
+5. **Container runtime:** Podman (installed, VM `bobi-vm`).
 6. **CI:** GitHub Actions.
 7. **Browser tool:** headless Playwright (Apache-2.0).
 
 ## Open questions
 
-1. **Checkpoints without git** – two options:
-   - a) Bobi writes a `.git` pointer file into the project that points to a hidden repo in `~/.bobi` (uses OpenCode's
-     snapshots unchanged; side effect: `git` commands in that folder then see this repo).
-   - b) Bobi backs up every file before the agent changes it in its own store (no trace in the project; covers file
-     tools, but not changes made by shell commands).
-2. ~~License~~ – decided 2026-10-19: MIT, © Finanz Informatik GmbH & Co. KG (`LICENSE`).
-3. **Logo:** internal FI experiment, approved by the user on 2026-10-19; SVG approximation in `branding/fi/` (not committed).
-   Replace with the official FI asset when available (ADR-0012).
+1. **Logo:** internal FI experiment; SVG approximation in `branding/fi/` (not committed). Replace with the official FI
+   asset when available (ADR-0012).
+2. **Upstream proposal** `docs/upstream/0001-sdk-expose-fetch.md` – submit to OpenCode? (would remove Bobi's only
+   dependency on an internal engine module)
+
+Decided 2026-10-19: checkpoints without git (hidden repository + `.git` pointer), license MIT © Finanz Informatik GmbH & Co. KG.
 
 ## Risks
 
@@ -75,5 +74,7 @@ All ADRs 0001–0011 accepted. Open questions answered:
   embedding (e.g. the IDE in Phase 4) must call `verifyCore` too.
 - Secret masking is pattern-based: unknown secret formats can slip through (known secret values are always masked).
 - Headless Chromium runs on the host until the sandbox exists.
-- WebSocket endpoints (persistent terminals in the TUI) are not proxied by the Bobi HTTP front yet.
-- The sandbox image is 4.5 GB (engine dev dependencies + Chromium); slimming it is future work.
+- Terminals the user opens in the TUI (WebSocket endpoints) do not work through the Bobi server: the embedded
+  router has no WebSocket upgrade. Agent shell commands are unaffected. Revisit in Phase 4/5 (the IDE uses its own
+  terminal).
+- The sandbox image is 1.9 GB (mostly Chromium and its system libraries).
