@@ -3,7 +3,7 @@ import { existsSync, watch, type FSWatcher } from "node:fs"
 import os from "node:os"
 import path from "node:path"
 import type { Plugin } from "@opencode/plugin"
-import type { BobiConfig } from "@bobi/config"
+import { PROVIDER_ID, type BobiConfig } from "@bobi/config"
 import { HeadlessBrowser, registerBrowserTool } from "@bobi/browser"
 import { DEFAULT_MODE, editAllowed, editRestriction, hiddenTools, loadModes, modeDenyRules, modeFiles, modePrompt, type Mode } from "@bobi/modes"
 import { type AuditSink, MemorySink, OtlpSink, parseOtlpHeaders } from "./audit.ts"
@@ -120,6 +120,20 @@ export function createBobiCore(options: BobiCoreOptions): Plugin.Plugin & { read
           // Watching is a convenience; modes still load on the next start.
         }
       }
+
+      // Per-mode models (CLAUDE.md: e.g. a large model for plan). The engine uses the session's model for turns,
+      // so Bobi switches it when the session enters another mode; a model the user picks within a mode is kept.
+      const lastAgent = new Map<string, string>()
+      await ctx.session.hook("prompt", async (event) => {
+        const sessionID = String(event.sessionID)
+        const session = await ctx.session.get({ sessionID })
+        const agent = String(session.agent ?? DEFAULT_MODE)
+        if (lastAgent.get(sessionID) === agent) return
+        lastAgent.set(sessionID, agent)
+        const target = config.modes[agent]?.model ?? config.model.default
+        if (session.model?.id === target && String(session.model.providerID) === PROVIDER_ID) return
+        await ctx.session.switchModel({ sessionID, model: { providerID: PROVIDER_ID, id: target } })
+      })
 
       // 2. System prompt: Bobi identity, untrusted-data rule, mode role, project rules; hide tools the mode lacks.
       await ctx.session.hook("context", (event) => {
