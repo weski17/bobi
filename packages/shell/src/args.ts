@@ -29,6 +29,8 @@ Usage:
                                    (password from BOBI_SERVER_PASSWORD)
   bobi --version | --help
 
+  --trust                          Trust the project's AGENTS.md, rules, modes and .bobi/config.jsonc
+
 Run options:
   --model, -m <id>     Model id served by the configured endpoint
   --agent <mode>       Mode to use
