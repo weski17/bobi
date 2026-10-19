@@ -26,7 +26,7 @@ Notes:
 
 | Package | Version | License | Use |
 |---|---|---|---|
-| typescript | 5.8.2 | Apache-2.0 | Typecheck (dev) |
+| typescript | 5.8.2 | Apache-2.0 | Typecheck (dev); runtime parser of the code graph MCP server |
 | @types/bun | 1.4.0 | MIT | Bun type definitions (dev) |
 | `@opencode/*`, effect | from `vendor/opencode` | MIT | Linked from the pinned submodule by `scripts/link-upstream.ts`, never installed from npm |
 | playwright-core | 1.63.0 | Apache-2.0 | Headless browser tool (`@bobi/browser`) |
@@ -39,3 +39,7 @@ Notes:
 | Semgrep CE (`semgrep/semgrep` image) | 1.178.0 | LGPL-2.1 (engine); rules from the Semgrep Registry under their own terms | Static analysis in CI |
 | GitHub Actions `actions/checkout`, `oven-sh/setup-bun` | v4, v2 | MIT | CI |
 | ignore | 7.0.11 | MIT | `.bobiignore` matching with gitignore semantics (`@bobi/core`) |
+| @modelcontextprotocol/server | 2.0.0 | MIT | Code graph MCP server (`mcp-servers/code-graph`), test fixtures |
+| @modelcontextprotocol/client | 2.0.0 | MIT | MCP protocol tests (dev) |
+| @modelcontextprotocol/core | 2.0.0 | MIT | Transitive (MCP SDK) |
+| zod | 4.6.7 | MIT | Transitive (MCP SDK) |
