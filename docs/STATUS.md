@@ -1,6 +1,6 @@
 # Status
 
-**Current phase: 2 – modes, rules, AGENTS.md, .bobiignore** · Branch `phase-2-modes` · waiting for approval
+**Current phase: 2 (follow-ups)** · Branch `phase-2-followups` · waiting for approval, then phase 3 (MCP)
 
 ## Phase 2
 
@@ -82,20 +82,27 @@ All ADRs 0001–0011 accepted. Open questions answered:
 
 ## Open questions
 
-1. **Logo:** internal FI experiment; SVG approximation in `branding/fi/` (not committed). Replace with the official FI
-   asset when available (ADR-0012).
-2. **Upstream proposal** `docs/upstream/0001-sdk-expose-fetch.md` – submit to OpenCode? (would remove Bobi's only
-   dependency on an internal engine module)
+1. **Logo:** waiting for the official FI SVG from the project owner (`branding/fi/icon.svg`, not committed).
 
-Decided 2026-10-19: checkpoints without git (hidden repository + `.git` pointer), license MIT © Finanz Informatik GmbH & Co. KG.
+### Resolved 2026-10-19
+
+| Point | Resolution |
+|---|---|
+| Checkpoints without git | Hidden repository + `.git` pointer (ADR-0006) |
+| License | MIT, © Finanz Informatik GmbH & Co. KG |
+| Approval prompt in the UI untested | e2e test answers it by keyboard |
+| Sandbox image 4.5 GB | 1.9 GB (engine packages only) |
+| Terminals in the UI (WebSockets) | Bobi server on a Node HTTP server (ADR-0013 follow-up) |
+| Dependency on an internal engine module | Removed; upstream proposal dropped (owner: keep internal, now unnecessary) |
+| Instructions from foreign repositories | Project trust (ADR-0014) |
+| `.bobiignore` bypass via shell | In the sandbox ignored paths are covered by empty mounts (ADR-0007) |
+| `bobi serve` with several projects | Config per project (trusted), endpoint and model list server-wide |
 
 ## Risks
 
-- AGENTS.md and rule files come from the repository: a foreign repository can try to steer the model through them.
-  They cannot change permissions (engine-enforced); the prompt states this explicitly.
-- `.bobiignore` in the terminal tool covers only common file-reading commands; the sandbox is the boundary.
-- `bobi serve` serving several projects loads modes per project, but the per-mode model config comes from the
-  directory the server was started in.
+- A **trusted** project's AGENTS.md and rules still reach the model as instructions – trust is the user's decision.
+- Outside the sandbox, `.bobiignore` in the terminal tool covers only common file-reading commands.
+- Files matching `.bobiignore` that are created during a sandbox session are not masked until the next `up`.
 
 - Very high upstream churn (OpenCode near-daily, V2 API not yet stable).
 - IDE depends on proposed Code-OSS chat APIs.
@@ -105,7 +112,4 @@ Decided 2026-10-19: checkpoints without git (hidden repository + `.git` pointer)
   embedding (e.g. the IDE in Phase 4) must call `verifyCore` too.
 - Secret masking is pattern-based: unknown secret formats can slip through (known secret values are always masked).
 - Headless Chromium runs on the host until the sandbox exists.
-- Terminals the user opens in the TUI (WebSocket endpoints) do not work through the Bobi server: the embedded
-  router has no WebSocket upgrade. Agent shell commands are unaffected. Revisit in Phase 4/5 (the IDE uses its own
-  terminal).
 - The sandbox image is 1.9 GB (mostly Chromium and its system libraries).
