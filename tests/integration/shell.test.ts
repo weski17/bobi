@@ -52,9 +52,7 @@ test("bobi run without a TTY rejects writes instead of performing them", async (
   const target = path.join(dir, "should-not-exist.txt")
   mock.enqueue({ toolCalls: [{ name: "write", arguments: { path: target, content: "x" } }] }, { text: "gave up" })
   const { output } = await bobi("run", "write a file")
-  // On macOS temp dirs (/var -> /private/var) OpenCode asks for external_directory before edit;
-  // either way an approval was required and auto-rejected.
-  expect(output).toMatch(/permission requested: (edit|external_directory)/)
+  expect(output).toMatch(/permission requested: edit/)
   expect(output).toContain("auto-rejecting")
   expect(existsSync(target)).toBe(false)
 }, 90_000)

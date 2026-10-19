@@ -58,7 +58,7 @@ describe("runApp", () => {
     const [client] = t.spawned
     expect(client!.argv.slice(1, 6)).toEqual(["--preload", preloadPath(), ENGINE_CLI, "run", "hello"])
     expect(client!.cwd).toBe(dir)
-    expect(client!.env).toMatchObject({ OPENCODE_CLIENT: "bobi", OPENCODE_DISABLE_AUTOUPDATE: "1", XDG_DATA_HOME: path.join(home, "tui", "data") })
+    expect(client!.env).toMatchObject({ PWD: dir, OPENCODE_CLIENT: "bobi", OPENCODE_DISABLE_AUTOUPDATE: "1", XDG_DATA_HOME: path.join(home, "tui", "data") })
   }, 60_000)
 
   test("tui opens a given project directory", async () => {
@@ -129,7 +129,8 @@ describe("attach", () => {
 })
 
 test("clientSpec drops unset variables and appends the server URL", () => {
-  const spec = clientSpec(["run", "x"], { url: "http://127.0.0.1:1", password: "p" }, { home: "/h" } as never, { A: "1", B: undefined })
+  const spec = clientSpec(["run", "x"], { url: "http://127.0.0.1:1", password: "p" }, { home: "/h" } as never, "/project", { A: "1", B: undefined, PWD: "/elsewhere" })
+  expect(spec.env.PWD).toBe("/project")
   expect(spec.env.A).toBe("1")
   expect("B" in spec.env).toBe(false)
   expect(spec.argv.slice(-2)).toEqual(["--server", "http://127.0.0.1:1"])
