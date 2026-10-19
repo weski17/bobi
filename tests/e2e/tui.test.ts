@@ -96,3 +96,22 @@ test("the trust question is answered in the terminal before the UI starts", asyn
   const store = JSON.parse(await Bun.file(path.join(home, "trust", "projects.json")).text())
   expect(Object.values(store.projects as Record<string, { trusted: boolean }>)[0]!.trusted).toBe(true)
 }, 90_000)
+
+test("Bobi's slash commands are offered in the terminal UI", async () => {
+  dir = await realpath(await mkdtemp(path.join(tmpdir(), "bobi-tui-")))
+  mock = startMockModel()
+  const child = Bun.spawn(["python3", "-I", DRIVER, dir, "wait:Ask anything", "type:/secu", "wait:security-review"], {
+    env: {
+      ...process.env,
+      BOBI_TUI_CMD: JSON.stringify(["bun", CLI]),
+      BOBI_MODEL_BASE_URL: mock.baseURL,
+      BOBI_MODEL: "mock-model",
+      BOBI_MODEL_API_KEY: "tui-test",
+      BOBI_HOME: path.join(dir, ".bobi-home"),
+    },
+    stdout: "pipe",
+    stderr: "pipe",
+  })
+  const [stderr, code] = await Promise.all([new Response(child.stderr).text(), child.exited])
+  expect(code, stderr).toBe(0)
+}, 90_000)
