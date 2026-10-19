@@ -61,8 +61,7 @@ All ADRs 0001–0011 accepted. Open questions answered:
      snapshots unchanged; side effect: `git` commands in that folder then see this repo).
    - b) Bobi backs up every file before the agent changes it in its own store (no trace in the project; covers file
      tools, but not changes made by shell commands).
-2. **License** for Bobi's own code (MIT like the engine?) and copyright holder (you or FI?) – needed before the repo
-   goes public.
+2. ~~License~~ – decided 2026-10-19: MIT, © Finanz Informatik GmbH & Co. KG (`LICENSE`).
 3. **Logo:** internal FI experiment, approved by the user on 2026-10-19; SVG approximation in `branding/fi/` (not committed).
    Replace with the official FI asset when available (ADR-0012).
 

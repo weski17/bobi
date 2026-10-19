@@ -32,5 +32,5 @@ Demo: [`docs/demos/phase-1.md`](docs/demos/phase-1.md).
 
 ## License
 
-Not yet decided for Bobi's own code (open question in [`docs/STATUS.md`](docs/STATUS.md)).
-Third-party components and their licenses: [`LICENSES.md`](LICENSES.md).
+Bobi's own code: [MIT](LICENSE), © Finanz Informatik GmbH & Co. KG.
+The engine in `vendor/opencode` keeps its own MIT license and copyright. Third-party components: [`LICENSES.md`](LICENSES.md).
