@@ -3,7 +3,7 @@ import { randomBytes } from "node:crypto"
 import { mkdirSync, realpathSync, statSync } from "node:fs"
 import path from "node:path"
 import { findProjectRoot, loadConfig, TrustStore, trustFiles, type LoadedConfig } from "@bobi/config"
-import { auditReport, readAuditLog, renderAuditReport } from "@bobi/core"
+import { auditReport, readAuditLog, renderAuditReport, renderUsageReport, usageReport } from "@bobi/core"
 import { CobolProject, paragraphDiagram, systemDiagram } from "@bobi/mcp-cobol"
 import { CodeGraph, dependencyDiagram } from "@bobi/mcp-code-graph"
 import { bobiPaths, ensureCheckpointRepo, startBobiServer, type BobiPaths, type BobiServer } from "@bobi/server"
@@ -113,6 +113,16 @@ export async function runApp(rawArgv: readonly string[], io: Io): Promise<number
     const report = auditReport(records, { ...command, skipped })
     if (records.length === 0) io.err(`bobi: no audit records in ${dir} for this period`)
     io.out(command.format === "json" ? JSON.stringify(report, null, 2) : renderAuditReport(report))
+    return 0
+  }
+
+  if (command.kind === "usage") {
+    const dir = path.join(bobiPaths(io.env).home, "audit")
+    const { records } = readAuditLog(dir, command)
+    const estimate = loadConfig({ cwd: io.cwd, env: io.env, trustedProject: false }).config.usage
+    const report = usageReport(records, { ...command, ...estimate })
+    if (records.length === 0) io.err(`bobi: no audit records in ${dir} for this period`)
+    io.out(command.format === "json" ? JSON.stringify(report, null, 2) : renderUsageReport(report))
     return 0
   }
 

@@ -53,7 +53,7 @@ export async function createHarness(
     ...structuredClone(DEFAULTS),
     ...patch,
     model: { ...DEFAULTS.model, baseURL: mock.baseURL, default: "mock-model" },
-    telemetry: { user: "tester" },
+    telemetry: { user: "tester", ...patch.telemetry },
   }
   const audit = new MemorySink()
   // The browser tool is only registered where a test needs it, so other tests don't depend on Chromium.

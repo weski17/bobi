@@ -52,6 +52,7 @@ function merge(base: BobiConfig, patch: DeepPartial<BobiConfig>): BobiConfig {
       enabled: patch.a2a?.enabled ?? base.a2a.enabled,
       agents: { ...base.a2a.agents, ...((patch.a2a?.agents ?? {}) as BobiConfig["a2a"]["agents"]) },
     },
+    usage: { ...base.usage, ...patch.usage },
   }
 }
 
@@ -102,6 +103,7 @@ export function loadConfig(options: LoadOptions): LoadedConfig {
     telemetry: {
       ...(env.OTEL_EXPORTER_OTLP_ENDPOINT ? { otlpEndpoint: env.OTEL_EXPORTER_OTLP_ENDPOINT } : {}),
       ...(env.BOBI_USER ? { user: env.BOBI_USER } : {}),
+      ...(env.BOBI_TEAM ? { team: env.BOBI_TEAM } : {}),
     },
   }
   config = merge(config, validatePartial(fromEnv, "environment"))

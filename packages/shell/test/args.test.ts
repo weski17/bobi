@@ -68,6 +68,8 @@ describe("parseArgs", () => {
     expect(() => parseArgs(["audit", "--user"])).toThrow(/needs a value/)
     expect(() => parseArgs(["audit", "--format", "pdf"])).toThrow(/md or json/)
     expect(() => parseArgs(["audit", "--x"])).toThrow(/unknown option for audit/)
+    expect(parseArgs(["usage", "--team", "payments", "--format", "json", "--from", "2026-10-01"])).toEqual({ kind: "usage", team: "payments", format: "json", from: "2026-10-01" })
+    expect(() => parseArgs(["usage", "--user", "anna"])).toThrow(/unknown option for usage/)
     expect(parseArgs(["diagram"])).toEqual({ kind: "diagram", source: "code" })
     expect(parseArgs(["diagram", "cobol", "--program", "CBACT01C", "app"])).toEqual({ kind: "diagram", source: "cobol", program: "CBACT01C", directory: "app" })
     expect(parseArgs(["diagram", "code", "--depth", "3"])).toEqual({ kind: "diagram", source: "code", depth: 3 })

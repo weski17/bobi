@@ -18,3 +18,5 @@ export { BUILTIN_COMMANDS, expandTemplate, extensionDirs, frontmatter, readComma
 export type { CommandFile, SkillFile } from "./extensions.ts"
 export { auditReport, readAuditLog, renderAuditReport } from "./report.ts"
 export type { AuditReport, ReportOptions } from "./report.ts"
+export { renderUsageReport, usageReport } from "./usage.ts"
+export type { UsageOptions, UsageReport, UsageRow } from "./usage.ts"
