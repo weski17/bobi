@@ -51,6 +51,11 @@ the Zowe-compatible REST services as built-in MCP servers; inline autocomplete i
 `bobi audit` compliance reports and `bobi diagram` Mermaid diagrams; A2A agent card and read-only tasks for other
 agents. Demo: [`docs/demos/phase-6.md`](docs/demos/phase-6.md).
 
+## Code tips, usage, red team, load
+
+Code tips for complex functions and anti-patterns (TS/JS, COBOL) in Bobi IDE and `bobi tips`; usage per person and
+team with `bobi usage`; a red-team suite (promptfoo) and load tests. Demo: [`docs/demos/phase-7.md`](docs/demos/phase-7.md).
+
 ## Safeguards
 
 - Every write, shell command and network action asks for approval; auto-approval only through explicit, versioned config.
