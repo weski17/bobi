@@ -59,4 +59,4 @@ and COBOL syntax (`EXEC CICS`, `EXEC SQL`) appear only in code as technical iden
 
 ## Not in this phase
 
-- Usage statistics per team/person (req. 19) and code tips while typing (req. 14).
+- Usage statistics per team/person (req. 19) and code tips while typing (req. 14) – done in phase 7 (ADR-0018).

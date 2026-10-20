@@ -143,10 +143,10 @@ Voraussetzungen und Details: `docs/DEVELOPMENT.md`.
 
 - Installieren: `git submodule update --init --depth 1 && (cd vendor/opencode && bun install) && bun install && bun run browser:install && bash scripts/install.sh`
 - Bauen: kein Build-Schritt (Bun führt TypeScript direkt aus)
-- Tests: `bun run test` (mit Abdeckung: `bun run test:coverage`; Sandbox: `bun run test:sandbox`)
+- Tests: `bun run test` (mit Abdeckung: `bun run test:coverage`; Sandbox: `bun run test:sandbox`; Red-Team: `bun run test:redteam`; Last: `bun run test:load`)
 - Lint/Typprüfung: `bun run typecheck` (Semgrep läuft in der CI)
 - Bobi IDE einrichten: `bun run ide:setup` (einmalig), starten: `bobi-ide [ordner]` bzw. `bun run ide`; IDE-Test: `bun run test:ide`
-- Bobi Shell starten: `bobi` (interaktiv), `bobi run [--mode <slug>] "<Auftrag>"` (headless), `bobi serve`, `bobi attach <url>`, `bobi modes`, `bobi trust`, `bobi audit`, `bobi diagram [code|cobol]`
+- Bobi Shell starten: `bobi` (interaktiv), `bobi run [--mode <slug>] "<Auftrag>"` (headless), `bobi serve`, `bobi attach <url>`, `bobi modes`, `bobi trust`, `bobi audit`, `bobi usage`, `bobi tips`, `bobi diagram [code|cobol]`
 - Sandbox: `podman build -f sandbox/Containerfile -t bobi:dev .` und `sandbox/bobi-sandbox.sh up <projekt>`
 
 ## Ausgabe am Ende jeder Phase
