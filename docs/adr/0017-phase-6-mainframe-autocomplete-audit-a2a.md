@@ -20,6 +20,8 @@
   **Production data:** datasets and USS paths are limited to an allowlist (`BOBI_ZOWE_DATASETS`, `BOBI_ZOWE_USS`;
   default: the user's own high-level qualifier and home directory); DSN references in submitted JCL are checked too.
   `zowe_write_dataset` and `zowe_submit_job` are protected rules: they always ask, even with auto-approval.
+  Certificates are always verified: `rejectUnauthorized: false` (allowed by the Zowe CLI) is refused; a company CA
+  is added with `NODE_EXTRA_CA_CERTS`.
 - **Autocomplete (req. 17):** `POST /bobi/complete` on the Bobi server: fill-in-the-middle via
   `<baseURL>/completions` (prompt + suffix; vLLM, Ollama, LiteLLM). Off until `autocomplete.model` is set; the model
   must be declared in the server's model list; OpenAI-compatible endpoints only. The server refuses `.bobiignore`'d

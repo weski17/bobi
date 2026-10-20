@@ -122,13 +122,13 @@ test("input validation, REST errors and unreachable hosts are tool errors", asyn
   await unconfigured.close()
 })
 
-test("the client sends basic auth and the CSRF header; large responses are truncated; TLS option", async () => {
+test("the client sends basic auth and the CSRF header; large responses are truncated", async () => {
   const seen: Request[] = []
   const fake = (async (input: string | URL | Request, init?: RequestInit) => {
     seen.push(new Request(input, init))
     return new Response("x".repeat(20))
   }) as typeof fetch
-  const c = new MainframeClient({ protocol: "https", host: "mf", port: 443, basePath: "/gw", user: "u", password, rejectUnauthorized: false, datasets: [], uss: [], source: "test" }, { fetch: fake, maxBytes: 10 })
+  const c = new MainframeClient({ protocol: "https", host: "mf", port: 443, basePath: "/gw", user: "u", password, datasets: [], uss: [], source: "test" }, { fetch: fake, maxBytes: 10 })
   expect(await c.readDataset("A.B")).toEqual({ text: "x".repeat(10), truncated: true })
   expect(seen[0]!.url).toBe("https://mf/gw/zosmf/restfiles/ds/A.B")
   expect(seen[0]!.headers.get("x-csrf-zosmf-header")).toBe("true")
