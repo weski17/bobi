@@ -22,3 +22,7 @@ bobi.local.jsonc
 # Company branding packs are applied at build time and never committed (ADR-0012)
 branding/*
 !branding/default/
+
+# Video build intermediates
+docs/media/*/.work/
+docs/media/*/.stills/
