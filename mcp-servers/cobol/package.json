@@ -1,0 +1,16 @@
+{
+  "name": "@bobi/mcp-cobol",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "exports": { ".": "./src/index.ts" },
+  "bin": { "bobi-mcp-cobol": "./src/cli.ts" },
+  "dependencies": {
+    "@bobi/mcp-code-graph": "workspace:*",
+    "@modelcontextprotocol/server": "2.0.0"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/client": "2.0.0"
+  }
+}

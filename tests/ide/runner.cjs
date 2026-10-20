@@ -67,5 +67,21 @@ exports.run = async function run() {
   const git = vscode.extensions.getExtension("vscode.git").exports.getAPI(1)
   await wait(() => git.repositories[0] && git.repositories[0].inputBox.value === "Double the answer", "commit message in the SCM input box")
 
+  // Autocomplete: ghost text from the configured model, accepted with Tab (inlineSuggest.commit).
+  const calcFile = path.join(folder, "calc.ts")
+  fs.writeFileSync(calcFile, "import { answer } from './app'\nexport const triple = answer ")
+  const calc = await vscode.window.showTextDocument(await vscode.workspace.openTextDocument(calcFile))
+  const end = calc.document.positionAt(calc.document.getText().length)
+  calc.selection = new vscode.Selection(end, end)
+  await wait(async () => {
+    await vscode.commands.executeCommand("workbench.action.focusActiveEditorGroup")
+    await vscode.commands.executeCommand("editor.action.inlineSuggest.trigger")
+    await new Promise((r) => setTimeout(r, 700))
+    await vscode.commands.executeCommand("editor.action.inlineSuggest.commit")
+    return calc.document.getText().endsWith("answer * 3")
+  }, "inline suggestion accepted", 20000).catch((e) => {
+    throw new Error(`${e.message}; last suggestion ${JSON.stringify(api.lastSuggestion)}; text ${JSON.stringify(calc.document.getText())}; focus ${vscode.window.state.focused}`)
+  })
+
   fs.writeFileSync(path.join(folder, ".ide-test-passed"), "ok")
 }

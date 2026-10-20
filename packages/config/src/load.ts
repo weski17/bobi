@@ -47,6 +47,11 @@ function merge(base: BobiConfig, patch: DeepPartial<BobiConfig>): BobiConfig {
       servers: { ...base.mcp.servers, ...((patch.mcp?.servers ?? {}) as BobiConfig["mcp"]["servers"]) },
       ...(patch.mcp?.timeout || base.mcp.timeout ? { timeout: { ...base.mcp.timeout, ...patch.mcp?.timeout } } : {}),
     },
+    autocomplete: { ...base.autocomplete, ...patch.autocomplete },
+    a2a: {
+      enabled: patch.a2a?.enabled ?? base.a2a.enabled,
+      agents: { ...base.a2a.agents, ...((patch.a2a?.agents ?? {}) as BobiConfig["a2a"]["agents"]) },
+    },
   }
 }
 
@@ -79,7 +84,11 @@ export function loadConfig(options: LoadOptions): LoadedConfig {
       if (env.BOBI_CONFIG && file === path.resolve(options.cwd, env.BOBI_CONFIG)) throw new ConfigError(file, ["BOBI_CONFIG points to a missing file"])
       continue
     }
-    config = merge(config, validatePartial(readJsonc(file), file))
+    const patch = validatePartial(readJsonc(file), file)
+    // A repository must not open the server to other agents.
+    if (file === path.join(project, ".bobi", "config.jsonc") && patch.a2a?.enabled !== undefined && file !== path.join(globalDir, "config.jsonc"))
+      throw new ConfigError(file, ["a2a.enabled: can only be set in the global config or with BOBI_A2A=1, not in a project"])
+    config = merge(config, patch)
     sources.push(file)
   }
 
@@ -89,6 +98,7 @@ export function loadConfig(options: LoadOptions): LoadedConfig {
       ...(env.BOBI_MODEL_PROTOCOL ? { protocol: env.BOBI_MODEL_PROTOCOL as BobiConfig["model"]["protocol"] } : {}),
       ...(env.BOBI_MODEL ? { default: env.BOBI_MODEL } : {}),
     },
+    ...(env.BOBI_A2A ? { a2a: { enabled: env.BOBI_A2A === "1" || env.BOBI_A2A === "true" } } : {}),
     telemetry: {
       ...(env.OTEL_EXPORTER_OTLP_ENDPOINT ? { otlpEndpoint: env.OTEL_EXPORTER_OTLP_ENDPOINT } : {}),
       ...(env.BOBI_USER ? { user: env.BOBI_USER } : {}),

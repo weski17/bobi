@@ -3,6 +3,9 @@ import { randomBytes } from "node:crypto"
 import { mkdirSync, realpathSync, statSync } from "node:fs"
 import path from "node:path"
 import { findProjectRoot, loadConfig, TrustStore, trustFiles, type LoadedConfig } from "@bobi/config"
+import { auditReport, readAuditLog, renderAuditReport } from "@bobi/core"
+import { CobolProject, paragraphDiagram, systemDiagram } from "@bobi/mcp-cobol"
+import { CodeGraph, dependencyDiagram } from "@bobi/mcp-code-graph"
 import { bobiPaths, ensureCheckpointRepo, startBobiServer, type BobiPaths, type BobiServer } from "@bobi/server"
 import { loadModes, mcpServers, type Mode } from "@bobi/modes"
 import { HELP, parseArgs, UsageError, VERSION, type Command } from "./args.ts"
@@ -29,7 +32,7 @@ export async function startServer(io: Io, cwd: string, listen: { hostname: strin
   mkdirSync(paths.config, { recursive: true })
   const secret = password ?? randomBytes(24).toString("base64url")
   if (secret.length < 16) throw new Error("server password must have at least 16 characters")
-  const server = await startBobiServer({ config: loaded.config, paths, password: secret, secrets: [loaded.apiKey, secret], env: io.env, ...listen })
+  const server = await startBobiServer({ config: loaded.config, paths, password: secret, secrets: [loaded.apiKey, secret], env: io.env, directory: cwd, ...listen })
   return { server, password: secret, paths, loaded }
 }
 
@@ -87,6 +90,7 @@ export async function runApp(rawArgv: readonly string[], io: Io): Promise<number
     }
     const started = await startServer(io, io.cwd, command, password)
     io.out(JSON.stringify({ url: started.server.url }))
+    if (started.loaded.config.a2a.enabled) io.err(`bobi: A2A enabled – agent card at ${started.server.url}/.well-known/agent-card.json (tasks are read-only)`)
     if (!password) io.err(`bobi: generated server password (user "opencode"): ${started.password}`)
     await io.untilStopped()
     await stop(started)
@@ -100,6 +104,33 @@ export async function runApp(rawArgv: readonly string[], io: Io): Promise<number
     const groups = (m: Mode) => m.groups.map((g) => (Array.isArray(g) ? (g[0] === "edit" ? `edit(${g[1].fileRegex})` : `mcp(${mcpServers(m)})`) : g)).join(", ")
     if (command.json) io.out(JSON.stringify(modes.map((m) => ({ slug: m.slug, name: m.name, description: m.description, groups: m.groups, source: m.source }))))
     else for (const m of modes) io.out(`${m.slug.padEnd(14)} ${m.name.padEnd(14)} ${groups(m)}`)
+    return 0
+  }
+
+  if (command.kind === "audit") {
+    const dir = path.join(bobiPaths(io.env).home, "audit")
+    const { records, skipped } = readAuditLog(dir, command)
+    const report = auditReport(records, { ...command, skipped })
+    if (records.length === 0) io.err(`bobi: no audit records in ${dir} for this period`)
+    io.out(command.format === "json" ? JSON.stringify(report, null, 2) : renderAuditReport(report))
+    return 0
+  }
+
+  if (command.kind === "diagram") {
+    // An explicit directory is used as given; otherwise the project around the working directory.
+    const root = command.directory ? path.resolve(io.cwd, command.directory) : findProjectRoot(io.cwd)
+    if (command.source === "code") {
+      io.out(dependencyDiagram(CodeGraph.build(root), command.depth ? { depth: command.depth } : {}))
+      return 0
+    }
+    const project = CobolProject.build(root)
+    if (!command.program) {
+      io.out(systemDiagram(project))
+      return 0
+    }
+    const program = project.programs.get(command.program.toUpperCase())
+    if (!program) throw new UsageError(`no COBOL program ${command.program} in ${root}`)
+    io.out(paragraphDiagram(program))
     return 0
   }
 

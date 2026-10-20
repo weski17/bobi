@@ -1,5 +1,5 @@
 export { ConfigError, DEFAULTS, APPROVAL_ACTIONS, expandEnv, validatePartial } from "./schema.ts"
-export type { ApprovalAction, AutoApproveRule, BobiConfig, McpConfig, McpLocalServer, McpRemoteServer, McpServer, ModelEndpoint, Protocol } from "./schema.ts"
+export type { A2aAgent, ApprovalAction, AutoApproveRule, BobiConfig, McpConfig, McpLocalServer, McpRemoteServer, McpServer, ModelEndpoint, Protocol } from "./schema.ts"
 export { findProjectRoot, loadConfig } from "./load.ts"
 export type { LoadedConfig, LoadOptions } from "./load.ts"
 export { DISABLED_PLUGINS, OFFLINE_ENV, SDK_OFFLINE_OPTIONS, PROVIDER_ID, modelIds, toOpenCodeConfig, toOpenCodeEnv } from "./opencode.ts"

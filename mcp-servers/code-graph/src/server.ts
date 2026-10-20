@@ -1,5 +1,6 @@
 // MCP server exposing the code graph (requirement 16). Tools appear in Bobi as `code-graph_<tool>`.
 import { Server, type Tool } from "@modelcontextprotocol/server"
+import { dependencyDiagram } from "./diagram.ts"
 import { CodeGraph } from "./graph.ts"
 import { callPath, fileDependencies, findSymbols, QueryError, resolveFile, resolveSymbol, walkCalls } from "./queries.ts"
 
@@ -40,6 +41,11 @@ export const TOOLS: Tool[] = [
     description: "Files that import a file (impact of changing it).",
     inputSchema: { type: "object", properties: { file: { type: "string", description: "Path relative to the project root" }, depth: depth(5, 1) }, required: ["file"] },
   },
+  {
+    name: "diagram",
+    description: "Mermaid architecture diagram of file imports (aggregated to directories for large projects).",
+    inputSchema: { type: "object", properties: { depth: depth(4, 2) } },
+  },
 ] satisfies Tool[]
 
 type Args = Record<string, unknown>
@@ -76,6 +82,8 @@ export function runTool(graph: CodeGraph, name: string, args: Args): unknown {
       const file = resolveFile(graph, str(args, "file"))
       return { file, [name]: fileDependencies(graph, file, name, int(args, "depth", 1, 5)) }
     }
+    case "diagram":
+      return { mermaid: dependencyDiagram(graph, { depth: int(args, "depth", 2, 4) }) }
     default:
       throw new QueryError(`Unknown tool "${name}"`)
   }
