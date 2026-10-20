@@ -12,7 +12,6 @@ export type Connection = {
   readonly basePath: string
   readonly user: string
   readonly password: string
-  readonly rejectUnauthorized: boolean
   /** Dataset patterns the agent may access (`*` one qualifier part, `**` any qualifiers, `%` one character). */
   readonly datasets: readonly string[]
   /** USS path prefixes the agent may access. */
@@ -101,6 +100,9 @@ export function loadConnection(project: string, env: Record<string, string | und
   const port = Number(str("port", "ZOWE_OPT_PORT") ?? 443)
   if (!Number.isInteger(port) || port < 1 || port > 65535) throw new ConnectionError("port must be between 1 and 65535")
   const reject = env.ZOWE_OPT_REJECT_UNAUTHORIZED ?? (props.rejectUnauthorized === undefined ? undefined : String(props.rejectUnauthorized))
+  // Certificates are always verified; a company CA is added with NODE_EXTRA_CA_CERTS, not by switching checks off.
+  if (reject === "false")
+    throw new ConnectionError("rejectUnauthorized: false is not supported – Bobi always verifies certificates. Add your CA certificate with NODE_EXTRA_CA_CERTS.")
   const upperUser = user!.toUpperCase()
   return {
     protocol,
@@ -109,7 +111,6 @@ export function loadConnection(project: string, env: Record<string, string | und
     basePath: (str("basePath", "ZOWE_OPT_BASE_PATH") ?? "").replace(/\/$/, ""),
     user: user!,
     password: password!,
-    rejectUnauthorized: reject === undefined ? true : reject !== "false",
     // Default: only the user's own datasets and home directory – never production data unless allowed explicitly.
     datasets: list(env.BOBI_ZOWE_DATASETS).map((p) => p.toUpperCase()).concat(env.BOBI_ZOWE_DATASETS ? [] : [`${upperUser}.**`]),
     uss: list(env.BOBI_ZOWE_USS).concat(env.BOBI_ZOWE_USS ? [] : [`/u/${user!.toLowerCase()}`]),

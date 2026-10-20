@@ -18,7 +18,7 @@ const password = crypto.randomUUID()
 test("environment only: defaults to https:443, own datasets and home directory", () => {
   const home = temp()
   const c = loadConnection(temp(), { HOME: home, ZOWE_OPT_HOST: "mf.example", ZOWE_OPT_USER: "dev1", ZOWE_OPT_PASSWORD: password })
-  expect(c).toMatchObject({ protocol: "https", host: "mf.example", port: 443, user: "dev1", rejectUnauthorized: true, datasets: ["DEV1.**"], uss: ["/u/dev1"], basePath: "" })
+  expect(c).toMatchObject({ protocol: "https", host: "mf.example", port: 443, user: "dev1", datasets: ["DEV1.**"], uss: ["/u/dev1"], basePath: "" })
   expect(c.source).toBe("environment")
   expect(JSON.stringify({ ...c, password: undefined })).not.toContain(password)
 })
@@ -27,7 +27,7 @@ test("team config: project wins over global, nested profiles inherit, base profi
   const home = temp()
   const project = temp()
   mkdirSync(path.join(home, ".zowe"))
-  writeFileSync(path.join(home, ".zowe", "zowe.config.json"), JSON.stringify({ profiles: { base: { type: "base", properties: { host: "global.example", rejectUnauthorized: false } } }, defaults: { base: "base" } }))
+  writeFileSync(path.join(home, ".zowe", "zowe.config.json"), JSON.stringify({ profiles: { base: { type: "base", properties: { host: "global.example", rejectUnauthorized: true } } }, defaults: { base: "base" } }))
   writeFileSync(
     path.join(project, "zowe.config.json"),
     `// project config\n${JSON.stringify({
@@ -39,7 +39,7 @@ test("team config: project wins over global, nested profiles inherit, base profi
   const warn = spyOn(console, "error").mockImplementation(() => {})
   try {
     const env = { HOME: home, ZOWE_OPT_PASSWORD: password, ZOWE_OPT_USER: "dev1" }
-    expect(loadConnection(project, env)).toMatchObject({ host: "lpar1.example", port: 10443, basePath: "/api", rejectUnauthorized: false })
+    expect(loadConnection(project, env)).toMatchObject({ host: "lpar1.example", port: 10443, basePath: "/api" })
     expect(loadConnection(project, { ...env, BOBI_ZOWE_PROFILE: "lpar2", ZOWE_OPT_USER: undefined })).toMatchObject({ host: "lpar2.example", user: "fromfile", password })
     expect(warn).toHaveBeenCalledWith(expect.stringContaining("ignoring a password"))
     expect(() => loadConnection(project, { ...env, BOBI_ZOWE_PROFILE: "nope" })).toThrow('Zowe profile "nope" not found')
@@ -58,13 +58,14 @@ test("explicit allowlists, protocol, port and TLS settings from the environment"
     ZOWE_OPT_PASSWORD: password,
     ZOWE_OPT_PROTOCOL: "HTTP",
     ZOWE_OPT_PORT: "8080",
-    ZOWE_OPT_REJECT_UNAUTHORIZED: "false",
+    ZOWE_OPT_REJECT_UNAUTHORIZED: "true",
     BOBI_ZOWE_DATASETS: "dev.**, test.a*.src",
     BOBI_ZOWE_USS: "/projects/x/",
   }
-  expect(loadConnection(temp(), env)).toMatchObject({ protocol: "http", port: 8080, rejectUnauthorized: false, datasets: ["DEV.**", "TEST.A*.SRC"], uss: ["/projects/x/"] })
+  expect(loadConnection(temp(), env)).toMatchObject({ protocol: "http", port: 8080, datasets: ["DEV.**", "TEST.A*.SRC"], uss: ["/projects/x/"] })
   expect(() => loadConnection(temp(), { ...env, ZOWE_OPT_PROTOCOL: "ftp" })).toThrow("protocol must be")
   expect(() => loadConnection(temp(), { ...env, ZOWE_OPT_PORT: "0" })).toThrow("port must be")
+  expect(() => loadConnection(temp(), { ...env, ZOWE_OPT_REJECT_UNAUTHORIZED: "false" })).toThrow("always verifies certificates")
 })
 
 test("missing settings and broken config files are explained", () => {

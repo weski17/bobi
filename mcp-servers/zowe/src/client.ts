@@ -47,8 +47,7 @@ export class MainframeClient {
       },
       ...(init.body !== undefined ? { body: init.body } : {}),
       signal: AbortSignal.timeout(this.options.timeout ?? 30_000),
-      ...(c.rejectUnauthorized ? {} : { tls: { rejectUnauthorized: false } }),
-    } as RequestInit)
+    })
     if (!response.ok) {
       const text = (await response.text()).slice(0, 500)
       let detail = text
