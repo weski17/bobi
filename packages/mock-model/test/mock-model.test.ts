@@ -102,3 +102,14 @@ test("fill-in-the-middle completions", async () => {
     await custom.stop()
   }
 })
+
+test("simulated latency", async () => {
+  const slow = startMockModel({ latencyMs: 60 })
+  try {
+    const start = performance.now()
+    await fetch(`${slow.baseURL}/chat/completions`, { method: "POST", body: JSON.stringify({ model: "m", messages: [] }) })
+    expect(performance.now() - start).toBeGreaterThanOrEqual(55)
+  } finally {
+    await slow.stop()
+  }
+})
