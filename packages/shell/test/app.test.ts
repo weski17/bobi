@@ -294,3 +294,29 @@ test("bobi usage reports tasks and tokens per person and team, with the configur
     await rm(usageHome, { recursive: true, force: true })
   }
 })
+
+test("bobi tips lists tips per file and can fail a CI run", async () => {
+  const { mkdir, writeFile } = await import("node:fs/promises")
+  const project = await realpath(await mkdtemp(path.join(tmpdir(), "bobi-tips-proj-")))
+  try {
+    await mkdir(path.join(project, "src"))
+    await writeFile(path.join(project, "src", "a.ts"), "export function f(a: any) { try { a() } catch {} }")
+    await writeFile(path.join(project, "src", "ok.ts"), "export const x = 1")
+    await writeFile(path.join(project, "notes.md"), "# not analysed")
+    const t = io({ cwd: project })
+    expect(await runApp(["tips"], t.io)).toBe(0)
+    expect(t.out).toEqual([
+      "src/a.ts:1: info [explicit-any] Explicit `any` turns off type checking here. Prefer `unknown` or a precise type.",
+      "src/a.ts:1: warning [empty-catch] Empty catch block hides errors. Handle, log or comment why it is safe to ignore.",
+    ])
+    expect(t.err.at(-1)).toBe("bobi: 2 tip(s) in 1 of 2 file(s)")
+    const ci = io({ cwd: project })
+    expect(await runApp(["tips", "--fail-on", "warning", "--format", "json", "src/a.ts"], ci.io)).toBe(1)
+    expect(JSON.parse(ci.out[0]!)[0].tips).toHaveLength(2)
+    expect(await runApp(["tips", "--fail-on", "info", "src/ok.ts"], io({ cwd: project }).io)).toBe(0)
+    expect(await runApp(["tips", "--fail-on", "info", "src"], io({ cwd: project }).io)).toBe(1)
+    await expect(runApp(["tips", "missing"], io({ cwd: project }).io)).rejects.toThrow(UsageError)
+  } finally {
+    await rm(project, { recursive: true, force: true })
+  }
+})

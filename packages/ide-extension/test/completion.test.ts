@@ -76,3 +76,12 @@ test("BobiClient.complete maps server answers", async () => {
   expect(await client.complete(input)).toEqual({ off: "autocomplete unavailable", status: 409 })
   expect(await client.complete(input)).toEqual({ text: "", status: 200 })
 })
+
+test("BobiClient.tips", async () => {
+  const answers = [Response.json({ tips: [{ rule: "complexity", severity: "warning", message: "m", line: 1, endLine: 2 }] }), Response.json({}), Response.json({ error: "bad" }, { status: 400 }), new Response("x", { status: 500 })]
+  const client = new BobiClient("http://bobi", "pw-0123456789abcdef", (async () => answers.shift()!) as unknown as typeof fetch)
+  expect(await client.tips("/a.ts", "x", new AbortController().signal)).toHaveLength(1)
+  expect(await client.tips("/a.ts", "x")).toEqual([])
+  await expect(client.tips("/a.ts", "x")).rejects.toThrow("POST /bobi/tips: bad")
+  await expect(client.tips("/a.ts", "x")).rejects.toThrow(BobiApiError)
+})

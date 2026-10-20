@@ -7,6 +7,7 @@ import { CLI as CODE_GRAPH_CLI } from "@bobi/mcp-code-graph"
 import { CLI as COBOL_CLI } from "@bobi/mcp-cobol"
 import { CLI as ZOWE_CLI, zoweConfigured } from "@bobi/mcp-zowe"
 import { COMPLETE_PATH, handleCompletion } from "./complete.ts"
+import { handleTips, TIPS_PATH } from "./tips.ts"
 import { startNodeServer, type NodeServer } from "./node-host.ts"
 import type { BobiPaths } from "./paths.ts"
 
@@ -83,7 +84,7 @@ export async function startBobiServer(options: BobiServerOptions): Promise<BobiS
     plugin,
     routes: {
       match: (pathname) => {
-        if (pathname === COMPLETE_PATH) return "private"
+        if (pathname === COMPLETE_PATH || pathname === TIPS_PATH) return "private"
         if (a2a && pathname === CARD_PATH) return "public"
         if (a2a && pathname === RPC_PATH) return "private"
         return undefined
@@ -92,6 +93,7 @@ export async function startBobiServer(options: BobiServerOptions): Promise<BobiS
         const { pathname, origin } = new URL(request.url)
         if (pathname === CARD_PATH) return Response.json(agentCard({ baseUrl: origin, version: options.engineVersion ?? "local" }))
         if (pathname === RPC_PATH) return a2a!.handle(request)
+        if (pathname === TIPS_PATH) return handleTips(request, projectConfig)
         return handleCompletion(request, { projectConfig, env, mask: plugin.mask })
       },
     },

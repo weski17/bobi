@@ -1,9 +1,9 @@
 // Bobi IDE extension: starts the Bobi server for the workspace and provides the chat panel (phase 4).
 import * as vscode from "vscode"
 import { ChatView, type FromUi } from "./chatView.ts"
-import { BobiClient } from "./client.ts"
+import { BobiClient, type Tip } from "./client.ts"
 import { Completer } from "./completion.ts"
-import { contextFiles, literatePrompt, literateRegion, withSelection } from "./context.ts"
+import { contextFiles, literatePrompt, literateRegion, simplifyPrompt, withSelection } from "./context.ts"
 import { ChatController } from "./controller.ts"
 import { DiffPresenter, SCHEME } from "./diff.ts"
 import { resolveCommand, startBobi, trust, type RunningBobi } from "./server.ts"
@@ -12,6 +12,8 @@ let running: RunningBobi | undefined
 let controller: ChatController | undefined
 let completer: Completer | undefined
 let lastSuggestion: string | undefined
+let tipsClient: BobiClient | undefined
+const TIP_LANGUAGES = /^(typescript|typescriptreact|javascript|javascriptreact|cobol|COBOL)$|\.(ts|tsx|mts|cts|js|jsx|mjs|cjs|cbl|cob|cobol|cpy)$/i
 
 /** Returned from activate(); used by the IDE integration test. */
 export type BobiApi = { readonly started: Promise<void>; readonly controller: ChatController | undefined; readonly lastSuggestion: string | undefined }
@@ -42,6 +44,45 @@ function context(folder: string) {
       ? { fsPath: editor.document.uri.fsPath, startLine: editor.selection.start.line + 1, endLine: editor.selection.end.line + 1, text: editor.document.getText(editor.selection) }
       : undefined
   return { files: contextFiles(folder, tabs, editor?.document.uri.scheme === "file" ? editor.document.uri.fsPath : undefined), selection }
+}
+
+const tipsCollection = vscode.languages.createDiagnosticCollection("bobi")
+const tipsFor = new WeakMap<vscode.Diagnostic, Tip>()
+const tipTimers = new Map<string, ReturnType<typeof setTimeout>>()
+
+/** Asks the server for tips 700 ms after the last change of a supported file. */
+function scheduleTips(document: vscode.TextDocument) {
+  if (document.uri.scheme !== "file" || !(TIP_LANGUAGES.test(document.languageId) || TIP_LANGUAGES.test(document.fileName))) return
+  if (!(vscode.workspace.getConfiguration("bobi").get<boolean>("tips.enabled") ?? true)) return tipsCollection.delete(document.uri)
+  const key = document.uri.toString()
+  clearTimeout(tipTimers.get(key))
+  tipTimers.set(
+    key,
+    setTimeout(async () => {
+      tipTimers.delete(key)
+      if (!tipsClient || document.isClosed) return
+      try {
+        const tips = await tipsClient.tips(document.uri.fsPath, document.getText())
+        tipsCollection.set(
+          document.uri,
+          tips.map((tip) => {
+            const line = Math.min(tip.line - 1, document.lineCount - 1)
+            const diagnostic = new vscode.Diagnostic(
+              document.lineAt(line).range,
+              tip.message,
+              tip.severity === "warning" ? vscode.DiagnosticSeverity.Warning : vscode.DiagnosticSeverity.Information,
+            )
+            diagnostic.source = "Bobi"
+            diagnostic.code = tip.rule
+            tipsFor.set(diagnostic, tip)
+            return diagnostic
+          }),
+        )
+      } catch (error) {
+        console.warn(`Bobi tips: ${(error as Error).message}`)
+      }
+    }, 700),
+  )
 }
 
 export function activate(extension: vscode.ExtensionContext): BobiApi {
@@ -121,6 +162,34 @@ export function activate(extension: vscode.ExtensionContext): BobiApi {
         },
       },
     ),
+    // Code tips (requirement 14): local analysis on the server, shown as diagnostics; "Bobi: Simplify" as quick fix.
+    tipsCollection,
+    vscode.workspace.onDidOpenTextDocument((d) => scheduleTips(d)),
+    vscode.workspace.onDidChangeTextDocument((e) => scheduleTips(e.document)),
+    vscode.workspace.onDidCloseTextDocument((d) => tipsCollection.delete(d.uri)),
+    vscode.languages.registerCodeActionsProvider(
+      { scheme: "file" },
+      {
+        provideCodeActions(document, _range, context) {
+          return context.diagnostics
+            .filter((d) => d.source === "Bobi" && tipsFor.get(d))
+            .map((d) => {
+              const tip = tipsFor.get(d)!
+              const action = new vscode.CodeAction(`Bobi: Simplify ${tip.symbol ?? "this code"}`, vscode.CodeActionKind.QuickFix)
+              action.diagnostics = [d]
+              action.command = { command: "bobi.simplify", title: action.title, arguments: [document.uri, tip] }
+              return action
+            })
+        },
+      },
+      { providedCodeActionKinds: [vscode.CodeActionKind.QuickFix] },
+    ),
+    vscode.commands.registerCommand("bobi.simplify", async (uri: vscode.Uri, tip: Tip) => {
+      if (!controller) return
+      const document = await vscode.workspace.openTextDocument(uri)
+      view.reveal()
+      await handle({ type: "send", text: simplifyPrompt(vscode.workspace.asRelativePath(uri), tip, document.languageId) })
+    }),
     vscode.commands.registerCommand("bobi.restartServer", async () => {
       await stop()
       if (folder) await start(folder, view, diff)
@@ -144,6 +213,8 @@ async function start(folder: string, view: ChatView, diff: DiffPresenter) {
     await ensureTrust(command, folder)
     running = await startBobi(command, folder)
     completer = new Completer(new BobiClient(running.url, running.password), { log: (m) => console.warn(m) })
+    tipsClient = new BobiClient(running.url, running.password)
+    for (const document of vscode.workspace.textDocuments) scheduleTips(document)
     controller = new ChatController(new BobiClient(running.url, running.password), folder, {
       post: (m) => view.post(m),
       showDiff: (r) => diff.show(r),
@@ -161,6 +232,7 @@ async function stop() {
   controller?.stop()
   controller = undefined
   completer = undefined
+  tipsClient = undefined
   await running?.stop()
   running = undefined
 }

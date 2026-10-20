@@ -53,6 +53,7 @@ function merge(base: BobiConfig, patch: DeepPartial<BobiConfig>): BobiConfig {
       agents: { ...base.a2a.agents, ...((patch.a2a?.agents ?? {}) as BobiConfig["a2a"]["agents"]) },
     },
     usage: { ...base.usage, ...patch.usage },
+    tips: { ...base.tips, ...patch.tips },
   }
 }
 
