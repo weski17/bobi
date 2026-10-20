@@ -5,193 +5,193 @@ window.TOUR = {
    "id": "intro",
    "text": "Das ist Bobi – dein KI-Entwicklungspartner. Er läuft komplett in eurem Firmennetz, mit eurem eigenen Modell.",
    "start": 0,
-   "dur": 8.412,
+   "dur": 8.231,
    "audioStart": 0.5,
-   "audioDur": 6.812
+   "audioDur": 6.631
   },
   {
    "id": "onprem",
    "text": "Bobi spricht mit jedem OpenAI- oder Anthropic-kompatiblen Endpunkt, zum Beispiel LiteLLM, vLLM oder Ollama. Code und Daten verlassen das Firmennetz nie.",
-   "start": 8.412,
-   "dur": 12.442,
+   "start": 8.231,
+   "dur": 11.656,
    "audioStart": 0.5,
-   "audioDur": 10.842
+   "audioDur": 10.056
   },
   {
    "id": "surfaces",
    "text": "Es gibt zwei Oberflächen: die Bobi IDE und die Bobi Shell. Beide teilen sich denselben Kern – dieselben Modi, Regeln und Einstellungen.",
-   "start": 20.854,
-   "dur": 10.097,
+   "start": 19.887,
+   "dur": 10.158,
    "audioStart": 0.5,
-   "audioDur": 8.497
+   "audioDur": 8.558
   },
   {
    "id": "loop",
    "text": "Bobi plant, ruft Werkzeuge auf, prüft das Ergebnis und macht weiter. Jede Änderung und jeder Terminal-Befehl braucht deine Freigabe.",
-   "start": 30.951,
-   "dur": 10.339,
+   "start": 30.045,
+   "dur": 10.007,
    "audioStart": 0.5,
-   "audioDur": 8.739
+   "audioDur": 8.407
   },
   {
    "id": "diff",
    "text": "In der IDE siehst du jede Änderung als Diff, bevor sie geschrieben wird. Und mit einem Klick machst du alles wieder rückgängig.",
-   "start": 41.289,
-   "dur": 8.483,
+   "start": 40.052,
+   "dur": 8.347,
    "audioStart": 0.5,
-   "audioDur": 6.883
+   "audioDur": 6.747
   },
   {
    "id": "modes",
    "text": "Modi geben Bobi eine Rolle und eigene Rechte: Code, Plan, Ask nur zum Lesen, Advanced mit MCP, Orchestrator und Security. Eigene Modi legst du pro Projekt an.",
-   "start": 49.772,
-   "dur": 12.769,
+   "start": 48.4,
+   "dur": 13.281,
    "audioStart": 0.5,
-   "audioDur": 11.169
+   "audioDur": 11.681
   },
   {
    "id": "context",
    "text": "Mit Slash init entsteht die Datei AGENTS. Regeln im Ordner Punkt bobi gelten immer – und was in der bobiignore steht, bekommt Bobi nie zu sehen.",
-   "start": 62.541,
-   "dur": 10.876,
+   "start": 61.681,
+   "dur": 10.065,
    "audioStart": 0.5,
-   "audioDur": 9.276
+   "audioDur": 8.465
   },
   {
    "id": "orchestrator",
    "text": "Der Orchestrator zerlegt große Aufgaben und verteilt sie an die passenden Modi.",
-   "start": 73.417,
-   "dur": 6.543,
+   "start": 71.746,
+   "dur": 6.081,
    "audioStart": 0.5,
-   "audioDur": 4.943
+   "audioDur": 4.481
   },
   {
    "id": "commands",
    "text": "Skills und eigene Slash-Befehle machen Abläufe wiederholbar – zum Beispiel commit, pr oder security-review.",
-   "start": 79.961,
-   "dur": 8.693,
+   "start": 77.828,
+   "dur": 8.438,
    "audioStart": 0.5,
-   "audioDur": 7.093
+   "audioDur": 6.838
   },
   {
    "id": "literate",
    "text": "Literate Coding: Schreib in Klartext an die Stelle, was passieren soll, drück Befehl, Alt, Enter – und Bobi liefert den Code als Diff.",
-   "start": 88.654,
-   "dur": 10.458,
+   "start": 86.266,
+   "dur": 9.657,
    "audioStart": 0.5,
-   "audioDur": 8.858
+   "audioDur": 8.057
   },
   {
    "id": "autocomplete",
    "text": "Die Autovervollständigung schlägt ganze Zeilen und Blöcke vor, mit eurem eigenen Modell. Tab übernimmt den Vorschlag.",
-   "start": 99.112,
-   "dur": 8.807,
+   "start": 95.923,
+   "dur": 8.173,
    "audioStart": 0.5,
-   "audioDur": 7.207
+   "audioDur": 6.573
   },
   {
    "id": "tips",
    "text": "Code-Tipps markieren komplexe Funktionen und Anti-Patterns schon beim Tippen – lokal, ohne Modellaufruf. Auf Wunsch vereinfacht Bobi den Code.",
-   "start": 107.919,
-   "dur": 10.888,
+   "start": 104.096,
+   "dur": 9.775,
    "audioStart": 0.5,
-   "audioDur": 9.288
+   "audioDur": 8.175
   },
   {
    "id": "security",
    "text": "Der Security-Modus sucht Schwachstellen und Code-Smells und schlägt Patches vor.",
-   "start": 118.807,
-   "dur": 6.311,
+   "start": 113.871,
+   "dur": 6.163,
    "audioStart": 0.5,
-   "audioDur": 4.711
+   "audioDur": 4.563
   },
   {
    "id": "git",
    "text": "Bobi schreibt Commit-Nachrichten aus dem Diff und erstellt Pull Requests. Vor dem Pushen fragt er natürlich nach.",
-   "start": 125.119,
-   "dur": 8.46,
+   "start": 120.034,
+   "dur": 8.289,
    "audioStart": 0.5,
-   "audioDur": 6.86
+   "audioDur": 6.689
   },
   {
    "id": "mcp",
    "text": "Über MCP bindet Bobi weitere Werkzeuge an, lokal oder im Netz. Der eingebaute Code-Graph zeigt Aufrufketten und Abhängigkeiten.",
-   "start": 133.578,
-   "dur": 10.585,
+   "start": 128.323,
+   "dur": 10.147,
    "audioStart": 0.5,
-   "audioDur": 8.985
+   "audioDur": 8.547
   },
   {
    "id": "cobol",
    "text": "Für den Mainframe analysiert Bobi COBOL: Programme, Datenfluss und die Auswirkung einer Änderung – getestet an CardDemo.",
-   "start": 144.163,
-   "dur": 9.565,
+   "start": 138.47,
+   "dur": 8.705,
    "audioStart": 0.5,
-   "audioDur": 7.965
+   "audioDur": 7.105
   },
   {
    "id": "zowe",
    "text": "Über Zowe liest Bobi Datasets und startet Jobs – nur auf freigegebenen Datasets und immer mit deiner Bestätigung.",
-   "start": 153.728,
-   "dur": 8.252,
+   "start": 147.175,
+   "dur": 8.276,
    "audioStart": 0.5,
-   "audioDur": 6.652
+   "audioDur": 6.676
   },
   {
    "id": "tools",
    "text": "Bobi nutzt Terminal und Browser. Alles, was dort steht, ist für ihn nur Daten – niemals eine Anweisung.",
-   "start": 161.98,
-   "dur": 8.319,
+   "start": 155.451,
+   "dur": 8.254,
    "audioStart": 0.5,
-   "audioDur": 6.719
+   "audioDur": 6.654
   },
   {
    "id": "safety",
    "text": "Darunter liegt eine Sandbox im Container, Netzwerk nur per Allowlist, maskierte Geheimnisse und ein Audit jeder Aktion über OpenTelemetry.",
-   "start": 170.299,
-   "dur": 10.572,
+   "start": 163.705,
+   "dur": 10.366,
    "audioStart": 0.5,
-   "audioDur": 8.972
+   "audioDur": 8.766
   },
   {
    "id": "reports",
    "text": "Audit-Berichte und eine Nutzungsstatistik pro Team erzeugst du mit einem einzigen Befehl.",
-   "start": 180.871,
-   "dur": 6.791,
+   "start": 174.07,
+   "dur": 6.163,
    "audioStart": 0.5,
-   "audioDur": 5.191
+   "audioDur": 4.563
   },
   {
    "id": "diagrams",
    "text": "Architekturdiagramme entstehen direkt aus dem Code.",
-   "start": 187.661,
-   "dur": 4.875,
+   "start": 180.233,
+   "dur": 4.5,
    "audioStart": 0.5,
-   "audioDur": 3.275
+   "audioDur": 2.786
   },
   {
    "id": "a2a",
    "text": "Und per A2A arbeitet Bobi mit anderen Agenten zusammen. Fremde Agenten dürfen bei Bobi nur lesen.",
-   "start": 192.536,
-   "dur": 8.065,
+   "start": 184.733,
+   "dur": 7.755,
    "audioStart": 0.5,
-   "audioDur": 6.465
+   "audioDur": 6.155
   },
   {
    "id": "quality",
    "text": "Alles ist getestet: 397 automatisierte Tests, acht von acht Angriffen im Red-Team eingedämmt, hundert parallele Sitzungen ohne Fehler.",
-   "start": 200.601,
-   "dur": 11.725,
+   "start": 192.488,
+   "dur": 11.016,
    "audioStart": 0.5,
-   "audioDur": 10.125
+   "audioDur": 9.416
   },
   {
    "id": "outro",
    "text": "Bobi. On-Prem. Sicher. Offen.",
-   "start": 212.326,
-   "dur": 4.5,
+   "start": 203.504,
+   "dur": 5.042,
    "audioStart": 0.5,
-   "audioDur": 2.458
+   "audioDur": 3.442
   }
  ]
 }

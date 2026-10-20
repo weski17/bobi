@@ -1,159 +1,159 @@
 1
-00:00:00,500 --> 00:00:03,488
+00:00:00,500 --> 00:00:03,415
 Das ist Bobi – dein KI-Entwicklungspartner.
 
 2
-00:00:03,238 --> 00:00:07,562
+00:00:03,165 --> 00:00:07,381
 Er läuft komplett in eurem Firmennetz, mit eurem eigenen Modell.
 
 3
-00:00:08,912 --> 00:00:16,845
+00:00:08,731 --> 00:00:16,107
 Bobi spricht mit jedem OpenAI- oder Anthropic-kompatiblen Endpunkt, zum Beispiel LiteLLM, vLLM oder Ollama.
 
 4
-00:00:16,595 --> 00:00:20,004
+00:00:15,857 --> 00:00:19,037
 Code und Daten verlassen das Firmennetz nie.
 
 5
-00:00:21,354 --> 00:00:25,282
+00:00:20,387 --> 00:00:24,341
 Es gibt zwei Oberflächen: die Bobi IDE und die Bobi Shell.
 
 6
-00:00:25,032 --> 00:00:30,101
+00:00:24,091 --> 00:00:29,195
 Beide teilen sich denselben Kern – dieselben Modi, Regeln und Einstellungen.
 
 7
-00:00:31,451 --> 00:00:36,237
+00:00:30,545 --> 00:00:35,159
 Bobi plant, ruft Werkzeuge auf, prüft das Ergebnis und macht weiter.
 
 8
-00:00:35,987 --> 00:00:40,440
+00:00:34,909 --> 00:00:39,202
 Jede Änderung und jeder Terminal-Befehl braucht deine Freigabe.
 
 9
-00:00:41,789 --> 00:00:45,972
+00:00:40,552 --> 00:00:44,657
 In der IDE siehst du jede Änderung als Diff, bevor sie geschrieben wird.
 
 10
-00:00:45,722 --> 00:00:48,922
+00:00:44,407 --> 00:00:47,549
 Und mit einem Klick machst du alles wieder rückgängig.
 
 11
-00:00:50,272 --> 00:00:59,130
+00:00:48,900 --> 00:00:58,153
 Modi geben Bobi eine Rolle und eigene Rechte: Code, Plan, Ask nur zum Lesen, Advanced mit MCP, Orchestrator und Security.
 
 12
-00:00:58,880 --> 00:01:01,691
+00:00:57,903 --> 00:01:00,831
 Eigene Modi legst du pro Projekt an.
 
 13
-00:01:03,041 --> 00:01:05,951
+00:01:02,181 --> 00:01:04,858
 Mit Slash init entsteht die Datei AGENTS.
 
 14
-00:01:05,701 --> 00:01:12,567
+00:01:04,608 --> 00:01:10,896
 Regeln im Ordner Punkt bobi gelten immer – und was in der bobiignore steht, bekommt Bobi nie zu sehen.
 
 15
-00:01:13,917 --> 00:01:19,110
+00:01:12,246 --> 00:01:16,977
 Der Orchestrator zerlegt große Aufgaben und verteilt sie an die passenden Modi.
 
 16
-00:01:20,461 --> 00:01:27,804
+00:01:18,328 --> 00:01:25,416
 Skills und eigene Slash-Befehle machen Abläufe wiederholbar – zum Beispiel commit, pr oder security-review.
 
 17
-00:01:29,154 --> 00:01:38,262
+00:01:26,766 --> 00:01:35,073
 Literate Coding: Schreib in Klartext an die Stelle, was passieren soll, drück Befehl, Alt, Enter – und Bobi liefert den Code als Diff.
 
 18
-00:01:39,612 --> 00:01:45,329
+00:01:36,423 --> 00:01:41,659
 Die Autovervollständigung schlägt ganze Zeilen und Blöcke vor, mit eurem eigenen Modell.
 
 19
-00:01:45,079 --> 00:01:47,069
+00:01:41,409 --> 00:01:43,246
 Tab übernimmt den Vorschlag.
 
 20
-00:01:48,419 --> 00:01:55,520
+00:01:44,596 --> 00:01:50,876
 Code-Tipps markieren komplexe Funktionen und Anti-Patterns schon beim Tippen – lokal, ohne Modellaufruf.
 
 21
-00:01:55,270 --> 00:01:57,957
+00:01:50,626 --> 00:01:53,021
 Auf Wunsch vereinfacht Bobi den Code.
 
 22
-00:01:59,307 --> 00:02:04,268
+00:01:54,371 --> 00:01:59,184
 Der Security-Modus sucht Schwachstellen und Code-Smells und schlägt Patches vor.
 
 23
-00:02:05,619 --> 00:02:10,340
+00:02:00,534 --> 00:02:05,144
 Bobi schreibt Commit-Nachrichten aus dem Diff und erstellt Pull Requests.
 
 24
-00:02:10,090 --> 00:02:12,729
+00:02:04,894 --> 00:02:07,473
 Vor dem Pushen fragt er natürlich nach.
 
 25
-00:02:14,078 --> 00:02:18,749
+00:02:08,823 --> 00:02:13,279
 Über MCP bindet Bobi weitere Werkzeuge an, lokal oder im Netz.
 
 26
-00:02:18,499 --> 00:02:23,313
+00:02:13,029 --> 00:02:17,620
 Der eingebaute Code-Graph zeigt Aufrufketten und Abhängigkeiten.
 
 27
-00:02:24,663 --> 00:02:32,878
+00:02:18,970 --> 00:02:26,325
 Für den Mainframe analysiert Bobi COBOL: Programme, Datenfluss und die Auswirkung einer Änderung – getestet an CardDemo.
 
 28
-00:02:34,228 --> 00:02:41,130
+00:02:27,675 --> 00:02:34,601
 Über Zowe liest Bobi Datasets und startet Jobs – nur auf freigegebenen Datasets und immer mit deiner Bestätigung.
 
 29
-00:02:42,480 --> 00:02:44,838
+00:02:35,951 --> 00:02:38,289
 Bobi nutzt Terminal und Browser.
 
 30
-00:02:44,588 --> 00:02:49,449
+00:02:38,039 --> 00:02:42,855
 Alles, was dort steht, ist für ihn nur Daten – niemals eine Anweisung.
 
 31
-00:02:50,799 --> 00:03:00,021
+00:02:44,205 --> 00:02:53,221
 Darunter liegt eine Sandbox im Container, Netzwerk nur per Allowlist, maskierte Geheimnisse und ein Audit jeder Aktion über OpenTelemetry.
 
 32
-00:03:01,371 --> 00:03:06,812
+00:02:54,570 --> 00:02:59,383
 Audit-Berichte und eine Nutzungsstatistik pro Team erzeugst du mit einem einzigen Befehl.
 
 33
-00:03:08,161 --> 00:03:11,686
+00:03:00,733 --> 00:03:03,769
 Architekturdiagramme entstehen direkt aus dem Code.
 
 34
-00:03:13,036 --> 00:03:16,990
+00:03:05,233 --> 00:03:09,009
 Und per A2A arbeitet Bobi mit anderen Agenten zusammen.
 
 35
-00:03:16,740 --> 00:03:19,751
+00:03:08,759 --> 00:03:11,638
 Fremde Agenten dürfen bei Bobi nur lesen.
 
 36
-00:03:21,101 --> 00:03:31,476
+00:03:12,988 --> 00:03:22,654
 Alles ist getestet: 397 automatisierte Tests, acht von acht Angriffen im Red-Team eingedämmt, hundert parallele Sitzungen ohne Fehler.
 
 37
-00:03:32,826 --> 00:03:33,549
+00:03:24,004 --> 00:03:24,916
 Bobi.
 
 38
-00:03:33,299 --> 00:03:34,305
+00:03:24,666 --> 00:03:25,975
 On-Prem.
 
 39
-00:03:34,055 --> 00:03:34,967
+00:03:25,725 --> 00:03:26,902
 Sicher.
 
 40
-00:03:34,717 --> 00:03:35,534
+00:03:26,652 --> 00:03:27,696
 Offen.

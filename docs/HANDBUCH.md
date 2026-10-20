@@ -554,5 +554,5 @@ Sandbox 7/7, Red-Team 8/8, Semgrep 0 Befunde, Lasttest 300 Aufträge ohne Fehler
 - Eingehendes A2A nutzt ein gemeinsames Server-Passwort (keine Identität pro aufrufendem Agenten).
 - Bei vielen parallelen Sitzungen auf einem Server steigt Bobis Eigenanteil an der Antwortzeit (≈ 1,1 s bei 100).
 - Bobi IDE läuft aus den Quellen; ein verteilbares Paket muss die proprietären Copilot-Pakete von Code-OSS entfernen.
-- Die Sprecherstimme der Video-Tour (macOS „Anna“) ist nur für persönliche, nicht-kommerzielle Nutzung lizenziert –
-  vor einem Einsatz in der Firma ersetzen.
+- Die Video-Tour wird mit Piper und der frei lizenzierten Stimme „Thorsten“ vertont (Modell MIT, Daten CC0); der
+  Fallback mit der macOS-Stimme ist nur für Entwürfe gedacht (Apple-Lizenz: nicht-kommerziell).
