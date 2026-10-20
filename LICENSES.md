@@ -21,6 +21,7 @@ Notes:
 | Podman | Apache-2.0 | Container sandbox |
 | ripgrep | MIT / Unlicense | Code search used by OpenCode (must be preinstalled, see docs/DEVELOPMENT.md) |
 | GNU bash 5 | GPL-3.0 | Shell used by tests; not linked or distributed |
+| promptfoo 0.123.1 | MIT | Red-team runner (`bun run test:redteam`, via npx, pinned); telemetry, update checks and remote generation switched off; not installed in the workspace |
 
 ## Bobi workspace dependencies
 
