@@ -6,19 +6,28 @@ import { appendFileSync, mkdirSync } from "node:fs"
 import path from "node:path"
 
 export type AuditRecord = {
-  /** A tool call, a permission evaluation, or the user's answer to an approval request. */
-  readonly name: "bobi.tool" | "bobi.permission" | "bobi.approval"
+  /**
+   * A tool call, a permission evaluation, the user's answer to an approval request, a task (one prompt) or the
+   * token usage of one model step.
+   */
+  readonly name: "bobi.tool" | "bobi.permission" | "bobi.approval" | "bobi.task" | "bobi.usage"
   readonly start: number
   readonly end: number
   readonly attributes: {
     readonly "bobi.user": string
+    readonly "bobi.team"?: string
     readonly "bobi.mode": string
     readonly "bobi.session": string
     readonly "bobi.tool"?: string
     readonly "bobi.action"?: string
     readonly "bobi.resources"?: string
-    readonly "bobi.result": "completed" | "error" | "allow" | "ask" | "deny" | "once" | "always" | "reject"
+    readonly "bobi.result": "completed" | "error" | "allow" | "ask" | "deny" | "once" | "always" | "reject" | "started" | "recorded"
     readonly "bobi.error"?: string
+    readonly "bobi.model"?: string
+    readonly "bobi.tokens.input"?: number
+    readonly "bobi.tokens.output"?: number
+    readonly "bobi.tokens.reasoning"?: number
+    readonly "bobi.tokens.cache"?: number
   }
 }
 

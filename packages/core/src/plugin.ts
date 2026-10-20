@@ -96,6 +96,9 @@ export function createBobiCore(options: BobiCoreOptions): Plugin.Plugin & { read
   const policy = options.policy ?? loadDefaultPolicy()
   const mask = createMasker(options.secrets ?? [])
   const user = options.config.telemetry.user ?? "unknown"
+  const team = options.config.telemetry.team
+  // Who acted, on every audit record (requirement 19: usage per person and team).
+  const who = { "bobi.user": user, ...(team ? { "bobi.team": team } : {}) }
   const globalDir = options.globalDir ?? process.env.BOBI_HOME ?? path.join(os.homedir(), ".bobi")
   const audit = options.audit ?? defaultSink(options.config, options.env ?? process.env, globalDir)
   const started = new Map<string, number>()
@@ -181,10 +184,14 @@ export function createBobiCore(options: BobiCoreOptions): Plugin.Plugin & { read
       // Per-mode models (CLAUDE.md: e.g. a large model for plan). The engine uses the session's model for turns,
       // so Bobi switches it when the session enters another mode; a model the user picks within a mode is kept.
       const lastAgent = new Map<string, string>()
+      const sessionMode = new Map<string, string>()
       await ctx.session.hook("prompt", async (event) => {
         const sessionID = String(event.sessionID)
         const session = await ctx.session.get({ sessionID })
         const agent = String(session.agent ?? DEFAULT_MODE)
+        sessionMode.set(sessionID, agent)
+        const now = Date.now()
+        audit.record({ name: "bobi.task", start: now, end: now, attributes: { ...who, "bobi.mode": agent, "bobi.session": sessionID, "bobi.result": "started" } })
         if (lastAgent.get(sessionID) === agent) return
         lastAgent.set(sessionID, agent)
         // Only models the server's endpoint config declares can be selected.
@@ -253,7 +260,7 @@ export function createBobiCore(options: BobiCoreOptions): Plugin.Plugin & { read
         const start = started.get(event.id) ?? Date.now()
         started.delete(event.id)
         const base = {
-          "bobi.user": user,
+          ...who,
           "bobi.mode": String(event.agent),
           "bobi.session": String(event.sessionID),
           "bobi.tool": event.tool,
@@ -286,7 +293,6 @@ export function createBobiCore(options: BobiCoreOptions): Plugin.Plugin & { read
       })
 
       // 5. Audit every permission decision.
-      const sessionMode = new Map<string, string>()
       await ctx.permission.hook("evaluate", (event) => {
         const now = Date.now()
         if (event.agent) sessionMode.set(String(event.sessionID), String(event.agent))
@@ -300,7 +306,7 @@ export function createBobiCore(options: BobiCoreOptions): Plugin.Plugin & { read
           start: now,
           end: now,
           attributes: {
-            "bobi.user": user,
+            ...who,
             "bobi.mode": String(event.agent ?? "unknown"),
             "bobi.session": String(event.sessionID),
             "bobi.action": event.action,
@@ -324,6 +330,28 @@ export function createBobiCore(options: BobiCoreOptions): Plugin.Plugin & { read
                 // The request carries no mode; it is the mode of the evaluation that asked.
                 agent: sessionMode.get(String(data.sessionID)) ?? "unknown",
               })
+            if (event.type === "session.step.ended" || event.type === "session.step.failed") {
+              const tokens = data.tokens as { input: number; output: number; reasoning: number; cache: { read: number; write: number } } | undefined
+              if (!tokens) continue
+              const now = Date.now()
+              const sessionID = String(data.sessionID)
+              audit.record({
+                name: "bobi.usage",
+                start: now,
+                end: now,
+                attributes: {
+                  ...who,
+                  "bobi.mode": sessionMode.get(sessionID) ?? "unknown",
+                  "bobi.session": sessionID,
+                  "bobi.result": "recorded",
+                  "bobi.tokens.input": tokens.input,
+                  "bobi.tokens.output": tokens.output,
+                  "bobi.tokens.reasoning": tokens.reasoning,
+                  "bobi.tokens.cache": tokens.cache.read + tokens.cache.write,
+                },
+              })
+              continue
+            }
             if (event.type !== "permission.replied") continue
             const request = asked.get(String(data.requestID))
             asked.delete(String(data.requestID))
@@ -333,7 +361,7 @@ export function createBobiCore(options: BobiCoreOptions): Plugin.Plugin & { read
               start: now,
               end: now,
               attributes: {
-                "bobi.user": user,
+                ...who,
                 "bobi.mode": request?.agent ?? "unknown",
                 "bobi.session": String(data.sessionID),
                 ...(request ? { "bobi.action": request.action, "bobi.resources": request.resources } : {}),

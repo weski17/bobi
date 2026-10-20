@@ -35,6 +35,28 @@ jobs:
       - name: End-to-end terminal UI (approval prompt)
         run: bun run test:e2e
 
+  redteam:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Checkout the engine submodule
+        run: git submodule update --init --depth 1 vendor/opencode
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.3
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install ripgrep
+        run: sudo apt-get update && sudo apt-get install -y ripgrep
+      - name: Install upstream
+        run: cd vendor/opencode && bun install --frozen-lockfile
+      - name: Install Bobi
+        run: bun install --frozen-lockfile
+      - name: Red team with promptfoo (compromised mock model)
+        run: bun run test:redteam
+
   semgrep:
     runs-on: ubuntu-24.04
     container:

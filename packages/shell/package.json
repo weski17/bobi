@@ -16,6 +16,7 @@
     "@bobi/mcp-cobol": "workspace:*",
     "@bobi/mcp-code-graph": "workspace:*",
     "@bobi/modes": "workspace:*",
-    "@bobi/server": "workspace:*"
+    "@bobi/server": "workspace:*",
+    "@bobi/tips": "workspace:*"
   }
 }

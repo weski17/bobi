@@ -1,6 +1,31 @@
 # Status
 
-**Current phase: 6 – COBOL, mainframe, autocomplete, audit reports, A2A** · Branch `phase-6-mainframe-later` · waiting for approval
+**Current phase: 7 – code tips, usage statistics, red team, load tests** · Branch `phase-7-quality-usage` · waiting for approval
+
+## Phase 7
+
+| Task | Status | Where |
+|---|---|---|
+| Code tips TS/JS (complexity, length, nesting, parameters, empty catch, `any`, `==`) and COBOL (paragraph length, nesting, GO TO, PERFORM THRU, ALTER) | ✅ | `packages/tips` |
+| Tips in Bobi IDE as diagnostics + "Bobi: Simplify" quick fix (diff before apply); `bobi tips` with CI gate | ✅ | `packages/ide-extension`, `packages/server/src/tips.ts`, `packages/shell` |
+| Usage per person, team, mode, day: tasks, tokens, tool calls, approved/rejected changes; time saved only as configured estimate | ✅ | `packages/core/src/usage.ts`, `bobi usage` |
+| Red team: 8 attacks against a compromised mock model, in `bun test` and promptfoo; self-check | ✅ | `tests/redteam` |
+| Load test: parallel sessions, p50–p99, throughput, Bobi overhead | ✅ | `tests/load` |
+| Demo guide | ✅ | docs/demos/phase-7.md |
+
+Tests: **397 pass, 0 fail** + promptfoo red team 8/8 + IDE integration test (incl. tips) + e2e + sandbox.
+
+### Phase 7 findings
+
+1. Load (mock, 200 ms per model call): 20 sessions × 3 prompts → p95 ≈ 1.0 s, Bobi overhead ≈ 0.4 s per prompt;
+   100 sessions → p95 ≈ 2.2 s, overhead ≈ 1.1 s, 0 errors. All sessions share one engine process; for larger teams,
+   one server per team or user (as today: one per IDE workspace) keeps the overhead low.
+2. `bobi tips` on Bobi itself flagged three A2A functions → refactored. Other long functions in Bobi's own code
+   (e.g. the core plugin's setup, the COBOL parser) are known and listed by `bobi tips packages mcp-servers`.
+3. promptfoo's `exec:` provider runs in the config's directory; it is called with the case id from the test vars.
+4. The approval request of a fetch shows the full URL including what the model put into it; the token in the test
+   never reached the model (masked), so only a fully compromised model could have built that URL.
+
 
 ## Phase 6
 
@@ -189,8 +214,7 @@ All ADRs 0001–0011 accepted. Open questions answered:
 1. **Logo:** waiting for the official FI SVG from the project owner (`branding/fi/icon.svg`, not committed).
    Bobi IDE picks it up with `BOBI_BRANDING_DIR=branding/fi bun run ide:setup`.
 2. ~~Packaged Bobi IDE.app~~ – decided 2026-10-19: run from source for now; packaging later (ADR-0008).
-3. **Not yet built:** code tips while typing (req. 14) and usage statistics per team/person (req. 19) – no phase
-   assigned in CLAUDE.md so far.
+3. ~~Code tips and usage statistics~~ – built in phase 7.
 
 ### Resolved 2026-10-19
 

@@ -41,6 +41,8 @@ export async function createHarness(
     codeGraph?: boolean
     env?: Record<string, string | undefined>
     builtinMcp?: (project: string) => Record<string, McpServer>
+    /** A real endpoint instead of the mock model (red-team runs against your gateway). */
+    model?: { baseURL: string; default: string; protocol?: "openai" | "anthropic" }
   } = {},
 ): Promise<Harness> {
   const mock = startMockModel({ models: ["mock-model"] })
@@ -52,8 +54,8 @@ export async function createHarness(
   const config: BobiConfig = {
     ...structuredClone(DEFAULTS),
     ...patch,
-    model: { ...DEFAULTS.model, baseURL: mock.baseURL, default: "mock-model" },
-    telemetry: { user: "tester" },
+    model: { ...DEFAULTS.model, baseURL: mock.baseURL, default: "mock-model", ...options.model },
+    telemetry: { user: "tester", ...patch.telemetry },
   }
   const audit = new MemorySink()
   // The browser tool is only registered where a test needs it, so other tests don't depend on Chromium.
@@ -74,7 +76,7 @@ export async function createHarness(
     ...(options.env ? { env: options.env } : {}),
     ...(options.browser ? {} : { browser: false }),
   })
-  process.env.BOBI_MODEL_API_KEY = "it-test-key"
+  process.env.BOBI_MODEL_API_KEY ??= "it-test-key"
   const opencode = await OpenCode.create({
     config: { directory: configDir, project: false, content: JSON.stringify(toOpenCodeConfig(config)) },
     ...SDK_OFFLINE_OPTIONS,
