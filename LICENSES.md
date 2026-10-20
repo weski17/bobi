@@ -22,7 +22,9 @@ Notes:
 | ripgrep | MIT / Unlicense | Code search used by OpenCode (must be preinstalled, see docs/DEVELOPMENT.md) |
 | GNU bash 5 | GPL-3.0 | Shell used by tests; not linked or distributed |
 | ffmpeg 9 (Homebrew) | LGPL-2.1 / GPL-2.0 (build with x264) | Encodes the demo videos in `docs/media`; dev machine only, not shipped |
-| macOS speech voice "Anna" (`say`) | Apple macOS licence: system voices only for personal, non-commercial use | Narration of the draft tour video `docs/media/bobi-tour`; **replace with a licensed or free voice before any company or public use** |
+| Piper TTS (`piper-tts` 1.8.0, PyPI) | GPL-3.0-or-later | Generates the tour narration on a dev machine; not shipped, not in the repository |
+| Piper voice `de_DE-thorsten-high` (Hugging Face `rhasspy/piper-voices`) | Model MIT; Thorsten-Voice dataset CC0 | Narration voice of `docs/media/bobi-tour/bobi-tour.mp4`; the model file is not in the repository |
+| macOS speech voice "Anna" (`say`) | Apple macOS licence: personal, non-commercial use only | Fallback in `make.ts` for drafts only; the published tour uses Piper |
 | promptfoo 0.123.1 | MIT | Red-team runner (`bun run test:redteam`, via npx, pinned); telemetry, update checks and remote generation switched off; not installed in the workspace |
 
 ## Bobi workspace dependencies

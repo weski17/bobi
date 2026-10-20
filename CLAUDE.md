@@ -118,7 +118,7 @@ in `docs/adr/` und nach meiner Freigabe.
 | 6 | COBOL- und Zowe-MCP-Server, Autovervollständigung, Audit-Berichte, A2A |
 | 7 | Code-Tipps, Nutzungsstatistik, Red-Teaming (promptfoo), Lasttests |
 
-**Aktuelle Phase: 7**
+**Aktuelle Phase: 7 – abgeschlossen.** Alle Anforderungen 1–20 sind umgesetzt (siehe `docs/STATUS.md`).
 Den Fortschritt pflegst du in `docs/STATUS.md`.
 
 Jede Phase endet mit: lauffähigem Stand, grünen Tests, kurzer Demo-Anleitung in
@@ -139,7 +139,7 @@ Jede Phase endet mit: lauffähigem Stand, grünen Tests, kurzer Demo-Anleitung i
 
 ## Befehle
 
-Voraussetzungen und Details: `docs/DEVELOPMENT.md`.
+Voraussetzungen und Details: `docs/DEVELOPMENT.md`. Nutzer-Handbuch: `docs/HANDBUCH.md`; Regeln für Agenten: `AGENTS.md`.
 
 - Installieren: `git submodule update --init --depth 1 && (cd vendor/opencode && bun install) && bun install && bun run browser:install && bash scripts/install.sh`
 - Bauen: kein Build-Schritt (Bun führt TypeScript direkt aus)

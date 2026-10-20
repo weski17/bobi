@@ -1,6 +1,16 @@
 # Status
 
-**Current phase: 7 – code tips, usage statistics, red team, load tests** · Branch `phase-7-quality-usage` · waiting for approval
+**Phase 7 done – all requirements 1–20 of CLAUDE.md implemented.** · `main` · user handbook: [HANDBUCH.md](HANDBUCH.md)
+
+## After phase 7 (2026-10-20)
+
+| Task | Status | Where |
+|---|---|---|
+| Feature tour video (3:37, 24 chapters, subtitles, narration) and 30 s intro | ✅ | `docs/media/` |
+| Narration with a freely licensed voice (Piper, Thorsten: model MIT, data CC0) instead of the macOS voice | ✅ | `docs/media/bobi-tour/make.ts` |
+| German user handbook | ✅ | `docs/HANDBUCH.md` |
+| README as product page, architecture updated to the built system, `AGENTS.md` for the repository | ✅ | `README.md`, `docs/ARCHITECTURE.md`, `AGENTS.md` |
+| Full check: typecheck, 397 tests, e2e, IDE, sandbox, red team, Semgrep, load, CLI walkthrough | ✅ | 2026-10-20 |
 
 ## Phase 7
 
@@ -211,8 +221,8 @@ All ADRs 0001–0011 accepted. Open questions answered:
 
 ## Open questions
 
-1. **Logo:** waiting for the official FI SVG from the project owner (`branding/fi/icon.svg`, not committed).
-   Bobi IDE picks it up with `BOBI_BRANDING_DIR=branding/fi bun run ide:setup`.
+1. ~~Logo~~ – decided 2026-10-20: the Bobi logo (`branding/default/icon.svg`) stays; no FI logo needed. Company
+   packs remain possible with `BOBI_BRANDING_DIR`.
 2. ~~Packaged Bobi IDE.app~~ – decided 2026-10-19: run from source for now; packaging later (ADR-0008).
 3. ~~Code tips and usage statistics~~ – built in phase 7.
 

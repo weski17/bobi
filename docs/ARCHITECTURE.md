@@ -1,141 +1,153 @@
-# Bobi – Architecture (proposal, Phase 0)
+# Bobi – Architecture
 
-Status: **Accepted**, updated after Phase 1 (ADR-0013: Bobi is a standalone application). Decisions are recorded in [`docs/adr/`](adr/).
-Analysis inputs: [OpenCode](analysis/opencode.md), [Code-OSS](analysis/code-oss.md).
+Status: **implemented** (phases 0–7, 2026-10-20). Decisions are recorded in [`docs/adr/`](adr/README.md); the
+upstream analysis that led to them is in [`docs/analysis/`](analysis/). German user documentation:
+[`HANDBUCH.md`](HANDBUCH.md).
 
 ## 1. Overview
 
 ```mermaid
 flowchart LR
-  subgraph Clients
-    IDE["Bobi IDE<br/>(Code-OSS fork +<br/>extensions/bobi-chat)"]
-    SHELL["Bobi Shell<br/>(bobi CLI / TUI, headless)"]
+  subgraph Clients["Clients (thin)"]
+    IDE["Bobi IDE<br/>Code-OSS + bobi-chat extension<br/>chat · diffs · autocomplete · tips"]
+    SHELL["Bobi Shell<br/>bobi · run · serve · attach<br/>tips · usage · audit · diagram"]
+    AGENTS["Other agents<br/>(A2A, read-only)"]
   end
 
-  subgraph Sandbox["Container sandbox (egress allowlist)"]
-    SERVER["Bobi Server (@bobi/server)<br/>engine embedded in-process<br/>+ @bobi/core as host plugin"]
-    TOOLS["Tools: read/write/edit,<br/>grep/glob, shell, browser"]
+  subgraph Sandbox["Container sandbox · unprivileged · egress via allowlist proxy"]
+    SERVER["Bobi Server (@bobi/server)<br/>OpenCode engine in-process<br/>+ @bobi/core as host plugin"]
+    ROUTES["Bobi routes<br/>/bobi/complete · /bobi/tips<br/>/a2a · agent card"]
+    TOOLS["Tools<br/>files · search · terminal · browser"]
+    MCP["Built-in MCP servers<br/>code-graph · cobol · zowe"]
     SNAP["Checkpoints<br/>(shadow git)"]
+    SERVER --- ROUTES
     SERVER --> TOOLS
+    SERVER --> MCP
     SERVER --> SNAP
   end
 
-  IDE -- "HTTP + SSE, password<br/>(@opencode/client)" --> SERVER
-  SHELL -- "HTTP + SSE, password<br/>(bobi / bobi attach)" --> SERVER
-  SERVER -- "only via egress proxy<br/>(allowlist)" --> GW
-  SERVER -- "OpenAI-/Anthropic-<br/>compatible API" --> GW["Model gateway<br/>(LiteLLM / vLLM / Ollama)"]
-  SERVER -- "MCP (stdio / HTTP)" --> MCP["MCP servers<br/>(code-graph, COBOL, Zowe, …)"]
-  SERVER -- "OTLP" --> OTEL["OTel collector<br/>→ Langfuse / any backend"]
+  IDE -- "HTTP + SSE (password)" --> SERVER
+  SHELL -- "HTTP + SSE (password)" --> SERVER
+  AGENTS -- "JSON-RPC (password)" --> ROUTES
+  SERVER -- "OpenAI-/Anthropic-compatible API" --> GW["Model gateway<br/>LiteLLM · vLLM · Ollama"]
+  MCP -- "REST (allowlisted datasets)" --> MF["Mainframe<br/>(Zowe-compatible services)"]
+  SERVER -- "OTLP" --> OTEL["OTel collector → Langfuse / any backend"]
+  SERVER -- "JSONL" --> AUDIT["~/.bobi/audit<br/>(reports, usage)"]
 ```
 
-**One core, two surfaces.** All behaviour (modes, rules, permissions, config) lives in the server process.
-IDE and Shell are thin clients; they never implement agent logic themselves.
+**One core, two surfaces.** All behaviour – modes, rules, permissions, configuration, audit – lives in the server
+process. The IDE and the shell are thin clients; neither implements agent logic. Other agents reach the same core
+through A2A, restricted to reading.
 
-## 2. Layering
+## 2. Packages
 
-| Layer | What | Where | Upstream change |
-|---|---|---|---|
-| Engine | Agent loop, tools, permissions, snapshots, MCP, SQLite, HTTP API | `vendor/opencode` (fork, pinned tag) | Minimal patch series only |
-| **Bobi core** | Secure defaults, secret masking, untrusted-data marking, audit spans; later modes, `.bobi/` loader, `.bobiignore` | `packages/core` (`@bobi/core`, registered as host plugin – never optional) | None – uses plugin API |
-| Config | `bobi.jsonc` + env → engine config, offline switches | `packages/config` (`@bobi/config`) | None |
-| Server | Embeds the engine, own data dir `~/.bobi`, password-protected HTTP front | `packages/server` (`@bobi/server`) | None (uses one internal SDK module) |
-| Browser tool | Headless Chromium via Playwright, approval per page | `packages/browser` (`@bobi/browser`) | None |
-| Shell | `bobi`, `bobi run`, `bobi serve`, `bobi attach`; engine TUI as client | `packages/shell` (`@bobi/shell`) | Branding patch `patches/opencode/0001-*` |
-| Sandbox | Podman container + `@bobi/egress-proxy` allowlist | `sandbox/`, `packages/egress-proxy` | None |
-| IDE | Code-OSS fork with Bobi branding; chat panel as built-in extension | `vendor/code-oss` + `packages/ide-extension` → `extensions/bobi-chat` | `product.json` overlay + small patch series |
-| MCP servers | code-graph, COBOL, Zowe | `mcp-servers/*` | – |
+| Package | Responsibility | ADR |
+|---|---|---|
+| `vendor/opencode` | Engine: agent loop, tools, permissions, snapshots, MCP client, SQLite, HTTP API (pinned submodule, minimal patches) | 0001, 0002 |
+| `packages/core` (`@bobi/core`) | The host plugin that makes the engine Bobi: secure policy and protected rules, modes as agents, rules/AGENTS.md, `.bobiignore`, project trust, secret masking, untrusted-data marking, audit (OTLP + JSONL incl. approvals, tasks, tokens), skills and commands, the read-only `a2a` agent, audit and usage reports | 0002, 0005, 0010, 0014, 0016–0018 |
+| `packages/config` | `bobi.jsonc` schema, layering (global → project if trusted → `BOBI_CONFIG` → env), offline switches, trust store | 0003, 0014 |
+| `packages/modes` | Built-in modes, `custom_modes.yaml`, tool groups → permission rules and visible tools | 0004 |
+| `packages/server` | Embeds the engine on a Node HTTP server (WebSockets for terminals), password auth, checkpoint repos, Bobi routes (autocomplete, tips, A2A) | 0013, 0017, 0018 |
+| `packages/shell` | The `bobi` application and its commands | 0009, 0013 |
+| `packages/ide-extension` | Bobi chat panel for Bobi IDE: chat, diffs, literate coding, commit messages, autocomplete, code tips | 0008, 0016–0018 |
+| `packages/browser` | Headless-browser tool (Playwright), one approval per page | 0007 |
+| `packages/egress-proxy` | Allowlist proxy for the sandbox (one request per connection) | 0007 |
+| `packages/a2a` | A2A agent card, inbound JSON-RPC handler, outbound client and `a2a` tool | 0017 |
+| `packages/tips` | Code tips: TS/JS via the TypeScript AST, COBOL via the Bobi parser | 0018 |
+| `packages/mock-model` | Scriptable OpenAI-compatible model (chat, tool calls, FIM, latency) for tests | 0011 |
+| `mcp-servers/code-graph` | Call chains, dependencies, diagrams for TS/JS | 0015 |
+| `mcp-servers/cobol` | COBOL parser, call graphs, data flow, impact analysis, JCL, diagrams | 0017 |
+| `mcp-servers/zowe` | Mainframe datasets, USS and jobs over the Zowe-compatible REST services, allowlisted | 0017 |
+| `vendor/code-oss` | Bobi IDE (Code-OSS, branding via `scripts/ide`, patches in `patches/code-oss`) | 0008, 0012 |
 
-Rule: **Bobi code never lives inside `vendor/`.** Anything that must change there is a numbered patch in `patches/<upstream>/`.
+Rule: **Bobi code never lives inside `vendor/`.** Anything that must change there is a numbered patch in
+`patches/<upstream>/`.
 
-## 3. Folder structure
+## 3. Repository layout
 
 ```text
 bobi/
-├── CLAUDE.md, AGENTS.md, README.md, LICENSES.md
-├── start-bobi.sh                  # starts a Claude Code session for the current phase
-├── package.json, bun.lock         # Bun workspace for packages/* and mcp-servers/*
-├── bobi.example.jsonc             # documented default config (local endpoint, no keys)
-├── vendor/                        # git submodules, pinned to upstream release tags
-│   ├── opencode/
-│   └── code-oss/
-├── patches/
-│   ├── opencode/0001-*.patch      # ordered, minimal, each with a reason header
-│   └── code-oss/0001-*.patch
-├── overlays/code-oss/product.json # merged over upstream product.json at build time
-├── packages/
-│   ├── core/                      # @bobi/core – OpenCode plugin (modes, rules, ignore, masking, audit)
-│   ├── config/                    # @bobi/config – schema + mapping bobi.jsonc → OpenCode config
-│   ├── shell/                     # @bobi/shell – `bobi` CLI (interactive + headless)
-│   ├── ide-extension/             # bobi-chat built-in extension sources
-│   └── mock-model/                # OpenAI-/Anthropic-compatible mock endpoint for tests
-├── mcp-servers/
-│   ├── code-graph/                # Phase 3
-│   ├── cobol/                     # Phase 6
-│   └── zowe/                      # Phase 6
-├── defaults/                      # shipped built-in modes, rules and permission policy
-│   ├── modes.yaml                 # plan, code, ask, advanced, orchestrator
-│   └── permissions.jsonc
-├── sandbox/                       # Containerfile, egress allowlist proxy config
-├── scripts/                       # sync-upstream.sh, apply-patches.sh, build-ide.sh
-├── tests/
-│   ├── integration/               # engine + Bobi plugin against mock-model
-│   ├── redteam/                   # promptfoo configs (injection, secrets, sandbox escape)
-│   └── load/                      # parallel sessions against configured endpoint
-├── .github/workflows/             # CI: typecheck, tests, coverage, Semgrep
-└── docs/
-    ├── ARCHITECTURE.md, STATUS.md
-    ├── adr/                       # Architecture Decision Records
-    ├── analysis/                  # Phase 0 upstream analysis
-    └── demos/phase-N.md
+├── CLAUDE.md · AGENTS.md · README.md · LICENSE · LICENSES.md · bobi.example.jsonc
+├── packages/            core · config · modes · server · shell · ide-extension · browser · egress-proxy · a2a · tips · mock-model
+├── mcp-servers/         code-graph · cobol · zowe
+├── vendor/              opencode (engine) · code-oss (IDE) · carddemo (COBOL test object)
+├── patches/             opencode/ · code-oss/  (ordered, minimal, each with a reason)
+├── branding/default/    icon.svg (Bobi IDE logo; company packs via BOBI_BRANDING_DIR)
+├── sandbox/             Containerfile · bobi-sandbox.sh
+├── scripts/             install.sh · apply-patches.ts · link-upstream.ts · bobiignore-paths.ts · ide/
+├── tests/               integration · e2e · ide · sandbox · redteam (promptfoo) · load
+└── docs/                HANDBUCH.md · ARCHITECTURE.md · STATUS.md · DEVELOPMENT.md · adr/ · demos/ · analysis/ · media/
 ```
 
-Per user project (what Bobi reads in a repository it works on):
+What Bobi reads in a project it works on:
 
 ```text
 <project>/
-├── AGENTS.md                      # created by /init
-├── .bobiignore                    # files the agent must not access
+├── AGENTS.md               project description (/init writes it)
+├── .bobiignore             files Bobi must never access
 └── .bobi/
-    ├── config.jsonc               # project config (models per mode, MCP servers, auto-approve)
-    ├── custom_modes.yaml          # project modes; same slug overrides a built-in mode
-    ├── rules/                     # always active
-    ├── rules-{mode}/              # active only in that mode
+    ├── config.jsonc        models per mode, auto-approvals, MCP servers, tips thresholds
+    ├── custom_modes.yaml   own modes; same slug overrides a built-in mode
+    ├── rules/  rules-<mode>/
     ├── skills/<name>/SKILL.md
-    └── commands/*.md              # custom slash commands
+    └── commands/*.md
 ```
 
-## 4. Requirement mapping
+Project files are used only after the user trusts the project (fingerprint of these files; asked again on change).
 
-| # | Requirement | Provided by OpenCode | Bobi adds (in `@bobi/core` unless noted) | Phase |
-|---|---|---|---|---|
-| 1 | Agent loop | `session/runner/llm.ts` | – | 1 |
-| 2 | Modes plan/code/ask/advanced/orchestrator | Agents + per-agent permissions | Define 5 modes in `defaults/modes.yaml`, hide/disable `build`/`general` | 2 |
-| 3 | `.bobi/custom_modes.yaml`, override by slug | Agent override by id | YAML loader → `ctx.agent.transform` | 2 |
-| 4 | Tools: files, search, terminal, **browser** | read/write/edit/grep/glob/shell/webfetch | Browser tool (headless Playwright, allowlisted) | 1 |
-| 5 | Confirm every write and shell command | Rule engine, no-match → ask | **Override allow-all default** with ask for `edit`, `shell`, `webfetch`, MCP; auto-approve only via explicit config | 1 |
-| 6 | Checkpoints + one-click undo | Shadow-git snapshots + revert API | Private shadow repo for non-git projects, secret masking | 1 |
-| 7 | `/init` → AGENTS.md, rules, `.bobiignore` | `/init`, AGENTS.md, `instructions` | `.bobi/rules*` → instructions; `.bobiignore` enforced in `tool.execute.before` + shell parse | 2 |
-| 8 | MCP client, per mode | `mcp.servers`, permission rules | Mode → allowed servers mapping | 3 |
-| 9 | IDE chat, open-tab context, inline diffs | HTTP API + SSE | `bobi-chat` extension: native chat view, chat editing session | 4 |
-| 10 | Orchestrator | `subagent` tool | Orchestrator mode prompt + delegation rules | 5 |
-| 11 | Skills, slash commands | SKILL.md, commands | Map `.bobi/skills`, `.bobi/commands` | 5 |
-| 12 | Literate coding | – | IDE command + `Cmd+M`-style keybinding (own key choice), result as diff | 5 |
-| 13–15 | Security agent, code tips, git | – | Modes + commands; code tips `packages/tips` + IDE diagnostics (ADR-0018) | 5, 7 |
-| 16 | Own MCP servers | – | `mcp-servers/code-graph`, `cobol`, `zowe` (ADR-0015, ADR-0017) | 3, 6 |
-| 17 | Autocomplete | – | `/bobi/complete` + IDE inline completion (ADR-0017) | 6 |
-| 18 | Audit reports, diagrams | OTel | Local audit log, `bobi audit`, `bobi diagram` (ADR-0017) | 6 |
-| 19 | Usage statistics | token events | `bobi.task` / `bobi.usage` audit records, `bobi usage` (ADR-0018) | 7 |
-| 20 | A2A | – | `packages/a2a`: agent card, read-only inbound, `a2a` tool (ADR-0017) | 6 |
+## 4. A request, end to end
 
-## 5. Security architecture (summary)
+1. A client sends a prompt (`POST /api/session/:id/prompt`). The `prompt` hook records a `bobi.task` and switches to
+   the mode's model if one is configured.
+2. The `context` hook builds the system prompt: Bobi identity, the untrusted-data rule, the mode's role and
+   project rules; tools the mode does not grant are removed.
+3. The engine runs the agent loop against the model gateway. Every tool call passes `tool.execute.before`
+   (`.bobiignore`, edit restrictions, A2A limits) and the permission engine (policy → auto-approvals → protected
+   rules → mode deny rules, last match wins). `ask` reaches the user in the TUI or IDE.
+4. Results pass `tool.execute.after`: ignored search hits removed, secrets masked, output from files, terminal,
+   web and MCP wrapped as `<untrusted-data>`.
+5. Every evaluation, answer, tool call and model step's tokens become audit records (OTLP and JSONL).
+6. Edits are snapshotted first; *undo* reverts the request's changes.
 
-- **Sandbox:** the server and every tool process run in a rootless container; the project is mounted, nothing else. See ADR-0007.
-- **Network:** container egress only through an allowlist proxy (model gateway, MCP hosts, approved URLs). All vendor phone-home calls disabled (ADR-0003).
-- **Prompt injection:** tool results are wrapped and labelled as untrusted data by `@bobi/core` (`tool.execute.after`); permissions are enforced by the engine, never by the model. Tested with promptfoo.
-- **Secrets:** masking filter applied to prompts (`session.model.request`), tool output, logs and span attributes.
-- **Audit:** every tool call emits an OTel span with `bobi.user`, `bobi.mode`, `bobi.tool`, `bobi.result`.
-- **Policy as code:** `defaults/permissions.jsonc` + `.bobi/config.jsonc` are versioned and reviewed via PR.
+## 5. Security architecture
 
-## 6. Decisions on open questions
+| Concern | Mechanism |
+|---|---|
+| Data stays on-prem | Only the configured endpoint; engine vendor services disabled; tested |
+| Approvals | Ask by default for writes, terminal, network, MCP; explicit versioned auto-approvals; protected rules always ask (`.bobi/`, `.bobiignore`, mainframe writes and jobs, `a2a`) |
+| Prompt injection | Untrusted-data marking; permissions enforced by Bobi, never by the model; red-team suite with a compromised model |
+| Secrets | Pattern and known-value masking in prompts, tool output, logs, audit, autocomplete; keys only from env |
+| Isolation | Container sandbox (unprivileged, project mount only, `.bobiignore` paths masked by mounts), egress allowlist proxy |
+| Foreign repositories | Project trust with fingerprint; no engine project config or plugins are ever loaded |
+| Other agents | A2A off by default, global switch only; hidden `a2a` agent = built-in Ask mode, everything else denied |
+| Mainframe | Dataset/USS allowlist (default: own datasets), DSN checks in JCL, TLS always verified |
+| Accountability | Audit of every action with user, team, mode, tool, result and the user's answer |
 
-See [`STATUS.md`](STATUS.md#open-questions).
+## 6. Requirement mapping
+
+| # | Requirement (CLAUDE.md) | Where | Phase |
+|---|---|---|---|
+| 1 | Agent loop | engine `session/runner` | 1 |
+| 2–3 | Modes, own modes | `packages/modes`, `@bobi/core` | 2 |
+| 4 | Files, search, terminal, browser | engine tools, `packages/browser` | 1 |
+| 5 | Approvals | `packages/core/defaults/permissions.jsonc`, protected rules | 1 |
+| 6 | Checkpoints, one-click undo | engine snapshots, shadow repos (`packages/server`) | 1 |
+| 7 | `/init`, rules, `.bobiignore` | `@bobi/core` | 2 |
+| 8 | MCP client per mode | `@bobi/core/mcp`, `packages/modes` | 3 |
+| 9 | IDE: chat, tab context, inline diffs | `packages/ide-extension` | 4 |
+| 10 | Orchestrator | `subtask` group, engine `subagent` | 5 |
+| 11 | Skills, slash commands | `@bobi/core/extensions` | 5 |
+| 12 | Literate coding | IDE command `bobi.literate` | 5 |
+| 13 | Security agent | `security` mode, `/security-review` | 5 |
+| 14 | Code tips | `packages/tips`, `/bobi/tips`, IDE diagnostics, `bobi tips` | 7 |
+| 15 | Git | `/commit`, `/pr`, IDE commit button | 5 |
+| 16 | Own MCP servers | `mcp-servers/code-graph`, `cobol`, `zowe` | 3, 6 |
+| 17 | Autocomplete | `/bobi/complete`, IDE inline completion | 6 |
+| 18 | Audit reports, diagrams | `bobi audit`, `bobi diagram` | 6 |
+| 19 | Usage statistics | `bobi usage` | 7 |
+| 20 | A2A | `packages/a2a` | 6 |
+
+## 7. Quality gates
+
+`bun run test:coverage` (≥ 80 % lines/functions; currently 98 %), typecheck, Semgrep and the promptfoo red team in
+CI; IDE, terminal-UI, sandbox and load tests locally. See [HANDBUCH §16](HANDBUCH.md#16-qualität-und-tests).

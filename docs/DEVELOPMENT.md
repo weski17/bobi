@@ -66,3 +66,19 @@ bun run test:ide       # integration test inside the IDE (opens a window)
   architecture"; `scripts/ide/env.ts` sets `SDKROOT` to the matching SDK automatically.
 - After changing `packages/ide-extension`, `bun run ide` rebuilds and reinstalls the extension.
 - Code-OSS patches live in `patches/code-oss/` and are applied by `bun scripts/apply-patches.ts`.
+
+## Videos (`docs/media`)
+
+Both videos are rendered frame by frame from HTML with Playwright's Chromium and encoded with ffmpeg
+(`brew install ffmpeg`).
+
+```bash
+bun docs/media/bobi-intro/record.ts                    # 30 s intro (WebM, no audio)
+# Feature tour with narration (Piper + Thorsten voice; see the header of make.ts for the download):
+PIPER_BIN=<venv>/bin/piper PIPER_MODEL=<dir>/de_DE-thorsten-high.onnx ESPEAK_DATA_PATH=<espeak-ng-data> \
+  bun docs/media/bobi-tour/make.ts                     # → bobi-tour.mp4, .m4a, .srt, .vtt
+bun docs/media/bobi-tour/make.ts --stills              # one PNG per scene for review
+```
+
+Texts: `docs/media/bobi-tour/narration.json` (`text` = subtitle, optional `speak` = pronunciation). Scenes:
+`tour.html` (timing comes from the measured narration, so picture, voice and subtitles stay in sync).
