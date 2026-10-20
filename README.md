@@ -56,6 +56,11 @@ agents. Demo: [`docs/demos/phase-6.md`](docs/demos/phase-6.md).
 Code tips for complex functions and anti-patterns (TS/JS, COBOL) in Bobi IDE and `bobi tips`; usage per person and
 team with `bobi usage`; a red-team suite (promptfoo) and load tests. Demo: [`docs/demos/phase-7.md`](docs/demos/phase-7.md).
 
+## Handbuch (Deutsch)
+
+Alle Funktionen mit Beispielen, Konfiguration, Betrieb und Fehlerbehebung: [`docs/HANDBUCH.md`](docs/HANDBUCH.md).
+Video-Tour: [`docs/media/bobi-tour/bobi-tour.mp4`](docs/media/bobi-tour/bobi-tour.mp4).
+
 ## Safeguards
 
 - Every write, shell command and network action asks for approval; auto-approval only through explicit, versioned config.
