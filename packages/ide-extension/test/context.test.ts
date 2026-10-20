@@ -49,3 +49,11 @@ test("the literate prompt names the place and asks for a reviewable edit", () =>
   expect(prompt).toContain("// read the config")
   expect(prompt).toContain("edit tool")
 })
+
+test("simplifyPrompt names the function, the tip and asks for a reviewable edit", async () => {
+  const { simplifyPrompt } = await import("../src/context.ts")
+  const text = simplifyPrompt("src/a.ts", { line: 3, endLine: 40, symbol: "parse", message: "parse has cyclomatic complexity 14 (limit 10)." }, "typescript")
+  expect(text).toContain("In src/a.ts (typescript), parse (lines 3-40): parse has cyclomatic complexity 14")
+  expect(text).toContain("Keep the behaviour exactly the same")
+  expect(simplifyPrompt("A.cbl", { line: 5, endLine: 5, message: "GO TO X" }, "cobol")).toContain("lines 5-5: GO TO X")
+})

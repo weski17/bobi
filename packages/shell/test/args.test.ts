@@ -80,6 +80,14 @@ describe("parseArgs", () => {
     expect(() => parseArgs(["diagram", "--svg"])).toThrow(/unknown option for diagram/)
   })
 
+  test("tips", () => {
+    expect(parseArgs(["tips"])).toEqual({ kind: "tips", paths: [], format: "text" })
+    expect(parseArgs(["tips", "--format", "json", "--fail-on", "warning", "src", "lib"])).toEqual({ kind: "tips", paths: ["src", "lib"], format: "json", failOn: "warning" })
+    expect(() => parseArgs(["tips", "--format", "xml"])).toThrow(/text or json/)
+    expect(() => parseArgs(["tips", "--fail-on", "error"])).toThrow(/warning or info/)
+    expect(() => parseArgs(["tips", "--x"])).toThrow(/unknown option for tips/)
+  })
+
   test("trust", () => {
     expect(parseArgs(["trust"])).toEqual({ kind: "trust", action: "status" })
     expect(parseArgs(["trust", "--yes", "./p"])).toEqual({ kind: "trust", action: "yes", directory: "./p" })

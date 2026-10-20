@@ -11,6 +11,7 @@ export type Command =
   | { kind: "modes"; json: boolean }
   | { kind: "audit"; from?: string; to?: string; user?: string; format: "md" | "json" }
   | { kind: "usage"; from?: string; to?: string; team?: string; format: "md" | "json" }
+  | { kind: "tips"; paths: string[]; format: "text" | "json"; failOn?: "warning" | "info" }
   | { kind: "diagram"; source: "code" | "cobol"; program?: string; depth?: number; directory?: string }
   | { kind: "help" }
   | { kind: "version" }
@@ -43,6 +44,8 @@ Usage:
                                    Audit and compliance report from the local audit log
   bobi usage [--from YYYY-MM-DD] [--to YYYY-MM-DD] [--team T] [--format md|json]
                                    Usage per person, team, mode and day (tokens, tasks, approved changes)
+  bobi tips [--format text|json] [--fail-on warning|info] [paths...]
+                                   Code tips: complex functions and anti-patterns (TS/JS, COBOL), no model call
   bobi diagram [code|cobol] [--program P] [--depth N] [directory]
                                    Architecture diagram (Mermaid) from the code graph or the COBOL index
 
@@ -112,6 +115,24 @@ export function parseArgs(argv: readonly string[]): Command {
       } else if (arg !== "report") throw new UsageError(`unknown option for ${first}: ${arg}`)
     }
     return { kind: first, ...out } as Command
+  }
+
+  if (first === "tips") {
+    const out: Extract<Command, { kind: "tips" }> = { kind: "tips", paths: [], format: "text" }
+    for (let i = 0; i < rest.length; i++) {
+      const arg = rest[i]!
+      if (arg === "--format") {
+        const value = rest[++i]
+        if (value !== "text" && value !== "json") throw new UsageError("--format is text or json")
+        out.format = value
+      } else if (arg === "--fail-on") {
+        const value = rest[++i]
+        if (value !== "warning" && value !== "info") throw new UsageError("--fail-on is warning or info")
+        out.failOn = value
+      } else if (arg.startsWith("-")) throw new UsageError(`unknown option for tips: ${arg}`)
+      else out.paths.push(arg)
+    }
+    return out
   }
 
   if (first === "diagram") {

@@ -54,6 +54,8 @@ export type BobiConfig = {
    * (minutes per finished task and per approved change) and is labelled as an estimate.
    */
   usage: { minutesPerTask?: number; minutesPerAcceptedChange?: number }
+  /** Code tips while editing (requirement 14): local analysis, thresholds per project. */
+  tips: { enabled?: boolean; complexity?: number; functionLines?: number; nesting?: number; parameters?: number }
 }
 
 export type A2aAgent = { url: string; headers?: Record<string, string>; description?: string }
@@ -74,6 +76,7 @@ export const DEFAULTS: BobiConfig = {
   autocomplete: {},
   a2a: { enabled: false, agents: {} },
   usage: {},
+  tips: {},
 }
 
 export class ConfigError extends Error {
@@ -105,7 +108,7 @@ export function validatePartial(input: unknown, source: string): DeepPartial<Bob
   if (!isObject(input)) throw new ConfigError(source, ["config must be a JSON object"])
   findSecrets(input, "", issues)
 
-  const known = new Set(["$schema", "model", "modes", "autoApprove", "telemetry", "checkpoints", "mcp", "autocomplete", "a2a", "usage"])
+  const known = new Set(["$schema", "model", "modes", "autoApprove", "telemetry", "checkpoints", "mcp", "autocomplete", "a2a", "usage", "tips"])
   for (const key of Object.keys(input)) if (!known.has(key)) issues.push(`${key}: unknown key`)
 
   const model = input.model
@@ -179,6 +182,18 @@ export function validatePartial(input: unknown, source: string): DeepPartial<Bob
   }
 
   if (input.a2a !== undefined) validateA2a(input.a2a, issues)
+
+  if (input.tips !== undefined) {
+    const t = input.tips
+    if (!isObject(t)) issues.push("tips: must be an object")
+    else
+      for (const [key, value] of Object.entries(t)) {
+        if (key === "enabled") {
+          if (typeof value !== "boolean") issues.push("tips.enabled: must be a boolean")
+        } else if (!["complexity", "functionLines", "nesting", "parameters"].includes(key)) issues.push(`tips.${key}: unknown key`)
+        else if (typeof value !== "number" || !Number.isInteger(value) || value < 1 || value > 1000) issues.push(`tips.${key}: must be an integer between 1 and 1000`)
+      }
+  }
 
   if (input.usage !== undefined) {
     const u = input.usage

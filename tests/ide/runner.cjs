@@ -83,5 +83,18 @@ exports.run = async function run() {
     throw new Error(`${e.message}; last suggestion ${JSON.stringify(api.lastSuggestion)}; text ${JSON.stringify(calc.document.getText())}; focus ${vscode.window.state.focused}`)
   })
 
+  // Code tips: Bobi diagnostics while editing, and "Bobi: Simplify" as a quick fix.
+  const complexFile = path.join(folder, "complex.ts")
+  const branches = Array.from({ length: 12 }, (_, i) => `  if (x === ${i}) return ${i}`).join("\n")
+  fs.writeFileSync(complexFile, `export function grade(x: number) {\n${branches}\n  return -1\n}\n`)
+  const complex = await vscode.window.showTextDocument(await vscode.workspace.openTextDocument(complexFile))
+  const diagnostic = await wait(
+    () => vscode.languages.getDiagnostics(complex.document.uri).find((d) => d.source === "Bobi" && d.code === "complexity"),
+    "Bobi complexity tip",
+  )
+  assert.match(diagnostic.message, /grade has cyclomatic complexity 13/)
+  const actions = await vscode.commands.executeCommand("vscode.executeCodeActionProvider", complex.document.uri, diagnostic.range)
+  assert.ok(actions.some((a) => a.title === "Bobi: Simplify grade"), "simplify quick fix offered")
+
   fs.writeFileSync(path.join(folder, ".ide-test-passed"), "ok")
 }

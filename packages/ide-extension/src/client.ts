@@ -13,6 +13,8 @@ export type PermissionRequest = {
   metadata?: { files?: FilePreview[]; [key: string]: unknown }
 }
 
+export type Tip = { rule: string; severity: "warning" | "info"; message: string; line: number; endLine: number; symbol?: string }
+
 export type BobiEvent = { type: string; data: Record<string, unknown> & { sessionID?: string } }
 
 export type Agent = { id: string; name?: string; description?: string; mode?: string; hidden?: boolean }
@@ -122,6 +124,19 @@ export class BobiClient {
     if (response.ok) return { text: body.text ?? "", status: response.status }
     if (response.status === 409 || response.status === 403) return { off: body.error ?? "autocomplete unavailable", status: response.status }
     throw new BobiApiError(response.status, `POST /bobi/complete: ${body.error ?? response.statusText}`)
+  }
+
+  /** Code tips for a file's current text (POST /bobi/tips, local analysis on the server). */
+  async tips(file: string, text: string, signal?: AbortSignal): Promise<Tip[]> {
+    const response = await this.fetchImpl(`${this.url}/bobi/tips`, {
+      method: "POST",
+      headers: { authorization: this.auth, "content-type": "application/json" },
+      body: JSON.stringify({ file, text }),
+      ...(signal ? { signal } : {}),
+    })
+    const body = (await response.json().catch(() => ({}))) as { tips?: Tip[]; error?: string }
+    if (!response.ok) throw new BobiApiError(response.status, `POST /bobi/tips: ${body.error ?? response.statusText}`)
+    return body.tips ?? []
   }
 
   /** Server-sent events, until `signal` aborts. */

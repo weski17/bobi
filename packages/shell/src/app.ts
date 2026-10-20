@@ -1,11 +1,12 @@
 // The `bobi` application: owns the server (engine + @bobi/core) and starts the terminal client.
 import { randomBytes } from "node:crypto"
-import { mkdirSync, realpathSync, statSync } from "node:fs"
+import { mkdirSync, readFileSync, realpathSync, statSync } from "node:fs"
 import path from "node:path"
 import { findProjectRoot, loadConfig, TrustStore, trustFiles, type LoadedConfig } from "@bobi/config"
 import { auditReport, readAuditLog, renderAuditReport, renderUsageReport, usageReport } from "@bobi/core"
 import { CobolProject, paragraphDiagram, systemDiagram } from "@bobi/mcp-cobol"
-import { CodeGraph, dependencyDiagram } from "@bobi/mcp-code-graph"
+import { CodeGraph, dependencyDiagram, listSourceFiles } from "@bobi/mcp-code-graph"
+import { analyze, supported, type Tip } from "@bobi/tips"
 import { bobiPaths, ensureCheckpointRepo, startBobiServer, type BobiPaths, type BobiServer } from "@bobi/server"
 import { loadModes, mcpServers, type Mode } from "@bobi/modes"
 import { HELP, parseArgs, UsageError, VERSION, type Command } from "./args.ts"
@@ -124,6 +125,25 @@ export async function runApp(rawArgv: readonly string[], io: Io): Promise<number
     if (records.length === 0) io.err(`bobi: no audit records in ${dir} for this period`)
     io.out(command.format === "json" ? JSON.stringify(report, null, 2) : renderUsageReport(report))
     return 0
+  }
+
+  if (command.kind === "tips") {
+    const project = findProjectRoot(io.cwd)
+    const trusted = new TrustStore(bobiPaths(io.env).home).isTrusted(project)
+    const { enabled: _enabled, ...limits } = loadConfig({ cwd: io.cwd, env: io.env, trustedProject: trusted }).config.tips
+    const files = (command.paths.length ? command.paths : ["."]).flatMap((p) => {
+      const target = path.resolve(io.cwd, p)
+      const stat = statSync(target, { throwIfNoEntry: false })
+      if (!stat) throw new UsageError(`no such file or directory: ${p}`)
+      return stat.isDirectory() ? listSourceFiles(target, (name) => supported(name) !== undefined) : [target]
+    })
+    const results = files.map((file) => ({ file: path.relative(io.cwd, file), tips: analyze(file, readFileSync(file, "utf8"), limits) as Tip[] })).filter((r) => r.tips.length)
+    if (command.format === "json") io.out(JSON.stringify(results, null, 2))
+    else for (const r of results) for (const t of r.tips) io.out(`${r.file}:${t.line}: ${t.severity} [${t.rule}] ${t.message}`)
+    const all = results.flatMap((r) => r.tips)
+    io.err(`bobi: ${all.length} tip(s) in ${results.length} of ${files.length} file(s)`)
+    const failing = command.failOn === "info" ? all.length : command.failOn === "warning" ? all.filter((t) => t.severity === "warning").length : 0
+    return failing > 0 ? 1 : 0
   }
 
   if (command.kind === "diagram") {
