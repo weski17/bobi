@@ -267,3 +267,30 @@ test("bobi diagram prints Mermaid for code and COBOL projects", async () => {
   expect(one.out[0]).toContain("flowchart TD")
   await expect(runApp(["diagram", "cobol", "--program", "NOPE", cobolDir], io().io)).rejects.toThrow(UsageError)
 })
+
+test("bobi usage reports tasks and tokens per person and team, with the configured estimate", async () => {
+  const { mkdir, writeFile } = await import("node:fs/promises")
+  const usageHome = await mkdtemp(path.join(tmpdir(), "bobi-usage-home-"))
+  try {
+    await mkdir(path.join(usageHome, "audit"))
+    await writeFile(path.join(usageHome, "config.jsonc"), JSON.stringify({ usage: { minutesPerTask: 30 } }))
+    const at = Date.parse("2026-10-20T10:00:00Z")
+    const base = { "bobi.user": "anna", "bobi.team": "payments", "bobi.mode": "code", "bobi.session": "s1" }
+    const lines = [
+      { name: "bobi.task", start: at, end: at, attributes: { ...base, "bobi.result": "started" } },
+      { name: "bobi.usage", start: at, end: at, attributes: { ...base, "bobi.result": "recorded", "bobi.tokens.input": 1000, "bobi.tokens.output": 200 } },
+    ]
+    await writeFile(path.join(usageHome, "audit", "2026-10-20.jsonl"), lines.map((l) => JSON.stringify(l)).join("\n"))
+    const md = io({ env: { BOBI_HOME: usageHome } })
+    expect(await runApp(["usage"], md.io)).toBe(0)
+    expect(md.out[0]).toContain("| anna (payments) | 1 | 1 | 1,000 | 200 | 1,200 | 0 | 0 | 0 | 0.5 h |")
+    const json = io({ env: { BOBI_HOME: usageHome } })
+    await runApp(["usage", "--team", "other", "--format", "json"], json.io)
+    expect(JSON.parse(json.out[0]!).total.tasks).toBe(0)
+    const none = io({ env: { BOBI_HOME: usageHome } })
+    await runApp(["usage", "--from", "2027-01-01"], none.io)
+    expect(none.err[0]).toContain("no audit records")
+  } finally {
+    await rm(usageHome, { recursive: true, force: true })
+  }
+})

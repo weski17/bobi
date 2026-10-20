@@ -10,6 +10,7 @@ export type Command =
   | { kind: "trust"; action: "status" | "yes" | "no"; directory?: string }
   | { kind: "modes"; json: boolean }
   | { kind: "audit"; from?: string; to?: string; user?: string; format: "md" | "json" }
+  | { kind: "usage"; from?: string; to?: string; team?: string; format: "md" | "json" }
   | { kind: "diagram"; source: "code" | "cobol"; program?: string; depth?: number; directory?: string }
   | { kind: "help" }
   | { kind: "version" }
@@ -40,6 +41,8 @@ Usage:
   bobi modes [--json]              List the modes available in this project
   bobi audit [--from YYYY-MM-DD] [--to YYYY-MM-DD] [--user U] [--format md|json]
                                    Audit and compliance report from the local audit log
+  bobi usage [--from YYYY-MM-DD] [--to YYYY-MM-DD] [--team T] [--format md|json]
+                                   Usage per person, team, mode and day (tokens, tasks, approved changes)
   bobi diagram [code|cobol] [--program P] [--depth N] [directory]
                                    Architecture diagram (Mermaid) from the code graph or the COBOL index
 
@@ -89,24 +92,26 @@ export function parseArgs(argv: readonly string[]): Command {
     return { kind: "modes", json: rest.includes("--json") }
   }
 
-  if (first === "audit") {
-    const out: Extract<Command, { kind: "audit" }> = { kind: "audit", format: "md" }
+  if (first === "audit" || first === "usage") {
+    // Same options; audit filters by --user, usage by --team.
+    const filter = first === "audit" ? "--user" : "--team"
+    const out: { from?: string; to?: string; user?: string; team?: string; format: "md" | "json" } = { format: "md" }
     for (let i = 0; i < rest.length; i++) {
       const arg = rest[i]!
       const value = rest[i + 1]
-      if (["--from", "--to", "--user", "--format"].includes(arg) && value === undefined) throw new UsageError(`${arg} needs a value`)
+      if (["--from", "--to", filter, "--format"].includes(arg) && value === undefined) throw new UsageError(`${arg} needs a value`)
       if (arg === "--from" || arg === "--to") {
         if (!/^\d{4}-\d{2}-\d{2}$/.test(value!)) throw new UsageError(`${arg} needs a date like 2026-10-01`)
         out[arg === "--from" ? "from" : "to"] = value!
         i++
-      } else if (arg === "--user") (out.user = value!), i++
+      } else if (arg === filter) (out[first === "audit" ? "user" : "team"] = value!), i++
       else if (arg === "--format") {
         if (value !== "md" && value !== "json") throw new UsageError("--format is md or json")
         out.format = value
         i++
-      } else if (arg !== "report") throw new UsageError(`unknown option for audit: ${arg}`)
+      } else if (arg !== "report") throw new UsageError(`unknown option for ${first}: ${arg}`)
     }
-    return out
+    return { kind: first, ...out } as Command
   }
 
   if (first === "diagram") {

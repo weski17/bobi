@@ -116,8 +116,9 @@ in `docs/adr/` und nach meiner Freigabe.
 | 4 | Bobi IDE: Chat-Panel, Inline-Diffs |
 | 5 | Bobi Shell, Orchestrator, Skills, Literate Coding, Security-Agent, Git |
 | 6 | COBOL- und Zowe-MCP-Server, Autovervollständigung, Audit-Berichte, A2A |
+| 7 | Code-Tipps, Nutzungsstatistik, Red-Teaming (promptfoo), Lasttests |
 
-**Aktuelle Phase: 6**
+**Aktuelle Phase: 7**
 Den Fortschritt pflegst du in `docs/STATUS.md`.
 
 Jede Phase endet mit: lauffähigem Stand, grünen Tests, kurzer Demo-Anleitung in
