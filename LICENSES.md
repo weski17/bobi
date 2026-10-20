@@ -21,6 +21,8 @@ Notes:
 | Podman | Apache-2.0 | Container sandbox |
 | ripgrep | MIT / Unlicense | Code search used by OpenCode (must be preinstalled, see docs/DEVELOPMENT.md) |
 | GNU bash 5 | GPL-3.0 | Shell used by tests; not linked or distributed |
+| ffmpeg 9 (Homebrew) | LGPL-2.1 / GPL-2.0 (build with x264) | Encodes the demo videos in `docs/media`; dev machine only, not shipped |
+| macOS speech voice "Anna" (`say`) | Apple macOS licence: system voices only for personal, non-commercial use | Narration of the draft tour video `docs/media/bobi-tour`; **replace with a licensed or free voice before any company or public use** |
 | promptfoo 0.123.1 | MIT | Red-team runner (`bun run test:redteam`, via npx, pinned); telemetry, update checks and remote generation switched off; not installed in the workspace |
 
 ## Bobi workspace dependencies
