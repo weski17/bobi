@@ -70,14 +70,20 @@ export class InboundA2a {
     }
   }
 
-  private async send(params: unknown): Promise<Task> {
-    const p = params as { message?: Message; configuration?: { blocking?: boolean } } | undefined
-    const message = p?.message
+  /** The text of a valid message/send request; throws the matching JSON-RPC error otherwise. */
+  private validate(message: Message | undefined): string {
     if (!message || typeof message !== "object" || !Array.isArray(message.parts) || message.role !== "user") throw rpcError(ERRORS.invalidParams, "params.message with role user and parts is required")
     const text = textOf(message.parts).trim()
     if (!text) throw rpcError(ERRORS.contentType, "only text parts are supported")
     if (message.taskId && !this.tasks.has(message.taskId)) throw rpcError(ERRORS.taskNotFound, `task ${message.taskId} not found`)
     if (this.working() >= (this.options.maxWorking ?? 4)) throw rpcError(ERRORS.internal, "too many tasks in progress; retry later")
+    return text
+  }
+
+  private async send(params: unknown): Promise<Task> {
+    const p = params as { message?: Message; configuration?: { blocking?: boolean } } | undefined
+    const text = this.validate(p?.message)
+    const message = p!.message!
 
     const contextId = typeof message.contextId === "string" && this.contexts.has(message.contextId) ? message.contextId : randomUUID()
     const sessionID = this.contexts.get(contextId) ?? (await this.options.engine.createSession(this.options.agent))
@@ -114,34 +120,31 @@ export class InboundA2a {
     return this.public(task)
   }
 
+  private readonly methods: Record<string, (params: unknown) => Promise<Task> | Task> = {
+    "message/send": (params) => this.send(params),
+    "tasks/get": (params) => this.get(params),
+    "tasks/cancel": (params) => this.cancel(params),
+  }
+
   /** Handles one JSON-RPC request object. */
   async rpc(request: RpcRequest): Promise<RpcResponse> {
-    const id = request && typeof request === "object" && "id" in request ? request.id : null
+    const id = requestId(request)
     try {
-      if (!request || request.jsonrpc !== "2.0" || typeof request.method !== "string") throw rpcError(ERRORS.invalidRequest, "not a JSON-RPC 2.0 request")
-      switch (request.method) {
-        case "message/send":
-          return { jsonrpc: "2.0", id, result: await this.send(request.params) }
-        case "tasks/get":
-          return { jsonrpc: "2.0", id, result: this.get(request.params) }
-        case "tasks/cancel":
-          return { jsonrpc: "2.0", id, result: await this.cancel(request.params) }
-        case "message/stream":
-        case "tasks/resubscribe":
-          throw rpcError(ERRORS.unsupported, "streaming is not supported; use message/send and tasks/get")
-        case "tasks/pushNotificationConfig/set":
-        case "tasks/pushNotificationConfig/get":
-        case "tasks/pushNotificationConfig/list":
-        case "tasks/pushNotificationConfig/delete":
-          throw rpcError(ERRORS.pushNotSupported, "push notifications are not supported")
-        default:
-          throw rpcError(ERRORS.methodNotFound, `unknown method ${request.method}`)
-      }
+      const method = this.resolve(request)
+      return { jsonrpc: "2.0", id, result: await method(request.params) }
     } catch (error) {
-      const e = error as RpcError
-      return { jsonrpc: "2.0", id, error: { code: typeof e.code === "number" ? e.code : ERRORS.internal, message: e.message } }
+      return { jsonrpc: "2.0", id, error: toRpcError(error) }
     }
   }
+
+  /** The handler for a request, or the JSON-RPC error for invalid, unsupported and unknown methods. */
+  private resolve(request: RpcRequest): (params: unknown) => Promise<Task> | Task {
+    if (!request || request.jsonrpc !== "2.0" || typeof request.method !== "string") throw rpcError(ERRORS.invalidRequest, "not a JSON-RPC 2.0 request")
+    const method = this.methods[request.method]
+    if (!method) throw UNSUPPORTED[request.method] ?? rpcError(ERRORS.methodNotFound, `unknown method ${request.method}`)
+    return method
+  }
+
 
   /** HTTP entry point: POST with a JSON-RPC body. */
   async handle(request: Request): Promise<Response> {
@@ -158,6 +161,24 @@ export class InboundA2a {
 
 type RpcError = Error & { code: number }
 const rpcError = (code: number, message: string): RpcError => Object.assign(new Error(message), { code })
+
+const STREAMING = rpcError(ERRORS.unsupported, "streaming is not supported; use message/send and tasks/get")
+const PUSH = rpcError(ERRORS.pushNotSupported, "push notifications are not supported")
+const requestId = (request: unknown) => (request && typeof request === "object" && "id" in request ? (request as RpcRequest).id : null)
+const toRpcError = (error: unknown) => {
+  const e = error as RpcError
+  return { code: typeof e.code === "number" ? e.code : ERRORS.internal, message: e.message }
+}
+
+/** Spec methods Bobi does not offer (capabilities.streaming and pushNotifications are false). */
+const UNSUPPORTED: Record<string, RpcError> = {
+  "message/stream": STREAMING,
+  "tasks/resubscribe": STREAMING,
+  "tasks/pushNotificationConfig/set": PUSH,
+  "tasks/pushNotificationConfig/get": PUSH,
+  "tasks/pushNotificationConfig/list": PUSH,
+  "tasks/pushNotificationConfig/delete": PUSH,
+}
 
 type ApiMessage = { type: string; content?: { type: string; text?: string }[] }
 
