@@ -18,5 +18,6 @@
 | [0014](0014-project-trust.md) | Project trust | Accepted |
 | [0015](0015-mcp.md) | MCP client and the code graph server | Accepted |
 | [0016](0016-phase-5-agents-and-workflows.md) | Orchestrator, skills, commands, git, security, literate coding | Accepted |
+| [0017](0017-phase-6-mainframe-autocomplete-audit-a2a.md) | COBOL and mainframe MCP servers, autocomplete, audit reports, diagrams, A2A | Accepted |
 
 New ADRs: copy [`0000-template.md`](0000-template.md), next free number.
