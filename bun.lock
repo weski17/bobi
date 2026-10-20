@@ -5,15 +5,32 @@
     "": {
       "name": "bobi",
       "devDependencies": {
+        "@bobi/a2a": "workspace:*",
         "@bobi/config": "workspace:*",
         "@bobi/core": "workspace:*",
+        "@bobi/mcp-cobol": "workspace:*",
         "@bobi/mcp-code-graph": "workspace:*",
+        "@bobi/mcp-zowe": "workspace:*",
         "@bobi/mock-model": "workspace:*",
         "@bobi/server": "workspace:*",
         "@bobi/shell": "workspace:*",
         "@modelcontextprotocol/server": "2.0.0",
         "@types/bun": "1.4.0",
         "typescript": "5.8.2",
+      },
+    },
+    "mcp-servers/cobol": {
+      "name": "@bobi/mcp-cobol",
+      "version": "0.0.0",
+      "bin": {
+        "bobi-mcp-cobol": "./src/cli.ts",
+      },
+      "dependencies": {
+        "@bobi/mcp-code-graph": "workspace:*",
+        "@modelcontextprotocol/server": "2.0.0",
+      },
+      "devDependencies": {
+        "@modelcontextprotocol/client": "2.0.0",
       },
     },
     "mcp-servers/code-graph": {
@@ -32,6 +49,23 @@
         "@modelcontextprotocol/client": "2.0.0",
       },
     },
+    "mcp-servers/zowe": {
+      "name": "@bobi/mcp-zowe",
+      "version": "0.0.0",
+      "bin": {
+        "bobi-mcp-zowe": "./src/cli.ts",
+      },
+      "dependencies": {
+        "@modelcontextprotocol/server": "2.0.0",
+      },
+      "devDependencies": {
+        "@modelcontextprotocol/client": "2.0.0",
+      },
+    },
+    "packages/a2a": {
+      "name": "@bobi/a2a",
+      "version": "0.0.0",
+    },
     "packages/browser": {
       "name": "@bobi/browser",
       "version": "0.0.0",
@@ -47,6 +81,7 @@
       "name": "@bobi/core",
       "version": "0.0.0",
       "dependencies": {
+        "@bobi/a2a": "workspace:*",
         "@bobi/browser": "workspace:*",
         "@bobi/config": "workspace:*",
         "@bobi/modes": "workspace:*",
@@ -86,9 +121,12 @@
       "name": "@bobi/server",
       "version": "0.0.0",
       "dependencies": {
+        "@bobi/a2a": "workspace:*",
         "@bobi/config": "workspace:*",
         "@bobi/core": "workspace:*",
+        "@bobi/mcp-cobol": "workspace:*",
         "@bobi/mcp-code-graph": "workspace:*",
+        "@bobi/mcp-zowe": "workspace:*",
       },
     },
     "packages/shell": {
@@ -99,12 +137,17 @@
       },
       "dependencies": {
         "@bobi/config": "workspace:*",
+        "@bobi/core": "workspace:*",
+        "@bobi/mcp-cobol": "workspace:*",
+        "@bobi/mcp-code-graph": "workspace:*",
         "@bobi/modes": "workspace:*",
         "@bobi/server": "workspace:*",
       },
     },
   },
   "packages": {
+    "@bobi/a2a": ["@bobi/a2a@workspace:packages/a2a"],
+
     "@bobi/browser": ["@bobi/browser@workspace:packages/browser"],
 
     "@bobi/config": ["@bobi/config@workspace:packages/config"],
@@ -113,7 +156,11 @@
 
     "@bobi/egress-proxy": ["@bobi/egress-proxy@workspace:packages/egress-proxy"],
 
+    "@bobi/mcp-cobol": ["@bobi/mcp-cobol@workspace:mcp-servers/cobol"],
+
     "@bobi/mcp-code-graph": ["@bobi/mcp-code-graph@workspace:mcp-servers/code-graph"],
+
+    "@bobi/mcp-zowe": ["@bobi/mcp-zowe@workspace:mcp-servers/zowe"],
 
     "@bobi/mock-model": ["@bobi/mock-model@workspace:packages/mock-model"],
 

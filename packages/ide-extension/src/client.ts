@@ -107,6 +107,23 @@ export class BobiClient {
     await this.request<unknown>("POST", `/api/session/${encodeURIComponent(sessionID)}/revert/commit`, { body: {} })
   }
 
+  /**
+   * Inline completion (POST /bobi/complete). Undefined when autocomplete is off or not allowed for the file
+   * (`reason` explains why); throws on other errors.
+   */
+  async complete(input: { file: string; prefix: string; suffix: string; multiline: boolean }, signal?: AbortSignal): Promise<{ text?: string; off?: string; status: number }> {
+    const response = await this.fetchImpl(`${this.url}/bobi/complete`, {
+      method: "POST",
+      headers: { authorization: this.auth, "content-type": "application/json" },
+      body: JSON.stringify(input),
+      ...(signal ? { signal } : {}),
+    })
+    const body = (await response.json().catch(() => ({}))) as { text?: string; error?: string }
+    if (response.ok) return { text: body.text ?? "", status: response.status }
+    if (response.status === 409 || response.status === 403) return { off: body.error ?? "autocomplete unavailable", status: response.status }
+    throw new BobiApiError(response.status, `POST /bobi/complete: ${body.error ?? response.statusText}`)
+  }
+
   /** Server-sent events, until `signal` aborts. */
   async *events(signal: AbortSignal): AsyncGenerator<BobiEvent> {
     const response = await this.fetchImpl(`${this.url}/api/event`, { headers: { authorization: this.auth }, signal })

@@ -19,7 +19,10 @@ export async function runIdeTest(): Promise<{ passed: boolean; code: number; out
   await writeFile(path.join(project, "app.ts"), "export const answer = 41\n")
   for (const args of [["init", "-q"], ["add", "."], ["-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "init"]]) Bun.spawnSync(["git", ...args], { cwd: project })
   const file = path.join(project, "app.ts")
+  // Autocomplete is on only with a model in the Bobi config.
+  await writeFile(path.join(home, "config.jsonc"), JSON.stringify({ model: { models: ["coder"] }, autocomplete: { model: "coder" } }))
   const mock = startMockModel({
+    completion: (body) => (body.prompt.endsWith("answer ") ? "* 3" : ""),
     script: [
       // 1. chat: diff before apply, accept, undo
       { toolCalls: [{ name: "edit", arguments: { path: file, oldString: "41", newString: "42" } }] },
@@ -65,7 +68,7 @@ export async function runIdeTest(): Promise<{ passed: boolean; code: number; out
       ? ""
       : mock.requests
           .map((r, i) => `#${i} tools=${r.body.tools?.length ?? 0} last=${JSON.stringify(r.body.messages.at(-1)).slice(0, 300)}`)
-          .join("\n")
+          .join("\n") + `\ncompletions: ${mock.completions.length}`
     return { passed, code, output: `${out}${err}\n--- mock requests ---\n${requests}` }
   } finally {
     await mock.stop()

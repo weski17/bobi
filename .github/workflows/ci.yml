@@ -14,9 +14,9 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-      # Only the engine; vendor/code-oss (~1 GB) is needed for the IDE build, not for these tests.
-      - name: Checkout the engine submodule
-        run: git submodule update --init --depth 1 vendor/opencode
+      # The engine and the COBOL test object; vendor/code-oss (~1 GB) is needed for the IDE build, not for these tests.
+      - name: Checkout the engine and CardDemo submodules
+        run: git submodule update --init --depth 1 vendor/opencode vendor/carddemo
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.4.3
@@ -42,4 +42,4 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Semgrep (Bobi code only)
-        run: semgrep scan --config p/typescript --config p/secrets --error --exclude vendor --exclude .upstream packages tests scripts
+        run: semgrep scan --config p/typescript --config p/secrets --error --exclude vendor --exclude .upstream packages mcp-servers tests scripts

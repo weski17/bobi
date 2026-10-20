@@ -126,7 +126,7 @@ describe("validatePartial", () => {
           model: { baseURL: "ftp://x", protocol: "grpc", apiKeyEnv: "lower", default: "", models: [1] },
           modes: { Bad_Slug: { model: 3 } },
           autoApprove: [{ action: "rm", resource: "" }, "x", { action: "edit", resource: "a", modes: "code" }],
-          telemetry: { otlpEndpoint: "nope", user: 1 },
+          telemetry: { otlpEndpoint: "nope", user: 1, auditLog: "yes" },
           checkpoints: { enabled: "yes" },
         },
         "file.jsonc",
@@ -150,6 +150,7 @@ describe("validatePartial", () => {
         "autoApprove[2].modes",
         "telemetry.otlpEndpoint",
         "telemetry.user",
+        "telemetry.auditLog",
         "checkpoints.enabled",
       ])
         expect(issues.some((i) => i.startsWith(fragment))).toBe(true)
@@ -216,4 +217,46 @@ describe("toOpenCodeConfig", () => {
     expect(toOpenCodeEnv(config)).toEqual({ OPENCODE_DISABLE_MODELS_FETCH: "1", OPENCODE_DISABLE_AUTOUPDATE: "1" })
     expect(toOpenCodeEnv({ ...config, telemetry: { otlpEndpoint: "http://otel:4318" } }).OTEL_EXPORTER_OTLP_ENDPOINT).toBe("http://otel:4318")
   })
+})
+
+test("autocomplete: off by default, validated, merged per file", () => {
+  expect(DEFAULTS.autocomplete).toEqual({})
+  expect(validatePartial({ autocomplete: { model: "coder", maxTokens: 64 } }, "f")).toEqual({ autocomplete: { model: "coder", maxTokens: 64 } })
+  for (const [value, message] of [
+    [1, "autocomplete: must be an object"],
+    [{ model: "" }, "autocomplete.model"],
+    [{ maxTokens: 0 }, "autocomplete.maxTokens"],
+    [{ maxTokens: 1.5 }, "autocomplete.maxTokens"],
+    [{ temperature: 1 }, "autocomplete.temperature: unknown key"],
+  ] as const)
+    expect(() => validatePartial({ autocomplete: value }, "f")).toThrow(message)
+})
+
+test("a2a: inbound only from the global config or BOBI_A2A, agents merge and are validated", () => {
+  expect(DEFAULTS.a2a).toEqual({ enabled: false, agents: {} })
+  write(path.join(home, ".bobi", "config.jsonc"), JSON.stringify({ a2a: { enabled: true, agents: { docs: { url: "https://docs.intranet/a2a" } } } }))
+  write(path.join(project, ".bobi", "config.jsonc"), JSON.stringify({ a2a: { agents: { tickets: { url: "http://tickets:8080", headers: { Authorization: "Bearer ${T}" } } } } }))
+  const merged = load().config.a2a
+  expect(merged.enabled).toBe(true)
+  expect(Object.keys(merged.agents)).toEqual(["docs", "tickets"])
+  expect(load({ BOBI_A2A: "0" }).config.a2a.enabled).toBe(false)
+  write(path.join(home, ".bobi", "config.jsonc"), "{}")
+  expect(load({ BOBI_A2A: "1" }).config.a2a.enabled).toBe(true)
+  expect(load({ BOBI_A2A: "true" }).config.a2a.enabled).toBe(true)
+  write(path.join(project, ".bobi", "config.jsonc"), JSON.stringify({ a2a: { enabled: true } }))
+  expect(() => load()).toThrow("a2a.enabled: can only be set in the global config")
+  for (const [value, message] of [
+    [1, "a2a: must be an object"],
+    [{ enabled: "yes" }, "a2a.enabled"],
+    [{ other: 1 }, "a2a.other: unknown key"],
+    [{ agents: [] }, "a2a.agents: must be an object"],
+    [{ agents: { Bad_Name: { url: "http://x" } } }, "name must be lowercase"],
+    [{ agents: { x: 1 } }, "a2a.agents.x: must be an object"],
+    [{ agents: { x: { url: "ftp://x" } } }, "a2a.agents.x.url"],
+    [{ agents: { x: { url: "http://x", headers: { Authorization: "Bearer plain" } } } }, "credentials must be an environment reference"],
+    [{ agents: { x: { url: "http://x", description: 1 } } }, "a2a.agents.x.description"],
+    [{ agents: { x: { url: "http://x", token: "${T}" } } }, "secrets are not allowed"],
+    [{ agents: { x: { url: "http://x", extra: 1 } } }, "a2a.agents.x.extra: unknown key"],
+  ] as const)
+    expect(() => validatePartial({ a2a: value }, "f")).toThrow(message)
 })

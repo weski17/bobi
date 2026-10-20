@@ -164,8 +164,13 @@ function loadIgnore(root: string): Ignore | undefined {
   }
 }
 
-/** Source files under root, without node_modules, build output, .gitignore'd and .bobiignore'd files. */
-export function listSourceFiles(root: string): string[] {
+const isTypeScript = (name: string) => EXTENSIONS.has(path.extname(name)) && !name.endsWith(".d.ts")
+
+/**
+ * Source files under root, without node_modules, build output, .gitignore'd and .bobiignore'd files.
+ * `accept` selects files by name (default: TypeScript/JavaScript sources).
+ */
+export function listSourceFiles(root: string, accept: (name: string) => boolean = isTypeScript): string[] {
   const gitignore = loadIgnore(root)
   const bobiignore = new BobiIgnore(root)
   const out: string[] = []
@@ -177,7 +182,7 @@ export function listSourceFiles(root: string): string[] {
       if (entry.isDirectory()) {
         if (ALWAYS_SKIPPED.has(entry.name) || gitignore?.ignores(`${relative}/`) || bobiignore.ignores(full)) continue
         walk(full)
-      } else if (entry.isFile() && EXTENSIONS.has(path.extname(entry.name)) && !entry.name.endsWith(".d.ts")) {
+      } else if (entry.isFile() && accept(entry.name)) {
         if (gitignore?.ignores(relative) || bobiignore.ignores(full)) continue
         out.push(full)
       }

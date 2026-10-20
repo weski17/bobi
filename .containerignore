@@ -5,3 +5,6 @@ branding
 vendor/opencode/.git
 **/.DS_Store
 coverage
+# Not needed in the sandbox: the IDE sources and the COBOL test object.
+vendor/code-oss
+vendor/carddemo

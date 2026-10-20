@@ -44,6 +44,13 @@ Code-OSS with Bobi branding and the Bobi chat panel: diff before apply, context 
 Orchestrator that delegates to modes, Security mode, `/commit`, `/pr`, `/security-review`, own slash commands and
 skills, literate coding in the IDE (Cmd+Alt+Enter). Demo: [`docs/demos/phase-5.md`](docs/demos/phase-5.md).
 
+## Mainframe, autocomplete, audit, A2A
+
+COBOL analysis (call graphs, data flow, impact of copybooks, programs, fields and datasets) and mainframe access via
+the Zowe-compatible REST services as built-in MCP servers; inline autocomplete in Bobi IDE through your own model;
+`bobi audit` compliance reports and `bobi diagram` Mermaid diagrams; A2A agent card and read-only tasks for other
+agents. Demo: [`docs/demos/phase-6.md`](docs/demos/phase-6.md).
+
 ## Safeguards
 
 - Every write, shell command and network action asks for approval; auto-approval only through explicit, versioned config.

@@ -1,6 +1,38 @@
 # Status
 
-**Current phase: 5 – shell, orchestrator, skills, git, security, literate coding** · Branch `phase-5-shell-agents` · waiting for approval
+**Current phase: 6 – COBOL, mainframe, autocomplete, audit reports, A2A** · Branch `phase-6-mainframe-later` · waiting for approval
+
+## Phase 6
+
+| Task | Status | Where |
+|---|---|---|
+| COBOL MCP server: own parser (COPY REPLACING, data items, PERFORM, CALL/LINK/XCTL, EXEC blocks, JCL) | ✅ | `mcp-servers/cobol` |
+| COBOL tools: outline, call graphs, field data flow, impact of copybook / program / field / dataset | ✅ | same, tested on AWS CardDemo (`vendor/carddemo`) |
+| Mainframe MCP server over the Zowe-compatible REST services; Zowe profiles, password only from env | ✅ | `mcp-servers/zowe` |
+| Dataset/USS allowlist (default: own datasets), DSNs in submitted JCL checked, writes and jobs always ask | ✅ | same, `PROTECTED_RULES` |
+| Autocomplete: `/bobi/complete` (FIM), off until `autocomplete.model`; ghost text in Bobi IDE | ✅ | `packages/server/src/complete.ts`, `packages/ide-extension` |
+| Local audit log incl. the user's answers; `bobi audit` report (Markdown/JSON) | ✅ | `packages/core/src/{audit,report}.ts`, `packages/shell` |
+| Architecture diagrams (Mermaid): `bobi diagram`, `diagram` MCP tools | ✅ | code graph, COBOL server |
+| A2A: agent card, read-only inbound tasks (`a2a` agent), outbound `a2a` tool with approval | ✅ | `packages/a2a`, `packages/core` |
+| Sandbox passes mainframe/A2A settings; mounted repos git-safe | ✅ | `sandbox/bobi-sandbox.sh` |
+| Demo guide | ✅ | docs/demos/phase-6.md |
+
+Tests: **369 pass, 0 fail** (line coverage 98.4 %) + IDE integration test (incl. autocomplete) + 5 terminal-UI e2e
++ 7 sandbox (incl. the COBOL server in the container).
+
+### Phase 6 findings
+
+1. CardDemo uses partial-word `COPY … REPLACING ==(TESTVAR1)== BY ==…==` → replacement on text before tokenising.
+2. Continued literals run to column 72; editors strip trailing spaces → the area is padded before joining.
+3. Without an answer record the audit could not show whether the user approved or rejected → `permission.replied`
+   is now audited (`bobi.approval`).
+4. An A2A task in a mode that asks would wait forever (nobody answers) → the `a2a` agent turns every "ask" into
+   "deny"; the restriction is tied to the agent, so it also holds after a restart.
+5. A project could otherwise override the Ask mode or enable inbound A2A → the `a2a` agent always uses the built-in
+   Ask mode, and `a2a.enabled` in a project config is an error.
+6. In the Podman VM a bind-mount root can appear as owned by root; git then refused the project (also checkpoints)
+   → only the project and the checkpoint directory are declared `safe.directory`.
+7. Inline suggestions only render in a focused editor → the IDE test focuses the editor group first.
 
 ## Phase 5
 
@@ -157,6 +189,8 @@ All ADRs 0001–0011 accepted. Open questions answered:
 1. **Logo:** waiting for the official FI SVG from the project owner (`branding/fi/icon.svg`, not committed).
    Bobi IDE picks it up with `BOBI_BRANDING_DIR=branding/fi bun run ide:setup`.
 2. ~~Packaged Bobi IDE.app~~ – decided 2026-10-19: run from source for now; packaging later (ADR-0008).
+3. **Not yet built:** code tips while typing (req. 14) and usage statistics per team/person (req. 19) – no phase
+   assigned in CLAUDE.md so far.
 
 ### Resolved 2026-10-19
 
@@ -173,6 +207,14 @@ All ADRs 0001–0011 accepted. Open questions answered:
 | `bobi serve` with several projects | Config per project (trusted), endpoint and model list server-wide |
 
 ## Risks
+
+- The COBOL parser covers the CardDemo dialect (fixed/free format, common statements); compiler-specific extensions,
+  nested programs and `REPLACE` statements are not analysed. Dynamic `CALL` targets resolve only via `VALUE`.
+- The mainframe server is tested only against the in-memory mock; a real system may answer differently (encodings,
+  record formats, API versions). Submitted JCL can still do anything the job's user may – the allowlist checks DSNs,
+  not programs; approval stays essential.
+- Inbound A2A uses the single server password (no per-caller identity in the audit).
+- Autocomplete sends the code around the cursor to the configured endpoint on every pause while typing (on-prem).
 
 - A **trusted** project's AGENTS.md and rules still reach the model as instructions – trust is the user's decision.
 - Outside the sandbox, `.bobiignore` in the terminal tool covers only common file-reading commands.

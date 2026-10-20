@@ -1,4 +1,5 @@
-// Scriptable OpenAI-compatible chat completions server for deterministic tests.
+// Scriptable OpenAI-compatible chat completions server for deterministic tests. Also answers fill-in-the-middle
+// text completions (POST /v1/completions with prompt + suffix), as used for autocomplete.
 // Agent-loop requests (those that offer tools) consume the next scripted turn; when the
 // script is empty, the fallback turn is used. Auxiliary requests without tools (e.g. session
 // titles) get the auxiliary turn and never consume the script. No network beyond localhost.
@@ -20,6 +21,8 @@ export type ChatRequest = {
   tools?: { type: string; function: { name: string } }[]
 }
 
+export type CompletionRequest = { model: string; prompt: string; suffix?: string; max_tokens?: number; stop?: string[]; temperature?: number }
+
 export type MockModelOptions = {
   readonly port?: number
   readonly hostname?: string
@@ -27,12 +30,15 @@ export type MockModelOptions = {
   readonly script?: readonly Turn[]
   readonly fallback?: Turn | ((request: ChatRequest) => Turn)
   readonly auxiliary?: Turn
+  /** Text returned for /v1/completions (default: "completion"). */
+  readonly completion?: string | ((request: CompletionRequest) => string)
 }
 
 export type MockModel = {
   readonly url: string
   readonly baseURL: string
   readonly requests: readonly RecordedRequest[]
+  readonly completions: readonly { readonly headers: Record<string, string>; readonly body: CompletionRequest }[]
   enqueue(...turns: Turn[]): void
   /** Drops scripted turns that were not consumed (e.g. after a rejected tool call ended the turn). */
   clear(): void
@@ -105,6 +111,7 @@ function stream(model: string, turn: Turn) {
 export function startMockModel(options: MockModelOptions = {}): MockModel {
   const queue: Turn[] = [...(options.script ?? [])]
   const requests: RecordedRequest[] = []
+  const completions: { headers: Record<string, string>; body: CompletionRequest }[] = []
   const models = options.models ?? ["mock-model"]
   const fallback = options.fallback ?? { text: "ok" }
 
@@ -131,6 +138,19 @@ export function startMockModel(options: MockModelOptions = {}): MockModel {
         }
         return Response.json(completion(body.model, turn))
       }
+      if (request.method === "POST" && path === "/completions") {
+        const body = (await request.json()) as CompletionRequest
+        completions.push({ headers: Object.fromEntries(request.headers), body })
+        const text = typeof options.completion === "function" ? options.completion(body) : (options.completion ?? "completion")
+        return Response.json({
+          id: id("cmpl"),
+          object: "text_completion",
+          created: Math.floor(Date.now() / 1000),
+          model: body.model,
+          choices: [{ index: 0, text, finish_reason: "stop" }],
+          usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 },
+        })
+      }
       return Response.json({ error: { message: `not found: ${request.method} ${url.pathname}` } }, { status: 404 })
     },
   })
@@ -140,6 +160,7 @@ export function startMockModel(options: MockModelOptions = {}): MockModel {
     url,
     baseURL: `${url}/v1`,
     requests,
+    completions,
     enqueue: (...turns) => void queue.push(...turns),
     clear: () => void queue.splice(0),
     stop: async () => {

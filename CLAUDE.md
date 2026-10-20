@@ -117,7 +117,7 @@ in `docs/adr/` und nach meiner Freigabe.
 | 5 | Bobi Shell, Orchestrator, Skills, Literate Coding, Security-Agent, Git |
 | 6 | COBOL- und Zowe-MCP-Server, Autovervollständigung, Audit-Berichte, A2A |
 
-**Aktuelle Phase: 5**
+**Aktuelle Phase: 6**
 Den Fortschritt pflegst du in `docs/STATUS.md`.
 
 Jede Phase endet mit: lauffähigem Stand, grünen Tests, kurzer Demo-Anleitung in
@@ -145,7 +145,7 @@ Voraussetzungen und Details: `docs/DEVELOPMENT.md`.
 - Tests: `bun run test` (mit Abdeckung: `bun run test:coverage`; Sandbox: `bun run test:sandbox`)
 - Lint/Typprüfung: `bun run typecheck` (Semgrep läuft in der CI)
 - Bobi IDE einrichten: `bun run ide:setup` (einmalig), starten: `bobi-ide [ordner]` bzw. `bun run ide`; IDE-Test: `bun run test:ide`
-- Bobi Shell starten: `bobi` (interaktiv), `bobi run [--mode <slug>] "<Auftrag>"` (headless), `bobi serve`, `bobi attach <url>`, `bobi modes`, `bobi trust`
+- Bobi Shell starten: `bobi` (interaktiv), `bobi run [--mode <slug>] "<Auftrag>"` (headless), `bobi serve`, `bobi attach <url>`, `bobi modes`, `bobi trust`, `bobi audit`, `bobi diagram [code|cobol]`
 - Sandbox: `podman build -f sandbox/Containerfile -t bobi:dev .` und `sandbox/bobi-sandbox.sh up <projekt>`
 
 ## Ausgabe am Ende jeder Phase

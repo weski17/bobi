@@ -1,7 +1,7 @@
 // End-to-end test of the Podman sandbox (ADR-0007). Runs only when podman and the bobi:dev image exist:
 //   podman build -f sandbox/Containerfile -t bobi:dev . && bun test ./tests/sandbox
 import { afterAll, beforeAll, describe, expect, test } from "bun:test"
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import os from "node:os"
 import path from "node:path"
 import { startMockModel, type MockModel } from "@bobi/mock-model"
@@ -117,6 +117,29 @@ describe.skipIf(!available)("podman sandbox", () => {
     }
     await c.session.wait({ sessionID: s.id })
     expect(JSON.stringify(mock.requests.at(-1)!.body.messages)).toContain("graph.ts#root")
+  }, 120_000)
+
+  test("the built-in COBOL MCP server runs inside the container", async () => {
+    cpSync(path.join(import.meta.dir, "..", "..", "mcp-servers", "cobol", "test", "fixture"), path.join(project, "cobol"), { recursive: true })
+    const { OpenCode } = await import("@opencode/client")
+    const auth = `Basic ${btoa(`opencode:${password}`)}`
+    const c = OpenCode.make({
+      baseUrl: `http://127.0.0.1:${PORT}`,
+      fetch: ((input: RequestInfo | URL, init?: RequestInit) => fetch(input, { ...init, headers: { ...Object.fromEntries(new Headers(init?.headers)), authorization: auth } })) as typeof fetch,
+    })
+    mock.enqueue({ toolCalls: [{ name: "cobol_impact", arguments: { copybook: "EMPREC" } }] }, { text: "done" })
+    const s = await c.session.create({ location: { directory: project }, agent: "advanced" })
+    await c.session.prompt({ sessionID: s.id, text: "impact of EMPREC?" })
+    for (let i = 0; i < 400; i++) {
+      const pending = (await c.permission.list({ sessionID: s.id }))[0]
+      if (pending) {
+        await c.permission.reply({ sessionID: s.id, requestID: pending.id, decision: "once" })
+        break
+      }
+      await Bun.sleep(25)
+    }
+    await c.session.wait({ sessionID: s.id })
+    expect(JSON.stringify(mock.requests.at(-1)!.body.messages)).toContain("PAYRUN.STEP01")
   }, 120_000)
 
   test("the server runs unprivileged and sees only the project", () => {
