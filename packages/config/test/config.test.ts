@@ -260,3 +260,26 @@ test("a2a: inbound only from the global config or BOBI_A2A, agents merge and are
   ] as const)
     expect(() => validatePartial({ a2a: value }, "f")).toThrow(message)
 })
+
+test("usage and tips: validated and merged", () => {
+  expect(DEFAULTS.usage).toEqual({})
+  expect(DEFAULTS.tips).toEqual({})
+  write(path.join(home, ".bobi", "config.jsonc"), JSON.stringify({ usage: { minutesPerTask: 20 }, tips: { complexity: 15 }, telemetry: { team: "payments" } }))
+  write(path.join(project, ".bobi", "config.jsonc"), JSON.stringify({ tips: { nesting: 3 } }))
+  const { config } = load()
+  expect(config.usage).toEqual({ minutesPerTask: 20 })
+  expect(config.tips).toEqual({ complexity: 15, nesting: 3 })
+  expect(config.telemetry.team).toBe("payments")
+  expect(load({ BOBI_TEAM: "core" }).config.telemetry.team).toBe("core")
+  for (const [doc, message] of [
+    [{ usage: 1 }, "usage: must be an object"],
+    [{ usage: { minutesPerTask: -1 } }, "usage.minutesPerTask"],
+    [{ usage: { other: 1 } }, "usage.other: unknown key"],
+    [{ tips: [] }, "tips: must be an object"],
+    [{ tips: { enabled: "no" } }, "tips.enabled"],
+    [{ tips: { complexity: 0 } }, "tips.complexity"],
+    [{ tips: { color: 1 } }, "tips.color: unknown key"],
+    [{ telemetry: { team: "" } }, "telemetry.team"],
+  ] as const)
+    expect(() => validatePartial(doc, "f")).toThrow(message)
+})

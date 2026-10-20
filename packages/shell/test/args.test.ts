@@ -68,6 +68,8 @@ describe("parseArgs", () => {
     expect(() => parseArgs(["audit", "--user"])).toThrow(/needs a value/)
     expect(() => parseArgs(["audit", "--format", "pdf"])).toThrow(/md or json/)
     expect(() => parseArgs(["audit", "--x"])).toThrow(/unknown option for audit/)
+    expect(parseArgs(["usage", "--team", "payments", "--format", "json", "--from", "2026-10-01"])).toEqual({ kind: "usage", team: "payments", format: "json", from: "2026-10-01" })
+    expect(() => parseArgs(["usage", "--user", "anna"])).toThrow(/unknown option for usage/)
     expect(parseArgs(["diagram"])).toEqual({ kind: "diagram", source: "code" })
     expect(parseArgs(["diagram", "cobol", "--program", "CBACT01C", "app"])).toEqual({ kind: "diagram", source: "cobol", program: "CBACT01C", directory: "app" })
     expect(parseArgs(["diagram", "code", "--depth", "3"])).toEqual({ kind: "diagram", source: "code", depth: 3 })
@@ -76,6 +78,14 @@ describe("parseArgs", () => {
     expect(() => parseArgs(["diagram", "--program", "X"])).toThrow(/only for cobol/)
     expect(() => parseArgs(["diagram", "a", "b"])).toThrow(/one directory/)
     expect(() => parseArgs(["diagram", "--svg"])).toThrow(/unknown option for diagram/)
+  })
+
+  test("tips", () => {
+    expect(parseArgs(["tips"])).toEqual({ kind: "tips", paths: [], format: "text" })
+    expect(parseArgs(["tips", "--format", "json", "--fail-on", "warning", "src", "lib"])).toEqual({ kind: "tips", paths: ["src", "lib"], format: "json", failOn: "warning" })
+    expect(() => parseArgs(["tips", "--format", "xml"])).toThrow(/text or json/)
+    expect(() => parseArgs(["tips", "--fail-on", "error"])).toThrow(/warning or info/)
+    expect(() => parseArgs(["tips", "--x"])).toThrow(/unknown option for tips/)
   })
 
   test("trust", () => {

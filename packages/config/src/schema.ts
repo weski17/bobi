@@ -39,7 +39,7 @@ export type BobiConfig = {
   /** Explicit auto-approvals. Default: every write, shell command and network action asks. */
   autoApprove: AutoApproveRule[]
   /** OTLP export endpoint, the user recorded in audit records, and the local audit log (default on). */
-  telemetry: { otlpEndpoint?: string; user?: string; auditLog?: boolean }
+  telemetry: { otlpEndpoint?: string; user?: string; team?: string; auditLog?: boolean }
   checkpoints: { enabled: boolean }
   mcp: McpConfig
   /** Inline code completion in the IDE (requirement 17). Off until a model is set. */
@@ -49,6 +49,13 @@ export type BobiConfig = {
    * BOBI_A2A=1 only, never a project). `agents`: remote agents Bobi may call; credentials only as ${ENV_VAR}.
    */
   a2a: { enabled: boolean; agents: Record<string, A2aAgent> }
+  /**
+   * Usage report (requirement 19). Time saved cannot be measured; it is shown only when these estimates are set
+   * (minutes per finished task and per approved change) and is labelled as an estimate.
+   */
+  usage: { minutesPerTask?: number; minutesPerAcceptedChange?: number }
+  /** Code tips while editing (requirement 14): local analysis, thresholds per project. */
+  tips: { enabled?: boolean; complexity?: number; functionLines?: number; nesting?: number; parameters?: number }
 }
 
 export type A2aAgent = { url: string; headers?: Record<string, string>; description?: string }
@@ -68,6 +75,8 @@ export const DEFAULTS: BobiConfig = {
   mcp: { servers: {} },
   autocomplete: {},
   a2a: { enabled: false, agents: {} },
+  usage: {},
+  tips: {},
 }
 
 export class ConfigError extends Error {
@@ -99,7 +108,7 @@ export function validatePartial(input: unknown, source: string): DeepPartial<Bob
   if (!isObject(input)) throw new ConfigError(source, ["config must be a JSON object"])
   findSecrets(input, "", issues)
 
-  const known = new Set(["$schema", "model", "modes", "autoApprove", "telemetry", "checkpoints", "mcp", "autocomplete", "a2a"])
+  const known = new Set(["$schema", "model", "modes", "autoApprove", "telemetry", "checkpoints", "mcp", "autocomplete", "a2a", "usage", "tips"])
   for (const key of Object.keys(input)) if (!known.has(key)) issues.push(`${key}: unknown key`)
 
   const model = input.model
@@ -150,6 +159,7 @@ export function validatePartial(input: unknown, source: string): DeepPartial<Bob
         issues.push("telemetry.otlpEndpoint: must be an http(s) URL")
       if (t.user !== undefined && typeof t.user !== "string") issues.push("telemetry.user: must be a string")
       if (t.auditLog !== undefined && typeof t.auditLog !== "boolean") issues.push("telemetry.auditLog: must be a boolean")
+      if (t.team !== undefined && (typeof t.team !== "string" || t.team === "")) issues.push("telemetry.team: must be a non-empty string")
     }
   }
 
@@ -172,6 +182,28 @@ export function validatePartial(input: unknown, source: string): DeepPartial<Bob
   }
 
   if (input.a2a !== undefined) validateA2a(input.a2a, issues)
+
+  if (input.tips !== undefined) {
+    const t = input.tips
+    if (!isObject(t)) issues.push("tips: must be an object")
+    else
+      for (const [key, value] of Object.entries(t)) {
+        if (key === "enabled") {
+          if (typeof value !== "boolean") issues.push("tips.enabled: must be a boolean")
+        } else if (!["complexity", "functionLines", "nesting", "parameters"].includes(key)) issues.push(`tips.${key}: unknown key`)
+        else if (typeof value !== "number" || !Number.isInteger(value) || value < 1 || value > 1000) issues.push(`tips.${key}: must be an integer between 1 and 1000`)
+      }
+  }
+
+  if (input.usage !== undefined) {
+    const u = input.usage
+    if (!isObject(u)) issues.push("usage: must be an object")
+    else
+      for (const [key, value] of Object.entries(u)) {
+        if (key !== "minutesPerTask" && key !== "minutesPerAcceptedChange") issues.push(`usage.${key}: unknown key`)
+        else if (typeof value !== "number" || !(value >= 0) || value > 480) issues.push(`usage.${key}: minutes between 0 and 480`)
+      }
+  }
 
   if (issues.length) throw new ConfigError(source, issues)
   return input as DeepPartial<BobiConfig>

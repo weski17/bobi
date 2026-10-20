@@ -10,15 +10,17 @@
   ],
   "scripts": {
     "postinstall": "bun scripts/apply-patches.ts && bun scripts/link-upstream.ts",
-    "test": "bun test ./packages ./mcp-servers ./tests/integration",
-    "test:coverage": "bun test --coverage ./packages ./mcp-servers ./tests/integration",
+    "test": "bun test ./packages ./mcp-servers ./tests/integration ./tests/redteam ./tests/load",
+    "test:coverage": "bun test --coverage ./packages ./mcp-servers ./tests/integration ./tests/redteam ./tests/load",
     "test:sandbox": "bun test ./tests/sandbox",
     "test:e2e": "bun test ./tests/e2e",
     "test:ide": "bun tests/ide/run-ide-test.ts",
     "ide:setup": "bun scripts/ide/setup.ts",
     "ide": "bun scripts/ide/run.ts",
     "typecheck": "NODE_OPTIONS=--max-old-space-size=8192 tsc -p tsconfig.json --noEmit",
-    "browser:install": "bun packages/browser/node_modules/playwright-core/cli.js install chromium-headless-shell"
+    "browser:install": "bun packages/browser/node_modules/playwright-core/cli.js install chromium-headless-shell",
+    "test:redteam": "PROMPTFOO_DISABLE_TELEMETRY=1 PROMPTFOO_DISABLE_UPDATE=1 PROMPTFOO_DISABLE_REMOTE_GENERATION=true npx --yes promptfoo@0.123.1 eval -c tests/redteam/promptfooconfig.yaml --no-cache --no-progress-bar --max-concurrency 2",
+    "test:load": "bun tests/load/load.ts"
   },
   "devDependencies": {
     "@bobi/a2a": "workspace:*",

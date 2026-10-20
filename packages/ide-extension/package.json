@@ -80,6 +80,11 @@
           "default": true,
           "description": "Send the open editors and the current selection as context."
         },
+        "bobi.tips.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Code tips: mark complex functions and anti-patterns while editing (local analysis, no model call). Thresholds: tips in the Bobi config."
+        },
         "bobi.autocomplete.enabled": {
           "type": "boolean",
           "default": true,

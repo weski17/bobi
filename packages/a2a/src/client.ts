@@ -40,6 +40,25 @@ async function rpc(endpoint: string, agent: RemoteAgent, method: string, params:
   return body.result
 }
 
+/** States in which the remote task will not progress without further input. */
+const STOPPED = [...TERMINAL_STATES, "input-required", "auth-required"]
+
+/** Polls tasks/get until the task stops; cancels it when the time limit is reached. */
+async function waitForTask(target: { name: string; endpoint: string; agent: RemoteAgent }, task: Task, options: CallOptions, f: typeof fetch): Promise<Task> {
+  const { name, endpoint, agent } = target
+  const deadline = Date.now() + (options.timeoutMs ?? 120_000)
+  let result = task
+  while (!STOPPED.includes(result.status.state)) {
+    if (Date.now() > deadline) {
+      await rpc(endpoint, agent, "tasks/cancel", { id: result.id }, f).catch(() => {})
+      throw new A2aError(`${name} did not finish in time (task ${result.id})`)
+    }
+    await new Promise((r) => setTimeout(r, options.pollMs ?? 1000))
+    result = (await rpc(endpoint, agent, "tasks/get", { id: result.id }, f)) as Task
+  }
+  return result
+}
+
 /** Sends one text message and waits for the task to finish; returns the agent's text answer. */
 export async function callAgent(name: string, agent: RemoteAgent, text: string, options: CallOptions = {}): Promise<CallResult> {
   const f = options.fetch ?? fetch
@@ -47,17 +66,9 @@ export async function callAgent(name: string, agent: RemoteAgent, text: string, 
   // The card's endpoint must stay on the configured origin: a card cannot redirect Bobi to other hosts.
   if (new URL(card.url).origin !== new URL(agent.url).origin) throw new A2aError(`agent card of ${name} points to another host (${new URL(card.url).origin})`)
   const message: Message = { kind: "message", role: "user", parts: [{ kind: "text", text }], messageId: randomUUID(), ...(options.contextId ? { contextId: options.contextId } : {}) }
-  let result = (await rpc(card.url, agent, "message/send", { message, configuration: { blocking: true, acceptedOutputModes: ["text/plain"] } }, f)) as Task | Message
-  if (result.kind === "message") return { text: textOf(result.parts), state: "completed", agent: name, ...(result.contextId ? { contextId: result.contextId } : {}) }
-  const deadline = Date.now() + (options.timeoutMs ?? 120_000)
-  while (!TERMINAL_STATES.includes(result.status.state) && result.status.state !== "input-required" && result.status.state !== "auth-required") {
-    if (Date.now() > deadline) {
-      await rpc(card.url, agent, "tasks/cancel", { id: result.id }, f).catch(() => {})
-      throw new A2aError(`${name} did not finish in time (task ${result.id})`)
-    }
-    await new Promise((r) => setTimeout(r, options.pollMs ?? 1000))
-    result = (await rpc(card.url, agent, "tasks/get", { id: result.id }, f)) as Task
-  }
+  const sent = (await rpc(card.url, agent, "message/send", { message, configuration: { blocking: true, acceptedOutputModes: ["text/plain"] } }, f)) as Task | Message
+  if (sent.kind === "message") return { text: textOf(sent.parts), state: "completed", agent: name, ...(sent.contextId ? { contextId: sent.contextId } : {}) }
+  const result = await waitForTask({ name, endpoint: card.url, agent }, sent, options, f)
   const answer = [textOf(result.artifacts?.flatMap((a) => a.parts)), textOf(result.status.message?.parts)].find((t) => t.trim()) ?? ""
   return { text: answer, state: result.status.state, taskId: result.id, contextId: result.contextId, agent: name }
 }

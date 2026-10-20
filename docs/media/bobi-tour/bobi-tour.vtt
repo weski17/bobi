@@ -1,0 +1,121 @@
+WEBVTT
+
+00:00:00.500 --> 00:00:03.488
+Das ist Bobi – dein KI-Entwicklungspartner.
+
+00:00:03.238 --> 00:00:07.562
+Er läuft komplett in eurem Firmennetz, mit eurem eigenen Modell.
+
+00:00:08.912 --> 00:00:16.845
+Bobi spricht mit jedem OpenAI- oder Anthropic-kompatiblen Endpunkt, zum Beispiel LiteLLM, vLLM oder Ollama.
+
+00:00:16.595 --> 00:00:20.004
+Code und Daten verlassen das Firmennetz nie.
+
+00:00:21.354 --> 00:00:25.282
+Es gibt zwei Oberflächen: die Bobi IDE und die Bobi Shell.
+
+00:00:25.032 --> 00:00:30.101
+Beide teilen sich denselben Kern – dieselben Modi, Regeln und Einstellungen.
+
+00:00:31.451 --> 00:00:36.237
+Bobi plant, ruft Werkzeuge auf, prüft das Ergebnis und macht weiter.
+
+00:00:35.987 --> 00:00:40.440
+Jede Änderung und jeder Terminal-Befehl braucht deine Freigabe.
+
+00:00:41.789 --> 00:00:45.972
+In der IDE siehst du jede Änderung als Diff, bevor sie geschrieben wird.
+
+00:00:45.722 --> 00:00:48.922
+Und mit einem Klick machst du alles wieder rückgängig.
+
+00:00:50.272 --> 00:00:59.130
+Modi geben Bobi eine Rolle und eigene Rechte: Code, Plan, Ask nur zum Lesen, Advanced mit MCP, Orchestrator und Security.
+
+00:00:58.880 --> 00:01:01.691
+Eigene Modi legst du pro Projekt an.
+
+00:01:03.041 --> 00:01:05.951
+Mit Slash init entsteht die Datei AGENTS.
+
+00:01:05.701 --> 00:01:12.567
+Regeln im Ordner Punkt bobi gelten immer – und was in der bobiignore steht, bekommt Bobi nie zu sehen.
+
+00:01:13.917 --> 00:01:19.110
+Der Orchestrator zerlegt große Aufgaben und verteilt sie an die passenden Modi.
+
+00:01:20.461 --> 00:01:27.804
+Skills und eigene Slash-Befehle machen Abläufe wiederholbar – zum Beispiel commit, pr oder security-review.
+
+00:01:29.154 --> 00:01:38.262
+Literate Coding: Schreib in Klartext an die Stelle, was passieren soll, drück Befehl, Alt, Enter – und Bobi liefert den Code als Diff.
+
+00:01:39.612 --> 00:01:45.329
+Die Autovervollständigung schlägt ganze Zeilen und Blöcke vor, mit eurem eigenen Modell.
+
+00:01:45.079 --> 00:01:47.069
+Tab übernimmt den Vorschlag.
+
+00:01:48.419 --> 00:01:55.520
+Code-Tipps markieren komplexe Funktionen und Anti-Patterns schon beim Tippen – lokal, ohne Modellaufruf.
+
+00:01:55.270 --> 00:01:57.957
+Auf Wunsch vereinfacht Bobi den Code.
+
+00:01:59.307 --> 00:02:04.268
+Der Security-Modus sucht Schwachstellen und Code-Smells und schlägt Patches vor.
+
+00:02:05.619 --> 00:02:10.340
+Bobi schreibt Commit-Nachrichten aus dem Diff und erstellt Pull Requests.
+
+00:02:10.090 --> 00:02:12.729
+Vor dem Pushen fragt er natürlich nach.
+
+00:02:14.078 --> 00:02:18.749
+Über MCP bindet Bobi weitere Werkzeuge an, lokal oder im Netz.
+
+00:02:18.499 --> 00:02:23.313
+Der eingebaute Code-Graph zeigt Aufrufketten und Abhängigkeiten.
+
+00:02:24.663 --> 00:02:32.878
+Für den Mainframe analysiert Bobi COBOL: Programme, Datenfluss und die Auswirkung einer Änderung – getestet an CardDemo.
+
+00:02:34.228 --> 00:02:41.130
+Über Zowe liest Bobi Datasets und startet Jobs – nur auf freigegebenen Datasets und immer mit deiner Bestätigung.
+
+00:02:42.480 --> 00:02:44.838
+Bobi nutzt Terminal und Browser.
+
+00:02:44.588 --> 00:02:49.449
+Alles, was dort steht, ist für ihn nur Daten – niemals eine Anweisung.
+
+00:02:50.799 --> 00:03:00.021
+Darunter liegt eine Sandbox im Container, Netzwerk nur per Allowlist, maskierte Geheimnisse und ein Audit jeder Aktion über OpenTelemetry.
+
+00:03:01.371 --> 00:03:06.812
+Audit-Berichte und eine Nutzungsstatistik pro Team erzeugst du mit einem einzigen Befehl.
+
+00:03:08.161 --> 00:03:11.686
+Architekturdiagramme entstehen direkt aus dem Code.
+
+00:03:13.036 --> 00:03:16.990
+Und per A2A arbeitet Bobi mit anderen Agenten zusammen.
+
+00:03:16.740 --> 00:03:19.751
+Fremde Agenten dürfen bei Bobi nur lesen.
+
+00:03:21.101 --> 00:03:31.476
+Alles ist getestet: 397 automatisierte Tests, acht von acht Angriffen im Red-Team eingedämmt, hundert parallele Sitzungen ohne Fehler.
+
+00:03:32.826 --> 00:03:33.549
+Bobi.
+
+00:03:33.299 --> 00:03:34.305
+On-Prem.
+
+00:03:34.055 --> 00:03:34.967
+Sicher.
+
+00:03:34.717 --> 00:03:35.534
+Offen.

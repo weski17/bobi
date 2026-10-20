@@ -120,11 +120,11 @@ Per user project (what Bobi reads in a repository it works on):
 | 10 | Orchestrator | `subagent` tool | Orchestrator mode prompt + delegation rules | 5 |
 | 11 | Skills, slash commands | SKILL.md, commands | Map `.bobi/skills`, `.bobi/commands` | 5 |
 | 12 | Literate coding | – | IDE command + `Cmd+M`-style keybinding (own key choice), result as diff | 5 |
-| 13–15 | Security agent, code tips, git | – | Modes + commands; diagnostics provider in IDE | 5 |
+| 13–15 | Security agent, code tips, git | – | Modes + commands; code tips `packages/tips` + IDE diagnostics (ADR-0018) | 5, 7 |
 | 16 | Own MCP servers | – | `mcp-servers/code-graph`, `cobol`, `zowe` (ADR-0015, ADR-0017) | 3, 6 |
 | 17 | Autocomplete | – | `/bobi/complete` + IDE inline completion (ADR-0017) | 6 |
 | 18 | Audit reports, diagrams | OTel | Local audit log, `bobi audit`, `bobi diagram` (ADR-0017) | 6 |
-| 19 | Usage statistics | – | – | later |
+| 19 | Usage statistics | token events | `bobi.task` / `bobi.usage` audit records, `bobi usage` (ADR-0018) | 7 |
 | 20 | A2A | – | `packages/a2a`: agent card, read-only inbound, `a2a` tool (ADR-0017) | 6 |
 
 ## 5. Security architecture (summary)

@@ -57,3 +57,13 @@ export function literatePrompt(file: string, start: number, end: number, text: s
     "the change as a diff before it is applied.",
   ].join("\n")
 }
+
+/** Prompt for "Bobi: Simplify" on a code tip: refactor one function or paragraph without changing behaviour. */
+export function simplifyPrompt(file: string, tip: { line: number; endLine: number; symbol?: string; message: string }, language: string): string {
+  const what = tip.symbol ? `${tip.symbol} (lines ${tip.line}-${tip.endLine})` : `lines ${tip.line}-${tip.endLine}`
+  return [
+    `In ${file} (${language}), ${what}: ${tip.message}`,
+    "Refactor this code to fix that. Keep the behaviour exactly the same and keep the public signature; extract",
+    "well-named helpers where it helps. Use the edit tool so the user can review the change as a diff before it is applied.",
+  ].join("\n")
+}

@@ -30,6 +30,8 @@ export type MockModelOptions = {
   readonly script?: readonly Turn[]
   readonly fallback?: Turn | ((request: ChatRequest) => Turn)
   readonly auxiliary?: Turn
+  /** Simulated model latency per response in milliseconds (load tests). */
+  readonly latencyMs?: number
   /** Text returned for /v1/completions (default: "completion"). */
   readonly completion?: string | ((request: CompletionRequest) => string)
 }
@@ -126,6 +128,7 @@ export function startMockModel(options: MockModelOptions = {}): MockModel {
       }
       if (request.method === "POST" && path === "/chat/completions") {
         const body = (await request.json()) as ChatRequest
+        if (options.latencyMs) await Bun.sleep(options.latencyMs)
         requests.push({ path: url.pathname, headers: Object.fromEntries(request.headers), body })
         const agentLoop = (body.tools?.length ?? 0) > 0
         const turn = agentLoop
