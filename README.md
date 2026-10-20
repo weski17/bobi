@@ -1,11 +1,82 @@
-# Bobi
+<p align="center">
+  <img src="branding/default/icon.svg" width="120" alt="Bobi logo">
+</p>
 
-Bobi is an on-premise AI development partner for internal developers: it plans, reads and edits code, runs commands
-and browses internal pages – with your company's own models, and without code or data leaving the network.
-Research project; see [`CLAUDE.md`](CLAUDE.md) for goals and rules and [`docs/STATUS.md`](docs/STATUS.md) for progress.
+<h1 align="center">Bobi</h1>
 
-- **Engine:** a pinned fork of [OpenCode](https://github.com/anomalyco/opencode) (MIT) in `vendor/opencode`
-- **Bobi:** its own application on top – secure defaults, offline configuration, audit, sandbox ([architecture](docs/ARCHITECTURE.md))
+<p align="center">
+  <b>Your AI development partner – entirely on-premise.</b><br>
+  Plans, reads and writes code, runs commands and understands your mainframe –<br>
+  with your own models, without a single line of code leaving your network.
+</p>
+
+<p align="center">
+  <a href="https://github.com/weski17/bobi/actions/workflows/ci.yml"><img src="https://github.com/weski17/bobi/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <img src="https://img.shields.io/badge/license-MIT-5eead4" alt="MIT license">
+  <img src="https://img.shields.io/badge/tests-397%20passing-4ade80" alt="397 tests passing">
+  <img src="https://img.shields.io/badge/red%20team-8%2F8%20contained-a78bfa" alt="Red team 8/8 contained">
+  <img src="https://img.shields.io/badge/cloud-none-f87171" alt="No cloud">
+</p>
+
+<p align="center">
+  <a href="docs/media/bobi-tour/bobi-tour.mp4"><b>▶ Watch the feature tour (3½ min)</b></a> ·
+  <a href="docs/HANDBUCH.md">Handbuch (Deutsch)</a> ·
+  <a href="docs/ARCHITECTURE.md">Architecture</a> ·
+  <a href="#quick-start">Quick start</a>
+</p>
+
+<p align="center">
+  <a href="docs/media/bobi-tour/bobi-tour.mp4"><img src="docs/media/screenshots/hero.jpg" width="880" alt="Bobi feature tour"></a>
+</p>
+
+---
+
+## Why Bobi
+
+|  |  |  |
+|---|---|---|
+| 🏢 **Stays in your network** | 🛡️ **Safe by default** | 🧭 **Built for real enterprise code** |
+| Works with any OpenAI- or Anthropic-compatible endpoint – LiteLLM, vLLM, Ollama. No cloud provider built in, no telemetry home. | Every write and every command waits for your approval. Diffs before anything is written, one-click undo, sandbox, secret masking, full audit. | From TypeScript to COBOL: call graphs, data flow and impact analysis, mainframe access via Zowe – with allowlists for production data. |
+
+## One core, two surfaces
+
+**Bobi IDE** (Code-OSS with the Bobi panel) and **Bobi Shell** (`bobi`) share one core: the same modes, rules,
+permissions and configuration. Pick the IDE for daily work, the shell for scripts and CI – Bobi behaves the same.
+
+<p align="center">
+  <img src="docs/media/screenshots/surfaces.jpg" width="49%" alt="Bobi IDE and Bobi Shell">
+  <img src="docs/media/screenshots/approval.jpg" width="49%" alt="Approval before every command">
+</p>
+
+## Everything a development partner needs
+
+| | Feature | What it does |
+|---|---|---|
+| 🔁 | **Agent loop** | Plans, calls tools (files, search, terminal, browser), checks the result, continues. |
+| ✅ | **Approvals & undo** | Writes, commands and network access ask first; checkpoints before every change, one-click undo. |
+| 🎭 | **Modes** | `code`, `plan`, `ask` (read-only), `advanced` (MCP), `orchestrator`, `security` – plus your own per project. |
+| 📜 | **Project context** | `/init` writes `AGENTS.md`; rules in `.bobi/rules/`; `.bobiignore` keeps files out of reach. |
+| 🧩 | **Orchestrator** | Splits large tasks and delegates them to the right modes. |
+| ⚡ | **Skills & slash commands** | `/commit`, `/pr`, `/security-review`, your own commands and skills. |
+| ✍️ | **Literate coding** | Write what you want in plain language at the spot, press `⌘⌥⏎`, review the diff. |
+| ⇥ | **Autocomplete** | Single- and multi-line ghost text from your own model. |
+| 💡 | **Code tips** | Flags complex functions and anti-patterns while you type – locally, no model call – and simplifies on request. |
+| 🔐 | **Security agent** | Finds vulnerabilities and code smells, proposes patches. |
+| 🌿 | **Git** | Commit messages from the staged diff, pull requests – pushes always ask. |
+| 🔌 | **MCP** | Local and remote MCP servers per mode; built-in code graph for call chains and dependencies. |
+| 🖥️ | **COBOL & mainframe** | COBOL analysis (tested on AWS CardDemo) and mainframe datasets and jobs via Zowe. |
+| 🤝 | **A2A** | Agent card and read-only answers for other agents; Bobi can ask your other agents, with approval. |
+| 📊 | **Audit & usage** | Compliance reports, usage per team and person, architecture diagrams from code. |
+
+<p align="center">
+  <img src="docs/media/screenshots/literate.jpg" width="49%" alt="Literate coding">
+  <img src="docs/media/screenshots/cobol.jpg" width="49%" alt="COBOL impact analysis">
+</p>
+<p align="center">
+  <img src="docs/media/screenshots/tips.jpg" width="49%" alt="Code tips">
+  <img src="docs/media/screenshots/reports.jpg" width="49%" alt="Usage report">
+</p>
+<p align="center"><sub>Frames from the feature tour (illustrations of the real features).</sub></p>
 
 ## Quick start
 
@@ -13,62 +84,65 @@ Research project; see [`CLAUDE.md`](CLAUDE.md) for goals and rules and [`docs/ST
 brew install oven-sh/bun/bun ripgrep bash
 git clone --recurse-submodules https://github.com/weski17/bobi.git && cd bobi
 (cd vendor/opencode && bun install) && bun install && bun run browser:install
-bash scripts/install.sh            # puts `bobi` into ~/.local/bin
+bash scripts/install.sh                       # installs `bobi` and `bobi-ide` into ~/.local/bin
 
 export BOBI_MODEL_BASE_URL=http://localhost:4000/v1 BOBI_MODEL=<model id> BOBI_MODEL_API_KEY=<key>
-cd ~/your/project && bobi           # terminal UI
-bobi run "explain this repository"  # headless
+cd ~/your/project
+bobi                                          # terminal UI
+bobi run --mode ask "explain this repository" </dev/null
+bun run ide:setup && bobi-ide .               # Bobi IDE (once: builds Code-OSS from source)
 ```
 
-Configuration: [`bobi.example.jsonc`](bobi.example.jsonc). Sandbox: [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md#sandbox-podman).
-Demos: [phase 1](docs/demos/phase-1.md), [phase 2](docs/demos/phase-2.md), [phase 3](docs/demos/phase-3.md), [phase 4](docs/demos/phase-4.md), [phase 5](docs/demos/phase-5.md).
+All settings with comments: [`bobi.example.jsonc`](bobi.example.jsonc) · full guide in German:
+[`docs/HANDBUCH.md`](docs/HANDBUCH.md).
 
-## Modes
+## How it works
 
-`code` (default), `plan`, `ask`, `advanced`, `orchestrator` – switch with Shift+Tab. Own modes in
-`.bobi/custom_modes.yaml` ([example](docs/examples/custom_modes.yaml)), rules in `.bobi/rules/` and `AGENTS.md`
-(`/init` writes it), exclusions in `.bobiignore`. Demo: [`docs/demos/phase-2.md`](docs/demos/phase-2.md).
+```mermaid
+flowchart LR
+  IDE[Bobi IDE] --> S
+  SH[Bobi Shell] --> S
+  A[Other agents · A2A] -.read-only.-> S
+  subgraph Sandbox[Container sandbox · egress allowlist]
+    S[Bobi server<br/>engine + @bobi/core] --> T[Tools · MCP<br/>code-graph · cobol · zowe]
+  end
+  S --> M[Your model gateway<br/>LiteLLM · vLLM · Ollama]
+  S --> O[OpenTelemetry · audit]
+```
 
-## MCP
+Bobi embeds the [OpenCode](https://github.com/anomalyco/opencode) engine (MIT) and turns it into Bobi with one host
+plugin: secure policy, modes, rules, trust, masking, audit. Details: [architecture](docs/ARCHITECTURE.md),
+[decisions](docs/adr/README.md).
 
-Built-in **code graph** server (call chains, dependencies) in Advanced mode; own local or remote MCP servers in
-`config.jsonc` with credentials from the environment. Demo: [`docs/demos/phase-3.md`](docs/demos/phase-3.md).
+## Security at a glance
 
-## Bobi IDE
+- **Approvals by default** for every write, command and network access; auto-approval only through versioned config.
+- **Protected rules:** Bobi can never widen its own rights (`.bobi/`, `.bobiignore`), mainframe writes and jobs and
+  calls to other agents always ask.
+- **Prompt-injection safe:** content from files, terminal, web and MCP is data, never instructions – verified by a
+  red-team suite in which the model itself is assumed compromised.
+- **Secrets masked** in prompts, logs, audit and autocomplete; keys only from the environment.
+- **Sandbox:** unprivileged container, project mount only, network only through an allowlist proxy.
+- **Full audit** of every action – user, team, mode, tool, result, your answer – via OpenTelemetry (e.g. Langfuse).
 
-Code-OSS with Bobi branding and the Bobi chat panel: diff before apply, context from open tabs, modes, one-click undo.
-`bun run ide:setup` once, then `bobi-ide ~/your/project`. Demo: [`docs/demos/phase-4.md`](docs/demos/phase-4.md).
+## Quality
 
-## Workflows
+397 automated tests (98 % line coverage), terminal-UI, IDE and sandbox tests, a promptfoo red team (8/8 attacks
+contained) and load tests (100 parallel sessions, 0 errors) – all against a mock model, so they run without a real
+model or network. `bun run test` · [testing guide](docs/HANDBUCH.md#16-qualität-und-tests).
 
-Orchestrator that delegates to modes, Security mode, `/commit`, `/pr`, `/security-review`, own slash commands and
-skills, literate coding in the IDE (Cmd+Alt+Enter). Demo: [`docs/demos/phase-5.md`](docs/demos/phase-5.md).
+## Documentation
 
-## Mainframe, autocomplete, audit, A2A
-
-COBOL analysis (call graphs, data flow, impact of copybooks, programs, fields and datasets) and mainframe access via
-the Zowe-compatible REST services as built-in MCP servers; inline autocomplete in Bobi IDE through your own model;
-`bobi audit` compliance reports and `bobi diagram` Mermaid diagrams; A2A agent card and read-only tasks for other
-agents. Demo: [`docs/demos/phase-6.md`](docs/demos/phase-6.md).
-
-## Code tips, usage, red team, load
-
-Code tips for complex functions and anti-patterns (TS/JS, COBOL) in Bobi IDE and `bobi tips`; usage per person and
-team with `bobi usage`; a red-team suite (promptfoo) and load tests. Demo: [`docs/demos/phase-7.md`](docs/demos/phase-7.md).
-
-## Handbuch (Deutsch)
-
-Alle Funktionen mit Beispielen, Konfiguration, Betrieb und Fehlerbehebung: [`docs/HANDBUCH.md`](docs/HANDBUCH.md).
-Video-Tour: [`docs/media/bobi-tour/bobi-tour.mp4`](docs/media/bobi-tour/bobi-tour.mp4).
-
-## Safeguards
-
-- Every write, shell command and network action asks for approval; auto-approval only through explicit, versioned config.
-- Only the configured model endpoint is contacted (tested); vendor services are switched off.
-- Tool output is marked as untrusted data; secrets are masked; every action is audited via OpenTelemetry.
-- In the sandbox the server runs unprivileged without network access except through an allowlist proxy.
+| | |
+|---|---|
+| [Handbuch (Deutsch)](docs/HANDBUCH.md) | Every feature with examples, configuration, operations, troubleshooting |
+| [Architecture](docs/ARCHITECTURE.md) | Components, request flow, security architecture |
+| [Decisions (ADRs)](docs/adr/README.md) | Why Bobi is built the way it is |
+| [Demos](docs/demos/) | Step-by-step walkthroughs per phase |
+| [Development](docs/DEVELOPMENT.md) · [AGENTS.md](AGENTS.md) | Setup and rules for contributors |
+| [Status](docs/STATUS.md) | Progress, findings, open points |
 
 ## License
 
-Bobi's own code: [MIT](LICENSE), © Finanz Informatik GmbH & Co. KG.
-The engine in `vendor/opencode` keeps its own MIT license and copyright. Third-party components: [`LICENSES.md`](LICENSES.md).
+Bobi's own code: [MIT](LICENSE), © Finanz Informatik GmbH & Co. KG. The engine in `vendor/opencode` keeps its own MIT
+license. Third-party components and tools: [`LICENSES.md`](LICENSES.md).
