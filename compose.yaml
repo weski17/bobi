@@ -1,0 +1,101 @@
+# Bobi as containers (Docker Compose or Podman Compose). Same security model as sandbox/bobi-sandbox.sh (ADR-0007):
+#   server   – the Bobi server: unprivileged, no capabilities, only on the internal network (no direct internet)
+#   egress   – the only way out: an allowlist proxy (BOBI_EGRESS_ALLOW)
+#   gateway  – forwards 127.0.0.1:${BOBI_PORT} to the server (Docker cannot publish ports of internal-only containers)
+#   mock-model (profile "demo") – a test model, so everything runs without a real gateway
+#
+# Quick start (see docs/HANDBUCH.md, "Bobi als Container"):
+#   export BOBI_PROJECT=/absolute/path/to/project BOBI_SERVER_PASSWORD="$(openssl rand -base64 24)"
+#   bun sandbox/compose-masks.ts "$BOBI_PROJECT" > compose.override.yaml    # hide .bobiignore'd files (recommended)
+#   BOBI_MODEL_BASE_URL=http://mock-model:4001/v1 docker compose --profile demo up -d --build   # demo with the test model
+#   docker compose up -d --build                                                               # with your gateway
+#   cd "$BOBI_PROJECT" && BOBI_SERVER_PASSWORD=… bobi attach http://127.0.0.1:4096
+
+name: bobi
+
+x-hardening: &hardening
+  image: ${BOBI_IMAGE:-bobi:0.1.0}
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  restart: unless-stopped
+
+services:
+  server:
+    <<: *hardening
+    build:
+      context: .
+      dockerfile: sandbox/Containerfile
+    networks: [internal]
+    working_dir: ${BOBI_PROJECT:?set BOBI_PROJECT to the absolute path of your project}
+    pids_limit: 512
+    mem_limit: 4g
+    volumes:
+      # The project at the same path as on the host, so checkpoint pointers and paths in answers match.
+      - ${BOBI_PROJECT}:${BOBI_PROJECT}
+      # Hidden checkpoint repositories of non-git projects, and the host's project-trust decisions (read-only).
+      - ${BOBI_HOME_HOST:-${HOME}/.bobi}/data/shadow:${BOBI_HOME_HOST:-${HOME}/.bobi}/data/shadow
+      - ${BOBI_HOME_HOST:-${HOME}/.bobi}/trust:/home/bun/.bobi/trust:ro
+      - bobi-home:/home/bun/.bobi
+    environment:
+      BOBI_SERVER_PASSWORD: ${BOBI_SERVER_PASSWORD:?set BOBI_SERVER_PASSWORD (at least 16 characters)}
+      BOBI_MODEL_BASE_URL: ${BOBI_MODEL_BASE_URL:-http://host.docker.internal:4000/v1}
+      BOBI_MODEL: ${BOBI_MODEL:-mock-model}
+      BOBI_MODEL_API_KEY: ${BOBI_MODEL_API_KEY:-}
+      BOBI_USER: ${BOBI_USER:-${USER:-unknown}}
+      BOBI_TEAM: ${BOBI_TEAM:-}
+      BOBI_A2A: ${BOBI_A2A:-}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+      # Everything outside the internal network goes through the allowlist proxy.
+      HTTP_PROXY: http://egress:3128
+      HTTPS_PROXY: http://egress:3128
+      http_proxy: http://egress:3128
+      https_proxy: http://egress:3128
+      NO_PROXY: localhost,127.0.0.1,mock-model
+      no_proxy: localhost,127.0.0.1,mock-model
+      # Bind-mount roots may appear owned by root inside the VM; only these directories are declared git-safe.
+      GIT_CONFIG_COUNT: "2"
+      GIT_CONFIG_KEY_0: safe.directory
+      GIT_CONFIG_VALUE_0: ${BOBI_PROJECT}
+      GIT_CONFIG_KEY_1: safe.directory
+      GIT_CONFIG_VALUE_1: ${BOBI_HOME_HOST:-${HOME}/.bobi}/data/shadow
+      # Mainframe access (only if configured).
+      ZOWE_OPT_HOST: ${ZOWE_OPT_HOST:-}
+      ZOWE_OPT_PORT: ${ZOWE_OPT_PORT:-}
+      ZOWE_OPT_USER: ${ZOWE_OPT_USER:-}
+      ZOWE_OPT_PASSWORD: ${ZOWE_OPT_PASSWORD:-}
+      BOBI_ZOWE_DATASETS: ${BOBI_ZOWE_DATASETS:-}
+    command: ["serve", "--hostname", "0.0.0.0", "--port", "4096"]
+    depends_on: [egress]
+
+  egress:
+    <<: *hardening
+    networks: [internal, outside]
+    read_only: true
+    entrypoint: ["bun", "/opt/bobi/packages/egress-proxy/src/cli.ts"]
+    environment:
+      BOBI_EGRESS_ALLOW: ${BOBI_EGRESS_ALLOW:-host.docker.internal:4000}
+      BOBI_EGRESS_HOST: 0.0.0.0
+    extra_hosts: ["host.docker.internal:host-gateway"]
+
+  gateway:
+    <<: *hardening
+    networks: [internal, outside]
+    read_only: true
+    entrypoint: ["bun", "/opt/bobi/sandbox/forward.ts", "4096", "server:4096"]
+    ports: ["127.0.0.1:${BOBI_PORT:-4096}:4096"]
+    depends_on: [server]
+
+  mock-model:
+    <<: *hardening
+    profiles: [demo]
+    networks: [internal]
+    read_only: true
+    entrypoint: ["bun", "/opt/bobi/packages/mock-model/src/cli.ts", "--port", "4001", "--hostname", "0.0.0.0"]
+
+networks:
+  internal:
+    internal: true
+  outside: {}
+
+volumes:
+  bobi-home: {}
