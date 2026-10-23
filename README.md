@@ -12,6 +12,7 @@
 
 <p align="center">
   <a href="https://github.com/weski17/bobi/actions/workflows/ci.yml"><img src="https://github.com/weski17/bobi/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/weski17/bobi/actions/workflows/image.yml"><img src="https://github.com/weski17/bobi/actions/workflows/image.yml/badge.svg" alt="Image"></a>
   <img src="https://img.shields.io/badge/license-MIT-5eead4" alt="MIT license">
   <img src="https://img.shields.io/badge/tests-397%20passing-4ade80" alt="397 tests passing">
   <img src="https://img.shields.io/badge/red%20team-8%2F8%20contained-a78bfa" alt="Red team 8/8 contained">
