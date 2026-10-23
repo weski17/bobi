@@ -12,7 +12,7 @@ beforeAll(() => {
     hostname: "127.0.0.1",
     fetch(request, server) {
       const url = new URL(request.url)
-      if (url.pathname === "/ws" && server.upgrade(request)) return
+      if (url.pathname === "/ws" && server.upgrade(request, { data: undefined })) return
       if (url.pathname === "/big") return new Response(big)
       if (url.pathname === "/echo") return new Response(request.body)
       if (url.pathname === "/stream")
@@ -30,7 +30,11 @@ beforeAll(() => {
         )
       return new Response("ok")
     },
-    websocket: { message: (ws, m) => ws.send(`echo:${m}`) },
+    websocket: {
+      message: (ws, m) => {
+        ws.send(`echo:${m}`)
+      },
+    },
   })
   forwarder = startForwarder(0, "127.0.0.1", upstream.port!, "127.0.0.1")
 })

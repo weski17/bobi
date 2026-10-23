@@ -448,6 +448,59 @@ sandbox/bobi-sandbox.sh status        # Container und Egress-Entscheidungen
 sandbox/bobi-sandbox.sh down
 ```
 
+### Bobi als Container (Docker oder Podman)
+
+`compose.yaml` startet Bobi mit demselben Sicherheitsmodell wie die Sandbox: **server** (ohne Root, ohne
+Capabilities, nur im internen Netz), **egress** (einziger Weg nach draußen, nur Ziele aus der Allowlist),
+**gateway** (reicht nur `127.0.0.1:4096` zum Server durch) und optional **mock-model** (Profil `demo`).
+
+Docker auf dem Mac **ohne Docker Desktop** (Docker Desktop ist für große Unternehmen kostenpflichtig):
+
+```bash
+brew install colima docker docker-compose
+mkdir -p ~/.docker/cli-plugins && ln -sfn /opt/homebrew/opt/docker-compose/bin/docker-compose ~/.docker/cli-plugins/docker-compose
+colima start --cpu 4 --memory 6
+```
+
+Bobi für ein Projekt starten:
+
+```bash
+export BOBI_PROJECT=$HOME/projekte/payments                 # absoluter Pfad
+export BOBI_SERVER_PASSWORD="$(openssl rand -base64 24)"
+mkdir -p ~/.bobi/data/shadow ~/.bobi/trust
+bun sandbox/compose-masks.ts "$BOBI_PROJECT" > compose.override.yaml   # .bobiignore-Dateien im Container verbergen
+
+# Ausprobieren mit dem Test-Modell:
+BOBI_MODEL_BASE_URL=http://mock-model:4001/v1 docker compose --profile demo up -d --build
+# Mit eurem Gateway (muss in der Allowlist stehen):
+BOBI_MODEL_BASE_URL=http://litellm.intranet:4000/v1 BOBI_MODEL=<modell> BOBI_MODEL_API_KEY=<schlüssel> \
+  BOBI_EGRESS_ALLOW=litellm.intranet:4000 docker compose up -d --build
+
+cd "$BOBI_PROJECT" && bobi attach http://127.0.0.1:4096   # Terminal-Oberfläche gegen den Container
+docker compose logs -f egress                            # welche Ziele erlaubt oder blockiert wurden
+docker compose down
+```
+
+Ein Modell auf dem eigenen Rechner erreicht der Container als `host.docker.internal` (Standard:
+`http://host.docker.internal:4000/v1`, bereits in der Allowlist). Mit Podman funktionieren dieselben Befehle als
+`podman compose …`.
+
+### Fertiges Image aus GitHub Packages
+
+Bei jedem Merge auf `main` baut GitHub Actions das Image für **linux/amd64 und linux/arm64** und legt es unter
+`ghcr.io/weski17/bobi` ab – privat wie das Repository. Tags: `latest`, `sha-<commit>`, bei Release-Tags `vX.Y.Z`
+auch `X.Y.Z` und `X.Y`.
+
+```bash
+gh auth refresh -s read:packages                         # einmalig: Leserecht für Pakete
+gh auth token | docker login ghcr.io -u <github-name> --password-stdin
+docker pull ghcr.io/weski17/bobi:latest
+BOBI_IMAGE=ghcr.io/weski17/bobi:latest docker compose up -d   # ohne lokalen Build
+```
+
+Ohne Registry weitergeben: `docker save bobi:0.1.0 | gzip > bobi-0.1.0.tar.gz`, auf dem Zielrechner
+`docker load < bobi-0.1.0.tar.gz`.
+
 ---
 
 ## 14. Betrieb
@@ -536,6 +589,9 @@ Sandbox 7/7, Red-Team 8/8, Semgrep 0 Befunde, Lasttest 300 Aufträge ohne Fehler
 | „outside the allowed datasets“ | `BOBI_ZOWE_DATASETS` vom Admin erweitern lassen. |
 | „rejectUnauthorized: false is not supported“ | CA-Zertifikat per `NODE_EXTRA_CA_CERTS` hinterlegen. |
 | `bobi run` hängt in Skripten | stdin schließen: `bobi run "…" </dev/null`. |
+| `docker compose`: „set BOBI_PROJECT …“ | `BOBI_PROJECT` (absoluter Projektpfad) und `BOBI_SERVER_PASSWORD` setzen. |
+| `docker compose`: Modell nicht erreichbar | Ziel in `BOBI_EGRESS_ALLOW` aufnehmen; `docker compose logs egress` zeigt blockierte Ziele. |
+| `docker: Cannot connect to the Docker daemon` | `colima start` (nach einem Neustart des Macs nötig). |
 | Git meldet „dubious ownership“ in der Sandbox | aktuelles `sandbox/bobi-sandbox.sh` verwenden (markiert nur Projekt und Checkpoints als sicher). |
 | Engine-Logs | `~/.bobi/data/log/server.log` |
 

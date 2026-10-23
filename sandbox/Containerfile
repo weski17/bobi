@@ -1,6 +1,12 @@
 # Bobi sandbox image (ADR-0007): the Bobi server and every tool process run here as an unprivileged user.
 # The same image also runs the egress proxy. Build: podman build -f sandbox/Containerfile -t bobi:dev .
-FROM docker.io/oven/bun:1.4.3@sha256:bf9d5b1f01be2de7cec5aa6e3977e8848f7ab9a307c6c3a8af7a50a27e609023
+# Pinned to the multi-platform index of oven/bun:1.4.3 (linux/amd64 + linux/arm64).
+FROM docker.io/oven/bun:1.4.3@sha256:ec06c3b6cea04192ae6770c434f668ca41d343ad19fa6472216c7b48be39c598
+
+LABEL org.opencontainers.image.title="Bobi" \
+      org.opencontainers.image.description="On-premise AI development partner – Bobi server (shell, MCP servers, egress proxy)" \
+      org.opencontainers.image.source="https://github.com/weski17/bobi" \
+      org.opencontainers.image.licenses="MIT"
 
 RUN apt-get update \
  && apt-get install -y --no-install-recommends git ripgrep ca-certificates \

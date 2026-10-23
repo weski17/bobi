@@ -93,6 +93,16 @@ bobi run --mode ask "explain this repository" </dev/null
 bun run ide:setup && bobi-ide .               # Bobi IDE (once: builds Code-OSS from source)
 ```
 
+**Or as containers** (Docker or Podman; server, allowlist egress proxy and an optional test model):
+
+```bash
+export BOBI_PROJECT=$HOME/your/project BOBI_SERVER_PASSWORD="$(openssl rand -base64 24)"
+BOBI_MODEL_BASE_URL=http://mock-model:4001/v1 docker compose --profile demo up -d --build
+cd "$BOBI_PROJECT" && bobi attach http://127.0.0.1:4096
+```
+
+Ready-made multi-platform image (private): `ghcr.io/weski17/bobi:latest`.
+
 All settings with comments: [`bobi.example.jsonc`](bobi.example.jsonc) · full guide in German:
 [`docs/HANDBUCH.md`](docs/HANDBUCH.md).
 

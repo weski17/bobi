@@ -25,6 +25,8 @@ Notes:
 | Piper TTS (`piper-tts` 1.8.0, PyPI) | GPL-3.0-or-later | Generates the tour narration on a dev machine; not shipped, not in the repository |
 | Piper voice `de_DE-thorsten-high` (Hugging Face `rhasspy/piper-voices`) | Model MIT; Thorsten-Voice dataset CC0 | Narration voice of `docs/media/bobi-tour/bobi-tour.mp4`; the model file is not in the repository |
 | macOS speech voice "Anna" (`say`) | Apple macOS licence: personal, non-commercial use only | Fallback in `make.ts` for drafts only; the published tour uses Piper |
+| Colima | MIT | Linux VM for Docker on macOS (instead of Docker Desktop, which needs a paid licence in large companies) |
+| Docker CLI, Docker Compose plugin (Homebrew) | Apache-2.0 | `docker build`, `docker compose` for `compose.yaml`; dev machines and servers |
 | promptfoo 0.123.1 | MIT | Red-team runner (`bun run test:redteam`, via npx, pinned); telemetry, update checks and remote generation switched off; not installed in the workspace |
 
 ## Bobi workspace dependencies
@@ -43,6 +45,7 @@ Notes:
 |---|---|---|---|
 | Semgrep CE (`semgrep/semgrep` image) | 1.178.0 | LGPL-2.1 (engine); rules from the Semgrep Registry under their own terms | Static analysis in CI |
 | GitHub Actions `actions/checkout`, `oven-sh/setup-bun` | v4, v2 | MIT | CI |
+| GitHub Actions `docker/setup-qemu-action`, `setup-buildx-action`, `login-action`, `metadata-action`, `build-push-action`, `actions/setup-node` | v3, v3, v3, v5, v6, v4 | Apache-2.0 (docker/*), MIT (setup-node) | Image build and push to GitHub Packages; Node for the red team |
 | ignore | 7.0.11 | MIT | `.bobiignore` matching with gitignore semantics (`@bobi/core`) |
 | @modelcontextprotocol/server | 2.0.0 | MIT | Code graph MCP server (`mcp-servers/code-graph`), test fixtures |
 | @modelcontextprotocol/client | 2.0.0 | MIT | MCP protocol tests (dev) |

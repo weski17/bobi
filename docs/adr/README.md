@@ -20,5 +20,6 @@
 | [0016](0016-phase-5-agents-and-workflows.md) | Orchestrator, skills, commands, git, security, literate coding | Accepted |
 | [0017](0017-phase-6-mainframe-autocomplete-audit-a2a.md) | COBOL and mainframe MCP servers, autocomplete, audit reports, diagrams, A2A | Accepted |
 | [0018](0018-phase-7-tips-usage-redteam-load.md) | Code tips, usage statistics, red teaming, load tests | Accepted |
+| [0019](0019-container-distribution.md) | Container distribution: Docker Compose and GitHub Packages | Accepted |
 
 New ADRs: copy [`0000-template.md`](0000-template.md), next free number.

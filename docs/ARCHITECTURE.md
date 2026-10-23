@@ -73,7 +73,8 @@ bobi/
 ├── vendor/              opencode (engine) · code-oss (IDE) · carddemo (COBOL test object)
 ├── patches/             opencode/ · code-oss/  (ordered, minimal, each with a reason)
 ├── branding/default/    icon.svg (Bobi IDE logo; company packs via BOBI_BRANDING_DIR)
-├── sandbox/             Containerfile · bobi-sandbox.sh
+├── compose.yaml         Docker/Podman Compose: server · egress · gateway · mock-model (ADR-0019)
+├── sandbox/             Containerfile · bobi-sandbox.sh · forward.ts · compose-masks.ts
 ├── scripts/             install.sh · apply-patches.ts · link-upstream.ts · bobiignore-paths.ts · ide/
 ├── tests/               integration · e2e · ide · sandbox · redteam (promptfoo) · load
 └── docs/                HANDBUCH.md · ARCHITECTURE.md · STATUS.md · DEVELOPMENT.md · adr/ · demos/ · analysis/ · media/
