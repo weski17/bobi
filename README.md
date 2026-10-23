@@ -12,6 +12,7 @@
 
 <p align="center">
   <a href="https://github.com/weski17/bobi/actions/workflows/ci.yml"><img src="https://github.com/weski17/bobi/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/weski17/bobi/actions/workflows/image.yml"><img src="https://github.com/weski17/bobi/actions/workflows/image.yml/badge.svg" alt="Image"></a>
   <img src="https://img.shields.io/badge/license-MIT-5eead4" alt="MIT license">
   <img src="https://img.shields.io/badge/tests-397%20passing-4ade80" alt="397 tests passing">
   <img src="https://img.shields.io/badge/red%20team-8%2F8%20contained-a78bfa" alt="Red team 8/8 contained">
@@ -92,6 +93,16 @@ bobi                                          # terminal UI
 bobi run --mode ask "explain this repository" </dev/null
 bun run ide:setup && bobi-ide .               # Bobi IDE (once: builds Code-OSS from source)
 ```
+
+**Or as containers** (Docker or Podman; server, allowlist egress proxy and an optional test model):
+
+```bash
+export BOBI_PROJECT=$HOME/your/project BOBI_SERVER_PASSWORD="$(openssl rand -base64 24)"
+BOBI_MODEL_BASE_URL=http://mock-model:4001/v1 docker compose --profile demo up -d --build
+cd "$BOBI_PROJECT" && bobi attach http://127.0.0.1:4096
+```
+
+Ready-made multi-platform image (private): `ghcr.io/weski17/bobi:latest`.
 
 All settings with comments: [`bobi.example.jsonc`](bobi.example.jsonc) · full guide in German:
 [`docs/HANDBUCH.md`](docs/HANDBUCH.md).

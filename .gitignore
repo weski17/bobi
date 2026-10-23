@@ -26,3 +26,4 @@ branding/*
 # Video build intermediates
 docs/media/*/.work/
 docs/media/*/.stills/
+compose.override.yaml
