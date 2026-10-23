@@ -1,3 +1,4 @@
+# Build context for sandbox/Containerfile (read by Docker and Podman).
 **/node_modules
 .upstream
 branding
@@ -8,3 +9,5 @@ coverage
 # Not needed in the sandbox: the IDE sources and the COBOL test object.
 vendor/code-oss
 vendor/carddemo
+# Videos and screenshots are documentation only.
+docs/media
