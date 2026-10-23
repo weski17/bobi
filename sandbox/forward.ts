@@ -36,6 +36,11 @@ class Pipe {
 
 type ClientState = { toClient?: Pipe; toUpstream?: Pipe; upstream?: Socket<unknown>; pending: Uint8Array[] }
 
+function closeUpstream(state: ClientState) {
+  if (state.toUpstream) state.toUpstream.end()
+  else state.upstream?.end()
+}
+
 export function startForwarder(listenPort: number, targetHost: string, targetPort: number, hostname = "0.0.0.0") {
   return Bun.listen<ClientState>({
     hostname,
@@ -59,7 +64,7 @@ export function startForwarder(listenPort: number, targetHost: string, targetPor
           for (const chunk of client.data.pending) client.data.toUpstream.send(chunk)
           client.data.pending = []
         } catch {
-          client.end()
+          void client.end()
         }
       },
       data(client, chunk) {
@@ -68,8 +73,8 @@ export function startForwarder(listenPort: number, targetHost: string, targetPor
         else client.data.pending.push(copy)
       },
       drain: (client) => client.data.toClient?.drain(),
-      close: (client) => (client.data.toUpstream ? client.data.toUpstream.end() : client.data.upstream?.end()),
-      error: (client) => (client.data.toUpstream ? client.data.toUpstream.end() : client.data.upstream?.end()),
+      close: (client) => closeUpstream(client.data),
+      error: (client) => closeUpstream(client.data),
     },
   })
 }

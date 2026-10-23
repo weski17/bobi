@@ -17,7 +17,7 @@ bun run test               # unit, integration, red-team, small load run (mock m
 bun run test:coverage      # same, fails below 80 % lines/functions
 bun run test:e2e           # terminal UI
 bun run test:ide           # inside the real IDE (opens a window)
-bun run test:sandbox       # Podman sandbox (needs the bobi-vm machine and bobi:dev image)
+bun run test:sandbox       # Podman sandbox and Docker Compose (each runs only when its engine and image exist)
 bun run test:redteam       # promptfoo red team
 bun packages/shell/src/cli.ts …   # run bobi from source
 ```

@@ -11,6 +11,8 @@
 | German user handbook | ✅ | `docs/HANDBUCH.md` |
 | README as product page, architecture updated to the built system, `AGENTS.md` for the repository | ✅ | `README.md`, `docs/ARCHITECTURE.md`, `AGENTS.md` |
 | Full check: typecheck, 397 tests, e2e, IDE, sandbox, red team, Semgrep, load, CLI walkthrough | ✅ | 2026-10-20 |
+| Docker Compose setup (server, egress allowlist, gateway, demo model), `.bobiignore` masks, e2e test | ✅ | `compose.yaml`, `sandbox/`, ADR-0019 |
+| Multi-platform image (amd64 + arm64) to GitHub Packages, private, built by GitHub Actions | ✅ | `.github/workflows/image.yml` |
 
 ## Phase 7
 
