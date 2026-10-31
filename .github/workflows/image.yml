@@ -1,12 +1,27 @@
 name: image
 
-# Builds the Bobi server image for linux/amd64 and linux/arm64 and pushes it to GitHub Packages
-# (ghcr.io/<owner>/bobi). The package inherits the repository's visibility and access (private here).
-# Login uses the workflow's own GITHUB_TOKEN – no stored credentials.
+# Builds the Bobi images for linux/amd64 and linux/arm64 and publishes them to GitHub Packages (ghcr.io/<owner>/…).
+# The packages inherit the repository's visibility and access (private here). Login uses the workflow's own
+# GITHUB_TOKEN – no stored credentials.
+#
+#   bobi       – the Bobi server (target "server")
+#   bobi-demo  – everything to try Bobi in a browser: server + local model + web terminal (target "demo").
+#                It is built for amd64 first and tested (web terminal, menu, tips, isolation, a real agent turn
+#                with the bundled model); only then is it pushed, and `latest` only exists for tested images.
+#
+# Pull requests that touch the image build it (and test the demo) without publishing anything.
 on:
   push:
     branches: [main]
     tags: ["v*"]
+  pull_request:
+    paths:
+      - "sandbox/**"
+      - "compose.yaml"
+      - "compose.demo.yaml"
+      - ".dockerignore"
+      - ".github/workflows/image.yml"
+      - "tests/sandbox/demo.test.ts"
   workflow_dispatch:
 
 permissions:
@@ -17,18 +32,23 @@ concurrency:
   group: image-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  PUBLISH: ${{ github.event_name != 'pull_request' }}
+
 jobs:
-  build-and-push:
+  server:
     runs-on: ubuntu-24.04
     timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
-      # Only the engine is part of the image (vendor/code-oss and vendor/carddemo are excluded by .dockerignore).
+      # Only the engine is part of the images (vendor/code-oss and vendor/carddemo are excluded by .dockerignore).
       - name: Checkout the engine submodule
         run: git submodule update --init --depth 1 vendor/opencode
       - uses: docker/setup-qemu-action@v3
+        if: env.PUBLISH == 'true'
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
+        if: env.PUBLISH == 'true'
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -46,9 +66,77 @@ jobs:
         with:
           context: .
           file: sandbox/Containerfile
+          target: server
+          platforms: ${{ env.PUBLISH == 'true' && 'linux/amd64,linux/arm64' || 'linux/amd64' }}
+          push: ${{ env.PUBLISH == 'true' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=server
+          cache-to: type=gha,scope=server,mode=max
+
+  demo:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    steps:
+      # The image is about 6 GB and the build downloads the model: make room on the runner.
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android /opt/hostedtoolcache/CodeQL || true
+          df -h / | tail -1
+      - uses: actions/checkout@v4
+      - name: Checkout the engine submodule
+        run: git submodule update --init --depth 1 vendor/opencode
+      - uses: docker/setup-qemu-action@v3
+        if: env.PUBLISH == 'true'
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        if: env.PUBLISH == 'true'
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/bobi-demo
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix=sha-
+      - name: Build the demo image (amd64) for the test
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: sandbox/Containerfile
+          target: demo
+          platforms: linux/amd64
+          load: true
+          tags: bobi-demo:ci
+          cache-from: type=gha,scope=demo
+          cache-to: type=gha,scope=demo,mode=max
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.3
+      - name: Test the demo image (web terminal, isolation, real agent turn with the bundled model)
+        env:
+          BOBI_DEMO_IMAGE: bobi-demo:ci
+          BOBI_DEMO_GENERATE: "1"
+        run: bun test ./tests/sandbox/demo.test.ts --timeout 1000000
+      - name: Show container logs on failure
+        if: failure()
+        run: docker ps -a; for c in $(docker ps -aq); do echo "=== $c"; docker logs --tail 60 "$c" 2>&1; done
+      # Only an image that passed the test is published (the layers come from the cache of the build above).
+      - name: Publish the demo image (amd64 + arm64)
+        if: env.PUBLISH == 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: sandbox/Containerfile
+          target: demo
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=demo
+          cache-to: type=gha,scope=demo,mode=max

@@ -25,6 +25,7 @@ services:
     build:
       context: .
       dockerfile: sandbox/Containerfile
+      target: server
     networks: [internal]
     working_dir: ${BOBI_PROJECT:?set BOBI_PROJECT to the absolute path of your project}
     pids_limit: 512

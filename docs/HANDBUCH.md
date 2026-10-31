@@ -501,6 +501,56 @@ BOBI_IMAGE=ghcr.io/weski17/bobi:latest docker compose up -d   # ohne lokalen Bui
 Ohne Registry weitergeben: `docker save bobi:0.1.0 | gzip > bobi-0.1.0.tar.gz`, auf dem Zielrechner
 `docker load < bobi-0.1.0.tar.gz`.
 
+Zum Bauen braucht Docker das Plugin `buildx` (`brew install docker-buildx` und
+`ln -sfn /opt/homebrew/opt/docker-buildx/bin/docker-buildx ~/.docker/cli-plugins/docker-buildx`); mit Podman geht es direkt.
+
+### Demo zum Ausprobieren (Image mit Modell)
+
+Das Image `ghcr.io/weski17/bobi-demo` enthält **alles**, damit Kolleginnen und Kollegen jede Funktion ohne
+Installation und ohne eigenes Modell ausprobieren können: den Bobi-Server, ein lokales Modell (Ollama mit
+Qwen3 4B Instruct, Apache-2.0) und ein Terminal im Browser. Der Demo-Container hat **kein Internet** – das Modell
+steckt im Image.
+
+Auf einem Linux-Server oder Mac mit Docker (etwa 8 GB RAM und 4 CPU-Kerne frei):
+
+```bash
+gh auth token | docker login ghcr.io -u <github-name> --password-stdin        # Image ist privat
+curl -fsSLO https://raw.githubusercontent.com/weski17/bobi/main/compose.demo.yaml   # oder aus dem Repo kopieren
+export DEMO_PASSWORD="$(openssl rand -base64 18)"                              # mind. 12 Zeichen – gebt es den Testern weiter
+DEMO_BIND=0.0.0.0 docker compose -f compose.demo.yaml up -d                    # nur lokal: ohne DEMO_BIND → 127.0.0.1
+```
+
+Dann im Browser `http://<server>:7681` öffnen, Benutzer `demo`, das Passwort eingeben. Das Menü bietet:
+**1)** Bobi starten (Chat, Modi, Freigaben, Diffs, Slash-Befehle), **2)** Beispiele zum Ausprobieren, **3)** Code-Tipps,
+**4)** COBOL-Diagramm, **5)** Nutzung und Audit, **6)** A2A-Agentenkarte, **7)** Shell, **8)** Beispielprojekt zurücksetzen.
+Jede Browser-Sitzung arbeitet an einer eigenen Kopie eines Beispielprojekts (TypeScript mit Fehler und unübersichtlicher
+Funktion, `.bobiignore` mit erfundenen Geheimnissen, Projektregeln, Skills, eigener Befehl und Modus, COBOL/JCL).
+
+Gut zu wissen:
+
+- **Geschwindigkeit:** Das Modell läuft auf der CPU (nur eine Anfrage gleichzeitig, `DEMO_PARALLEL`; Sitzungstitel ohne
+  Modellaufruf). Gemessen auf einem Mac in einer Linux-VM (6 Kerne): rund 25 Token/s beim Lesen des Prompts und 7 Token/s
+  beim Schreiben, eine einfache Frage mit Dateizugriff dauert 1,5–3 Minuten; ein Linux-Server mit modernen x86-Kernen ist
+  oft schneller. Tipp: dem kleinen Modell genau sagen, welche Datei es lesen soll. Die erste Antwort nach dem Start dauert (Modell wird geladen), danach
+  Sekunden bis Minuten pro Antwort. Es ist deutlich schwächer als ein großes Gateway-Modell – die Demo zeigt die
+  Funktionen, nicht die Modellqualität.
+- **Sicherheit:** Passwort ist Pflicht, Container ohne Root und ohne Capabilities, Dateisystem schreibgeschützt, kein
+  Internet. Das Terminal im Browser überträgt Passwort und Tastatureingaben: **außerhalb eines vertrauenswürdigen Netzes
+  TLS davorschalten** (Reverse-Proxy wie Caddy oder nginx auf `http://127.0.0.1:7681`) oder ein Zertifikat nach
+  `/run/tls/tls.crt` und `tls.key` einhängen (Zeile in `compose.demo.yaml` einkommentieren).
+- **Gemeinsam genutzt:** alle Besucher teilen das Modell, das Login und den Bobi-Server; Dateien und Sitzungen sind getrennt,
+  Nutzung und Audit der Demo (Menüpunkt 5) sind gemeinsam.
+- **Nicht dabei:** Bobi IDE (Desktop-App) und Autovervollständigung. Die IDE lässt sich lokal mit eurem Gateway betreiben.
+- **Zurücksetzen:** `docker compose -f compose.demo.yaml down -v` löscht auch Audit und Nutzung der Demo.
+- **Aktualisieren:** `docker compose -f compose.demo.yaml pull && docker compose -f compose.demo.yaml up -d`.
+
+**Automatisch ausrollen (CD):** `.github/workflows/deploy.yml` zieht nach jedem erfolgreichen Image-Build das getestete
+Image auf euren Server. Einmal einrichten – GitHub → Settings → Secrets and variables → Actions:
+Variablen `DEPLOY_HOST`, `DEPLOY_USER` (optional `DEPLOY_PATH`), Secrets `DEPLOY_SSH_KEY` (Schlüssel eines Benutzers, der nur
+`docker compose` ausführen darf) und `DEPLOY_KNOWN_HOSTS` (Ausgabe von `ssh-keyscan -t ed25519 <server>`). Auf dem Server
+einmal Docker mit Compose installieren und `~/bobi-demo/.env` mit `DEMO_PASSWORD=…` anlegen; der Workflow fasst diese
+Datei nie an. Ohne diese Einstellungen tut der Workflow nichts (und sagt es). Manuell starten: Actions → deploy → Run workflow.
+
 ---
 
 ## 14. Betrieb
@@ -532,6 +582,7 @@ bei Vertrauen) → `BOBI_CONFIG` → Umgebungsvariablen. Geheimnisse sind in Dat
 | `mcp.servers`, `mcp.timeout` | MCP-Server (siehe [Kapitel 9](#9-mcp)) | `{}` |
 | `telemetry.otlpEndpoint`, `.user`, `.team`, `.auditLog` | Telemetrie, Nutzer, Team, lokales Audit-Log | –, `$USER`, –, `true` |
 | `autocomplete.model`, `.maxTokens` | Modell für die Autovervollständigung (aus `model.models`) – ohne Modell aus | – |
+| `sessions.titles` | `model`: das Modell erzeugt den Sitzungstitel (eine Zusatzanfrage); `local`: Titel aus der ersten Nachricht, ohne Modellaufruf | `model` |
 | `tips.enabled`, `.complexity`, `.functionLines`, `.nesting`, `.parameters` | Code-Tipps | `true`, 10, 60, 4, 5 |
 | `usage.minutesPerTask`, `.minutesPerAcceptedChange` | Schätzung der Zeitersparnis | – |
 | `a2a.enabled` | andere Agenten dürfen Bobi fragen (nur global) | `false` |
@@ -545,6 +596,7 @@ bei Vertrauen) → `BOBI_CONFIG` → Umgebungsvariablen. Geheimnisse sind in Dat
 | `BOBI_USER`, `BOBI_TEAM` | Nutzer und Team im Audit |
 | `BOBI_SERVER_PASSWORD` | Passwort für `serve`/`attach` |
 | `BOBI_A2A` | `1`/`true`: eingehendes A2A |
+| `BOBI_SESSION_TITLES` | `model` oder `local` (siehe `sessions.titles`) |
 | `OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_EXPORTER_OTLP_HEADERS` | OpenTelemetry |
 | `ZOWE_OPT_*`, `BOBI_ZOWE_PROFILE`, `BOBI_ZOWE_DATASETS`, `BOBI_ZOWE_USS` | Mainframe |
 | `BOBI_EGRESS_ALLOW`, `BOBI_SANDBOX_PORT`, `BOBI_IMAGE` | Sandbox |
@@ -592,6 +644,9 @@ Sandbox 7/7, Red-Team 8/8, Semgrep 0 Befunde, Lasttest 300 Aufträge ohne Fehler
 | `docker compose`: „set BOBI_PROJECT …“ | `BOBI_PROJECT` (absoluter Projektpfad) und `BOBI_SERVER_PASSWORD` setzen. |
 | `docker compose`: Modell nicht erreichbar | Ziel in `BOBI_EGRESS_ALLOW` aufnehmen; `docker compose logs egress` zeigt blockierte Ziele. |
 | `docker: Cannot connect to the Docker daemon` | `colima start` (nach einem Neustart des Macs nötig). |
+| Demo: „DEMO_PASSWORD … at least 12 characters“ | `DEMO_PASSWORD` mit mindestens 12 Zeichen setzen (Umgebung oder `.env`). |
+| Demo: Antworten kommen sehr langsam oder gar nicht | Mindestens 8 GB RAM und 4 Kerne einplanen (`DEMO_MEMORY`, `DEMO_CPUS`); beim ersten Start wird das Modell erst geladen (bis zu 2 Minuten). |
+| Demo: Browser meldet Verbindungsfehler | Port prüfen (`DEMO_PORT`), `DEMO_BIND=0.0.0.0` für Zugriff aus dem Netz, `docker compose -f compose.demo.yaml logs demo`. |
 | Git meldet „dubious ownership“ in der Sandbox | aktuelles `sandbox/bobi-sandbox.sh` verwenden (markiert nur Projekt und Checkpoints als sicher). |
 | Engine-Logs | `~/.bobi/data/log/server.log` |
 

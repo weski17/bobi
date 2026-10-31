@@ -1,0 +1,18 @@
+// Global Bobi configuration of the demo image (copied to ~/.bobi/config.jsonc at every start).
+{
+  "model": {
+    "baseURL": "http://127.0.0.1:11434/v1",
+    "protocol": "openai",
+    "default": "qwen3:4b-instruct-2507-q4_K_M",
+    "models": ["qwen3:4b-instruct-2507-q4_K_M"]
+  },
+  // Read-only MCP servers need no approval in the demo; everything else asks, as in every Bobi installation.
+  "autoApprove": [
+    { "action": "mcp", "resource": "code-graph_*" },
+    { "action": "mcp", "resource": "cobol_*" }
+  ],
+  "telemetry": { "user": "besucher", "team": "demo" },
+  // The model runs on the CPU: no extra model request per session just for a title.
+  "sessions": { "titles": "local" },
+  "a2a": { "enabled": true }
+}

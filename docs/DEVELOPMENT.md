@@ -82,3 +82,16 @@ bun docs/media/bobi-tour/make.ts --stills              # one PNG per scene for r
 
 Texts: `docs/media/bobi-tour/narration.json` (`text` = subtitle, optional `speak` = pronunciation). Scenes:
 `tour.html` (timing comes from the measured narration, so picture, voice and subtitles stay in sync).
+
+## Demo image
+
+```bash
+docker build -f sandbox/Containerfile --target demo -t bobi-demo:local .     # ~6 GB; downloads Ollama and the model (pinned, verified)
+DEMO_PASSWORD="$(openssl rand -base64 18)" BOBI_DEMO_IMAGE=bobi-demo:local docker compose -f compose.demo.yaml up -d
+BOBI_DEMO_IMAGE=bobi-demo:local bun test ./tests/sandbox/demo.test.ts       # add BOBI_DEMO_GENERATE=1 for a real agent turn
+```
+
+Needs Docker with the `buildx` plugin (`brew install docker-buildx`) or Podman. Pins to update together when moving to
+newer versions: `OLLAMA_VERSION` + its two SHA-256 values, `TTYD_VERSION` + its two SHA-256 values, `DEMO_MODEL` +
+`DEMO_MODEL_BLOB` (the build fails if the registry tag no longer points at the pinned blob). The sample project lives in
+`sandbox/demo/workspace/`; the menu in `sandbox/demo/session.sh`.

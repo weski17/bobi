@@ -1,0 +1,70 @@
+# Bobi Demo: server + local model (Ollama, Qwen3 4B) + web terminal in ONE image – nothing to install for visitors.
+# The demo container has no internet access (internal network): the model is part of the image. Only the gateway
+# is reachable from outside and forwards port 7681 to the web terminal. Visitors log in with user "demo" and your
+# DEMO_PASSWORD, pick "Bobi starten" and try every feature on a private copy of a sample project.
+#
+#   export DEMO_PASSWORD="$(openssl rand -base64 18)"      # at least 12 characters; keep it, you share it with visitors
+#   docker compose -f compose.demo.yaml up -d              # → http://127.0.0.1:7681
+#   DEMO_BIND=0.0.0.0 docker compose -f compose.demo.yaml up -d      # reachable from the network (see "TLS" below)
+#
+# Needs about 8 GB RAM and 4 CPU cores for the model (CPU inference: answers take seconds to minutes).
+# On a server, put a `.env` file next to this file instead of exporting (DEMO_PASSWORD=…, DEMO_BIND=…).
+# TLS: the web terminal sends the password and all keystrokes. Outside a trusted network, terminate TLS in front
+# (reverse proxy such as Caddy or nginx → http://127.0.0.1:7681) or mount a certificate into /run/tls/tls.crt and
+# /run/tls/tls.key (uncomment the volume below); ttyd then serves HTTPS itself.
+
+name: bobi-demo
+
+x-hardening: &hardening
+  image: ${BOBI_DEMO_IMAGE:-ghcr.io/weski17/bobi-demo:latest}
+  init: true
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  restart: unless-stopped
+
+services:
+  demo:
+    <<: *hardening
+    build:
+      context: .
+      dockerfile: sandbox/Containerfile
+      target: demo
+    networks: [internal]
+    environment:
+      DEMO_PASSWORD: ${DEMO_PASSWORD:?set DEMO_PASSWORD (at least 12 characters)}
+      BOBI_MODEL_API_KEY: ollama   # placeholder: Ollama needs no key, the client wants one
+      # CPU inference: one request at a time is fastest (parallel requests fight for the same cores and queue up
+      # instead). Raise it on hosts with many cores or a GPU build.
+      OLLAMA_NUM_PARALLEL: ${DEMO_PARALLEL:-1}
+    pids_limit: 1024
+    mem_limit: ${DEMO_MEMORY:-8g}
+    cpus: ${DEMO_CPUS:-4}
+    read_only: true
+    tmpfs:
+      - /tmp:size=2g,mode=1777
+      - /home/bun/.ollama:uid=1000,gid=1000,mode=0700,size=16m
+    volumes:
+      - bobi-demo-home:/home/bun/.bobi
+      # - ./tls:/run/tls:ro
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS -o /dev/null -u \"demo:$$DEMO_PASSWORD\" http://127.0.0.1:7681/ && curl -fsS -o /dev/null http://127.0.0.1:11434/api/version"]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
+
+  gateway:
+    <<: *hardening
+    networks: [internal, outside]
+    read_only: true
+    entrypoint: ["bun", "/opt/bobi/sandbox/forward.ts", "7681", "demo:7681"]
+    ports: ["${DEMO_BIND:-127.0.0.1}:${DEMO_PORT:-7681}:7681"]
+    depends_on: [demo]
+
+networks:
+  internal:
+    internal: true
+  outside: {}
+
+volumes:
+  bobi-demo-home: {}

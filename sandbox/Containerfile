@@ -1,11 +1,17 @@
-# Bobi sandbox image (ADR-0007): the Bobi server and every tool process run here as an unprivileged user.
-# The same image also runs the egress proxy. Build: podman build -f sandbox/Containerfile -t bobi:dev .
+# Bobi images (ADR-0007, ADR-0019, ADR-0020). One file, two targets:
+#   server  (default) – the Bobi server: unprivileged, shell, MCP servers, egress proxy.
+#                       docker build -f sandbox/Containerfile --target server -t bobi:dev .
+#   demo              – everything to try Bobi in a browser: server + a local model (Ollama) + a web terminal.
+#                       docker build -f sandbox/Containerfile --target demo -t bobi-demo:local .
+# `server` is the last stage, so a build without --target still produces the server image.
+#
 # Pinned to the multi-platform index of oven/bun:1.4.3 (linux/amd64 + linux/arm64).
-FROM docker.io/oven/bun:1.4.3@sha256:ec06c3b6cea04192ae6770c434f668ca41d343ad19fa6472216c7b48be39c598
+ARG BUN_IMAGE=docker.io/oven/bun:1.4.3@sha256:ec06c3b6cea04192ae6770c434f668ca41d343ad19fa6472216c7b48be39c598
 
-LABEL org.opencontainers.image.title="Bobi" \
-      org.opencontainers.image.description="On-premise AI development partner – Bobi server (shell, MCP servers, egress proxy)" \
-      org.opencontainers.image.source="https://github.com/weski17/bobi" \
+# ---------------------------------------------------------------------------------------------------------
+FROM ${BUN_IMAGE} AS base
+
+LABEL org.opencontainers.image.source="https://github.com/weski17/bobi" \
       org.opencontainers.image.licenses="MIT"
 
 RUN apt-get update \
@@ -22,12 +28,111 @@ RUN cd vendor/opencode && bun install --frozen-lockfile \
 COPY . .
 RUN bun install --frozen-lockfile \
  && bun packages/browser/node_modules/playwright-core/cli.js install --with-deps chromium-headless-shell \
- && chmod -R a+rX /root/.cache/ms-playwright && mv /root/.cache/ms-playwright /opt/ms-playwright
+ && chmod -R a+rX /root/.cache/ms-playwright && mv /root/.cache/ms-playwright /opt/ms-playwright \
+ && printf '#!/bin/sh\nexec bun /opt/bobi/packages/shell/src/cli.ts "$@"\n' > /usr/local/bin/bobi \
+ && chmod +x /usr/local/bin/bobi
 
 ENV PLAYWRIGHT_BROWSERS_PATH=/opt/ms-playwright \
     BOBI_HOME=/home/bun/.bobi \
     NO_COLOR=1
 
+# ---------------------------------------------------------------------------------------------------------
+# Model stage: runs on the BUILD platform (once, even for a multi-platform build). The model files are the
+# same for every CPU architecture, so Ollama pulls the model here and the demo stage copies the result.
+FROM --platform=$BUILDPLATFORM ${BUN_IMAGE} AS model
+ARG BUILDARCH
+ARG OLLAMA_VERSION=v0.40.13
+ARG OLLAMA_SHA256_AMD64=c9490e0f520be21271d969e6703f012268b1d39f8b70dd58854e5bfef7a75bb6
+ARG OLLAMA_SHA256_ARM64=913d9a28da6da86d551ce4ca531457767bb14d511cbc1d5ca93e9b3b8b9a8666
+# Qwen3 4B Instruct 2507 (Apache-2.0): tool calling, no endless "thinking" – suits an agent loop on CPUs.
+# The blob digest pins the exact model file; Ollama also verifies every blob against the registry manifest.
+ARG DEMO_MODEL=qwen3:4b-instruct-2507-q4_K_M
+ARG DEMO_MODEL_BLOB=sha256-85e4a5b7b8ef0e48af0e8658f5aaab9c2324c76c1641493f4d1e25fce54b18b9
+ENV OLLAMA_VERSION=${OLLAMA_VERSION} OLLAMA_SHA256_AMD64=${OLLAMA_SHA256_AMD64} OLLAMA_SHA256_ARM64=${OLLAMA_SHA256_ARM64}
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl zstd && rm -rf /var/lib/apt/lists/*
+COPY --chmod=0755 sandbox/demo/fetch-ollama.sh /usr/local/bin/fetch-ollama
+RUN fetch-ollama "${BUILDARCH}" /opt/ollama
+RUN set -eux; \
+    export OLLAMA_MODELS=/models OLLAMA_HOST=127.0.0.1:11434 HOME=/root; \
+    /opt/ollama/bin/ollama serve > /tmp/ollama.log 2>&1 & \
+    for i in $(seq 1 60); do curl -fsS http://127.0.0.1:11434/api/version >/dev/null 2>&1 && break; sleep 1; done; \
+    /opt/ollama/bin/ollama pull "${DEMO_MODEL}"; \
+    test -f "/models/blobs/${DEMO_MODEL_BLOB}" || { echo "model blob ${DEMO_MODEL_BLOB} missing: the registry tag changed"; exit 1; }; \
+    kill %1 || true; \
+    mkdir -p /licenses; \
+    grep -l "Apache License" $(find /models/blobs -type f -size -64k) | head -1 | xargs -I{} cp {} /licenses/qwen3-LICENSE; \
+    test -s /licenses/qwen3-LICENSE; \
+    chmod -R a+rX /models /licenses
+
+# ---------------------------------------------------------------------------------------------------------
+FROM base AS demo
+ARG TARGETARCH
+ARG DEMO_MODEL=qwen3:4b-instruct-2507-q4_K_M
+ARG OLLAMA_VERSION=v0.40.13
+ARG OLLAMA_SHA256_AMD64=c9490e0f520be21271d969e6703f012268b1d39f8b70dd58854e5bfef7a75bb6
+ARG OLLAMA_SHA256_ARM64=913d9a28da6da86d551ce4ca531457767bb14d511cbc1d5ca93e9b3b8b9a8666
+# ttyd: web terminal (MIT). Static binaries from the project's release, verified against pinned checksums.
+ARG TTYD_VERSION=1.7.7
+ARG TTYD_SHA256_AMD64=8a217c968aba172e0dbf3f34447218dc015bc4d5e59bf51db2f2cd12b7be4f55
+ARG TTYD_SHA256_ARM64=b38acadd89d1d396a0f5649aa52c539edbad07f4bc7348b27b4f4b7219dd4165
+
+LABEL org.opencontainers.image.title="Bobi Demo" \
+      org.opencontainers.image.description="Bobi to try in the browser: server, local model (Ollama, Qwen3 4B) and a web terminal – no internet needed"
+
+ENV OLLAMA_VERSION=${OLLAMA_VERSION} OLLAMA_SHA256_AMD64=${OLLAMA_SHA256_AMD64} OLLAMA_SHA256_ARM64=${OLLAMA_SHA256_ARM64}
+COPY --chmod=0755 sandbox/demo/fetch-ollama.sh /usr/local/bin/fetch-ollama
+RUN set -eux; \
+    apt-get update; apt-get install -y --no-install-recommends curl zstd less nano; \
+    fetch-ollama "${TARGETARCH}" /opt/ollama; \
+    ln -s /opt/ollama/bin/ollama /usr/local/bin/ollama; \
+    case "${TARGETARCH}" in amd64) a=x86_64; sha="${TTYD_SHA256_AMD64}" ;; arm64) a=aarch64; sha="${TTYD_SHA256_ARM64}" ;; *) exit 1 ;; esac; \
+    curl -fsSL -o /usr/local/bin/ttyd "https://github.com/tsl0922/ttyd/releases/download/${TTYD_VERSION}/ttyd.${a}"; \
+    echo "${sha}  /usr/local/bin/ttyd" | sha256sum -c -; chmod +x /usr/local/bin/ttyd; \
+    mkdir -p /opt/demo/licenses; \
+    curl -fsSL -o /opt/demo/licenses/ttyd-LICENSE "https://raw.githubusercontent.com/tsl0922/ttyd/${TTYD_VERSION}/LICENSE"; \
+    curl -fsSL -o /opt/demo/licenses/ollama-LICENSE "https://raw.githubusercontent.com/ollama/ollama/${OLLAMA_VERSION}/LICENSE"; \
+    apt-get purge -y zstd; apt-get autoremove -y; rm -rf /var/lib/apt/lists/*
+
+# The terminal client of the engine (the server image does not need it; the web terminal runs `bobi attach`).
+RUN cd /opt/bobi/vendor/opencode && bun install --frozen-lockfile \
+      --filter "@opencode/sdk" --filter "@opencode/core" --filter "@opencode/server" --filter "@opencode/plugin" --filter "@opencode/cli"
+
+COPY --from=model /models /opt/ollama-models
+COPY --from=model /licenses /opt/demo/licenses
+COPY sandbox/demo /opt/demo
+COPY --chmod=0644 vendor/opencode/LICENSE /opt/demo/licenses/opencode-LICENSE
+COPY --chmod=0644 LICENSE /opt/demo/licenses/bobi-LICENSE
+RUN chmod +x /opt/demo/*.sh \
+ && mkdir -p /opt/demo/workspace/mainframe \
+ && cp -R mcp-servers/cobol/test/fixture/. /opt/demo/workspace/mainframe/ \
+ && mkdir -p /home/bun/.bobi /home/bun/.ollama && chown -R bun:bun /home/bun
+
+ENV OLLAMA_MODELS=/opt/ollama-models \
+    OLLAMA_HOST=127.0.0.1:11434 \
+    OLLAMA_KEEP_ALIVE=-1 \
+    OLLAMA_CONTEXT_LENGTH=16384 \
+    OLLAMA_NUM_PARALLEL=1 \
+    OLLAMA_FLASH_ATTENTION=1 \
+    OLLAMA_KV_CACHE_TYPE=q8_0 \
+    OLLAMA_NO_CLOUD=1 \
+    OLLAMA_NOHISTORY=1 \
+    BOBI_MODEL_BASE_URL=http://127.0.0.1:11434/v1 \
+    BOBI_MODEL=${DEMO_MODEL} \
+    BOBI_USER=besucher \
+    BOBI_TEAM=demo \
+    BOBI_A2A=1 \
+    NO_COLOR="" \
+    TERM=xterm-256color
+
+USER bun
+WORKDIR /home/bun
+EXPOSE 7681
+ENTRYPOINT ["/opt/demo/entrypoint.sh"]
+
+# ---------------------------------------------------------------------------------------------------------
+FROM base AS server
+LABEL org.opencontainers.image.title="Bobi" \
+      org.opencontainers.image.description="On-premise AI development partner – Bobi server (shell, MCP servers, egress proxy)"
 # Unprivileged runtime user (uid 1000, provided by the base image).
 USER bun
 RUN mkdir -p /home/bun/.bobi

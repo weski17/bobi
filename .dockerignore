@@ -11,3 +11,8 @@ vendor/code-oss
 vendor/carddemo
 # Videos and screenshots are documentation only.
 docs/media
+# Not needed in the images – and changes here would rebuild the expensive source layer.
+docs
+tests
+.github
+/*.md
