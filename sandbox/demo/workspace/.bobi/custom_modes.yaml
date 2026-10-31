@@ -1,0 +1,10 @@
+customModes:
+  - slug: docs
+    name: Docs Writer
+    description: Schreibt und überarbeitet Dokumentation (nur Markdown)
+    roleDefinition: Du schreibst verständliche, kurze Dokumentation auf Deutsch.
+    whenToUse: README, Handbücher und Erklärtexte
+    groups:
+      - read
+      - - edit
+        - fileRegex: \.md$

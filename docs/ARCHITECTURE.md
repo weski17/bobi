@@ -74,7 +74,8 @@ bobi/
 ├── patches/             opencode/ · code-oss/  (ordered, minimal, each with a reason)
 ├── branding/default/    icon.svg (Bobi IDE logo; company packs via BOBI_BRANDING_DIR)
 ├── compose.yaml         Docker/Podman Compose: server · egress · gateway · mock-model (ADR-0019)
-├── sandbox/             Containerfile · bobi-sandbox.sh · forward.ts · compose-masks.ts
+├── compose.demo.yaml    Demo: server + local model + web terminal in one image, no internet (ADR-0020)
+├── sandbox/             Containerfile (targets server, demo) · bobi-sandbox.sh · forward.ts · compose-masks.ts · demo/
 ├── scripts/             install.sh · apply-patches.ts · link-upstream.ts · bobiignore-paths.ts · ide/
 ├── tests/               integration · e2e · ide · sandbox · redteam (promptfoo) · load
 └── docs/                HANDBUCH.md · ARCHITECTURE.md · STATUS.md · DEVELOPMENT.md · adr/ · demos/ · analysis/ · media/

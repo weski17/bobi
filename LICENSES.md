@@ -25,9 +25,22 @@ Notes:
 | Piper TTS (`piper-tts` 1.8.0, PyPI) | GPL-3.0-or-later | Generates the tour narration on a dev machine; not shipped, not in the repository |
 | Piper voice `de_DE-thorsten-high` (Hugging Face `rhasspy/piper-voices`) | Model MIT; Thorsten-Voice dataset CC0 | Narration voice of `docs/media/bobi-tour/bobi-tour.mp4`; the model file is not in the repository |
 | macOS speech voice "Anna" (`say`) | Apple macOS licence: personal, non-commercial use only | Fallback in `make.ts` for drafts only; the published tour uses Piper |
+| Docker Buildx (Homebrew) | Apache-2.0 | `docker build` with the multi-stage, multi-platform Containerfile; dev machines |
 | Colima | MIT | Linux VM for Docker on macOS (instead of Docker Desktop, which needs a paid licence in large companies) |
 | Docker CLI, Docker Compose plugin (Homebrew) | Apache-2.0 | `docker build`, `docker compose` for `compose.yaml`; dev machines and servers |
 | promptfoo 0.123.1 | MIT | Red-team runner (`bun run test:redteam`, via npx, pinned); telemetry, update checks and remote generation switched off; not installed in the workspace |
+
+## Components shipped only in the demo image (`ghcr.io/weski17/bobi-demo`)
+
+Not part of the Bobi product image. Versions are pinned in `sandbox/Containerfile`; downloads are verified by SHA-256
+or blob digest. License texts are in the image under `/opt/demo/licenses/`.
+
+| Component | Version | License | Use |
+|---|---|---|---|
+| Ollama (`ollama/ollama`) | v0.40.13 (CPU backends only) | MIT | Local model server (includes llama.cpp/ggml, MIT) |
+| Qwen3-4B-Instruct-2507, quantisation `q4_K_M` (Ollama library `qwen3:4b-instruct-2507-q4_K_M`) | blob `sha256-85e4a5b7…18b9` | Apache-2.0 | Bundled demo model |
+| ttyd (`tsl0922/ttyd`) | 1.7.7 (static release binaries) | MIT (statically linked libraries under permissive licences, see the ttyd release) | Terminal in the browser |
+| curl, less, nano (Debian trixie packages) | distribution | curl: curl license; less: GPL-3.0/BSD-2; nano: GPL-3.0 | Health checks and a pager/editor in the demo shell; unmodified Debian packages |
 
 ## Bobi workspace dependencies
 

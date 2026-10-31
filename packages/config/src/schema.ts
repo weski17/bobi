@@ -54,6 +54,11 @@ export type BobiConfig = {
    * (minutes per finished task and per approved change) and is labelled as an estimate.
    */
   usage: { minutesPerTask?: number; minutesPerAcceptedChange?: number }
+  /**
+   * How sessions get their title: "model" asks the model after the first message (an extra request per session),
+   * "local" derives it from the first message without a model call (saves time on slow models and tokens).
+   */
+  sessions: { titles: "model" | "local" }
   /** Code tips while editing (requirement 14): local analysis, thresholds per project. */
   tips: { enabled?: boolean; complexity?: number; functionLines?: number; nesting?: number; parameters?: number }
 }
@@ -76,6 +81,7 @@ export const DEFAULTS: BobiConfig = {
   autocomplete: {},
   a2a: { enabled: false, agents: {} },
   usage: {},
+  sessions: { titles: "model" },
   tips: {},
 }
 
@@ -108,7 +114,7 @@ export function validatePartial(input: unknown, source: string): DeepPartial<Bob
   if (!isObject(input)) throw new ConfigError(source, ["config must be a JSON object"])
   findSecrets(input, "", issues)
 
-  const known = new Set(["$schema", "model", "modes", "autoApprove", "telemetry", "checkpoints", "mcp", "autocomplete", "a2a", "usage", "tips"])
+  const known = new Set(["$schema", "model", "modes", "autoApprove", "telemetry", "checkpoints", "mcp", "autocomplete", "a2a", "usage", "tips", "sessions"])
   for (const key of Object.keys(input)) if (!known.has(key)) issues.push(`${key}: unknown key`)
 
   const model = input.model
@@ -182,6 +188,15 @@ export function validatePartial(input: unknown, source: string): DeepPartial<Bob
   }
 
   if (input.a2a !== undefined) validateA2a(input.a2a, issues)
+
+  if (input.sessions !== undefined) {
+    const x = input.sessions
+    if (!isObject(x)) issues.push("sessions: must be an object")
+    else {
+      for (const key of Object.keys(x)) if (key !== "titles") issues.push(`sessions.${key}: unknown key`)
+      if (x.titles !== undefined && x.titles !== "model" && x.titles !== "local") issues.push('sessions.titles: must be "model" or "local"')
+    }
+  }
 
   if (input.tips !== undefined) {
     const t = input.tips

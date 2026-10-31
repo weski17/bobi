@@ -283,3 +283,16 @@ test("usage and tips: validated and merged", () => {
   ] as const)
     expect(() => validatePartial(doc, "f")).toThrow(message)
 })
+
+test("sessions.titles: default model, validated, merged, env override", () => {
+  expect(DEFAULTS.sessions).toEqual({ titles: "model" })
+  write(path.join(home, ".bobi", "config.jsonc"), JSON.stringify({ sessions: { titles: "local" } }))
+  expect(load().config.sessions.titles).toBe("local")
+  expect(load({ BOBI_SESSION_TITLES: "model" }).config.sessions.titles).toBe("model")
+  for (const [doc, message] of [
+    [{ sessions: 1 }, "sessions: must be an object"],
+    [{ sessions: { titles: "ai" } }, 'sessions.titles: must be "model" or "local"'],
+    [{ sessions: { other: 1 } }, "sessions.other: unknown key"],
+  ] as const)
+    expect(() => validatePartial(doc, "f")).toThrow(message)
+})

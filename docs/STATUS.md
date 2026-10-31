@@ -13,6 +13,8 @@
 | Full check: typecheck, 397 tests, e2e, IDE, sandbox, red team, Semgrep, load, CLI walkthrough | ✅ | 2026-10-20 |
 | Docker Compose setup (server, egress allowlist, gateway, demo model), `.bobiignore` masks, e2e test | ✅ | `compose.yaml`, `sandbox/`, ADR-0019 |
 | Multi-platform image (amd64 + arm64) to GitHub Packages, private, built by GitHub Actions | ✅ | `.github/workflows/image.yml` |
+| Demo image with bundled model (Ollama + Qwen3 4B), web terminal, sample project; no internet in the container | ✅ | `sandbox/Containerfile` (target `demo`), `sandbox/demo/`, `compose.demo.yaml`, ADR-0020 |
+| CI builds both images, tests the demo end to end (incl. a real agent turn) before publishing `latest`; CD workflow deploys over SSH | ✅ | `.github/workflows/image.yml`, `deploy.yml` |
 
 ## Phase 7
 

@@ -54,6 +54,7 @@ function merge(base: BobiConfig, patch: DeepPartial<BobiConfig>): BobiConfig {
     },
     usage: { ...base.usage, ...patch.usage },
     tips: { ...base.tips, ...patch.tips },
+    sessions: { ...base.sessions, ...patch.sessions },
   }
 }
 
@@ -100,6 +101,7 @@ export function loadConfig(options: LoadOptions): LoadedConfig {
       ...(env.BOBI_MODEL_PROTOCOL ? { protocol: env.BOBI_MODEL_PROTOCOL as BobiConfig["model"]["protocol"] } : {}),
       ...(env.BOBI_MODEL ? { default: env.BOBI_MODEL } : {}),
     },
+    ...(env.BOBI_SESSION_TITLES ? { sessions: { titles: env.BOBI_SESSION_TITLES as "model" | "local" } } : {}),
     ...(env.BOBI_A2A ? { a2a: { enabled: env.BOBI_A2A === "1" || env.BOBI_A2A === "true" } } : {}),
     telemetry: {
       ...(env.OTEL_EXPORTER_OTLP_ENDPOINT ? { otlpEndpoint: env.OTEL_EXPORTER_OTLP_ENDPOINT } : {}),

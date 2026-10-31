@@ -26,6 +26,9 @@
     // "auditLog": true
   },
   "checkpoints": { "enabled": true },
+  // Session titles: "model" asks the model after the first message (one extra request per session),
+  // "local" derives the title from the first message without a model call (also BOBI_SESSION_TITLES).
+  // "sessions": { "titles": "local" },
   // Inline code suggestions in Bobi IDE (fill-in-the-middle via <baseURL>/completions). Off until a model is set;
   // the model must be model.default or listed in model.models.
   // "autocomplete": { "model": "qwen2.5-coder", "maxTokens": 128 },

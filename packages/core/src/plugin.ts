@@ -89,6 +89,24 @@ export function defaultSink(config: BobiConfig, env: Record<string, string | und
   return sinks.length === 1 ? sinks[0]! : new MultiSink(sinks)
 }
 
+/** Title from the first line of the first user message: markdown and extra whitespace removed, at most 60 characters. */
+export function localTitle(messages: readonly { role?: string; content?: unknown }[]): string | undefined {
+  const first = messages.find((m) => m.role === undefined || m.role === "user")
+  const content = first?.content
+  const text =
+    typeof content === "string"
+      ? content
+      : Array.isArray(content)
+        ? content.map((part) => (part && typeof part === "object" && "text" in part && typeof part.text === "string" ? part.text : "")).join(" ")
+        : ""
+  const line = text
+    .split("\n")
+    .map((l) => l.replace(/[`*_#>]/g, "").replace(/\s+/g, " ").trim())
+    .find((l) => l.length > 0)
+  if (!line) return undefined
+  return line.length <= 60 ? line : `${line.slice(0, 57).trimEnd()}…`
+}
+
 const inputPath = (input: unknown): string | undefined =>
   input && typeof input === "object" && typeof (input as { path?: unknown }).path === "string" ? (input as { path: string }).path : undefined
 
@@ -202,6 +220,14 @@ export function createBobiCore(options: BobiCoreOptions): Plugin.Plugin & { read
         if (session.model?.id === target && String(session.model.providerID) === PROVIDER_ID) return
         await ctx.session.switchModel({ sessionID, model: { providerID: PROVIDER_ID, id: target } })
       })
+
+      // Session titles without a model call (sessions.titles: "local"): derived from the first message. The engine
+      // otherwise asks the model once per session – on slow models that is a noticeable wait.
+      if (config.sessions.titles === "local")
+        await ctx.session.hook("title", (event) => {
+          const title = localTitle(event.messages)
+          if (title) event.result = title
+        })
 
       // 2. System prompt: Bobi identity, untrusted-data rule, mode role, project rules; hide tools the mode lacks.
       await ctx.session.hook("context", (event) => {

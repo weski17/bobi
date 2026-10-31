@@ -102,10 +102,23 @@ BOBI_MODEL_BASE_URL=http://mock-model:4001/v1 docker compose --profile demo up -
 cd "$BOBI_PROJECT" && bobi attach http://127.0.0.1:4096
 ```
 
-Ready-made multi-platform image (private): `ghcr.io/weski17/bobi:latest`.
+Ready-made multi-platform images (private): `ghcr.io/weski17/bobi` (server) and `ghcr.io/weski17/bobi-demo` (with model).
 
 All settings with comments: [`bobi.example.jsonc`](bobi.example.jsonc) · full guide in German:
 [`docs/HANDBUCH.md`](docs/HANDBUCH.md).
+
+## Try it in the browser – nothing to install
+
+The **demo image** bundles the Bobi server, a local model (Ollama with Qwen3 4B Instruct, Apache-2.0) and a web
+terminal. The container has no internet access; visitors log in once and try every feature on a sample project.
+
+```bash
+export DEMO_PASSWORD="$(openssl rand -base64 18)"
+DEMO_BIND=0.0.0.0 docker compose -f compose.demo.yaml up -d      # → http://<server>:7681  (user: demo)
+```
+
+About 8 GB RAM and 4 CPU cores; the model runs on the CPU, so answers take a while. Details, TLS and automatic
+deployment: [Handbuch](docs/HANDBUCH.md#demo-zum-ausprobieren-image-mit-modell) · image: `ghcr.io/weski17/bobi-demo`.
 
 ## How it works
 

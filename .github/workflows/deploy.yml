@@ -1,0 +1,95 @@
+name: deploy
+
+# Rolls the tested demo image out to a Linux server with Docker Compose (continuous deployment). It runs after the
+# image workflow succeeded on main, or by hand (Actions → deploy → Run workflow).
+#
+# One-time setup (Settings → Secrets and variables → Actions):
+#   variables: DEPLOY_HOST (name or address), DEPLOY_USER, optional DEPLOY_PATH (default: bobi-demo)
+#   secrets:   DEPLOY_SSH_KEY   private key of a deploy user that may run `docker compose` (nothing else)
+#              DEPLOY_KNOWN_HOSTS   the server's host key line(s), from `ssh-keyscan -t ed25519 <host>` – checked on connect
+# On the server, once: docker + the compose plugin, and ~/bobi-demo/.env with DEMO_PASSWORD=… (and optionally
+# DEMO_BIND=0.0.0.0, DEMO_PORT=…). The workflow never touches .env and never stores the password.
+# Without DEPLOY_HOST the workflow does nothing (and says so).
+on:
+  workflow_run:
+    workflows: [image]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: read
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      HOST: ${{ vars.DEPLOY_HOST }}
+      USER_NAME: ${{ vars.DEPLOY_USER }}
+      DIR: ${{ vars.DEPLOY_PATH || 'bobi-demo' }}
+      SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+      KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+      IMAGE: ghcr.io/${{ github.repository_owner }}/bobi-demo
+    steps:
+      - name: Check the deployment settings
+        id: check
+        run: |
+          if [ -z "$HOST" ] || [ -z "$USER_NAME" ] || [ -z "$SSH_KEY" ] || [ -z "$KNOWN_HOSTS" ]; then
+            echo "::notice title=Deploy skipped::Set DEPLOY_HOST and DEPLOY_USER (variables) and DEPLOY_SSH_KEY and DEPLOY_KNOWN_HOSTS (secrets) to enable the deployment."
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@v4
+        if: steps.check.outputs.enabled == 'true'
+      - name: Prepare SSH
+        if: steps.check.outputs.enabled == 'true'
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          printf 'Host target\n  HostName %s\n  User %s\n  IdentityFile ~/.ssh/deploy_key\n  IdentitiesOnly yes\n  StrictHostKeyChecking yes\n' "$HOST" "$USER_NAME" > ~/.ssh/config
+      - name: Copy the compose file
+        if: steps.check.outputs.enabled == 'true'
+        run: |
+          ssh target mkdir -p "$DIR"
+          scp compose.demo.yaml "target:$DIR/compose.demo.yaml"
+      - name: Pull and restart
+        if: steps.check.outputs.enabled == 'true'
+        env:
+          GH_ACTOR: ${{ github.actor }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # The tested image of this commit (the image workflow tags every push with sha-<short commit>).
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          tag=latest
+          if [ -n "$HEAD_SHA" ]; then tag="sha-$(printf '%s' "$HEAD_SHA" | cut -c1-7)"; fi
+          # The token is valid for this job only; the pull happens inside it.
+          printf '%s' "$GH_TOKEN" | ssh target docker login ghcr.io -u "$GH_ACTOR" --password-stdin
+          ssh target bash -s -- "$DIR" "$IMAGE:$tag" <<'REMOTE'
+          set -euo pipefail
+          dir="$1"; image="$2"
+          cd "$dir"
+          test -f .env || { echo "Missing $dir/.env with DEMO_PASSWORD=… on the server" >&2; exit 1; }
+          export BOBI_DEMO_IMAGE="$image"
+          docker compose -f compose.demo.yaml pull
+          docker compose -f compose.demo.yaml up -d --remove-orphans
+          # Wait until the demo reports healthy (the model needs a moment to load).
+          status=""
+          for _ in $(seq 1 60); do
+            status="$(docker inspect --format '{{.State.Health.Status}}' bobi-demo-demo-1 2>/dev/null || true)"
+            echo "health: ${status:-unknown}"
+            [ "$status" = healthy ] && break
+            sleep 10
+          done
+          [ "$status" = healthy ] || { docker compose -f compose.demo.yaml logs --tail 50; exit 1; }
+          docker logout ghcr.io
+          docker image prune -f > /dev/null
+          REMOTE
