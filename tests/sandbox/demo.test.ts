@@ -4,6 +4,7 @@
 // BOBI_DEMO_IMAGE selects the image (default bobi-demo:local). BOBI_DEMO_GENERATE=1 also runs a real agent turn with
 // the bundled model (slow on CPUs; the CI runs it).
 import { afterAll, beforeAll, describe, expect, test } from "bun:test"
+import os from "node:os"
 import path from "node:path"
 
 const ROOT = path.resolve(import.meta.dir, "..", "..")
@@ -17,7 +18,7 @@ const available =
   Bun.spawnSync(["docker", "compose", "version"], { stdout: "ignore", stderr: "ignore" }).exitCode === 0 &&
   Bun.spawnSync(["docker", "image", "inspect", IMAGE], { stdout: "ignore", stderr: "ignore" }).exitCode === 0
 
-const env = () => ({ ...(process.env as Record<string, string>), BOBI_DEMO_IMAGE: IMAGE, DEMO_PASSWORD: password, DEMO_PORT: String(PORT) })
+const env = () => ({ ...(process.env as Record<string, string>), BOBI_DEMO_IMAGE: IMAGE, DEMO_PASSWORD: password, DEMO_PORT: String(PORT), DEMO_CPUS: String(Math.min(4, os.cpus().length)) })
 const compose = (...args: string[]) => {
   const r = Bun.spawnSync(["docker", "compose", "-p", NAME, "-f", "compose.demo.yaml", ...args], { cwd: ROOT, env: env(), stdout: "pipe", stderr: "pipe" })
   return { code: r.exitCode, out: r.stdout.toString() + r.stderr.toString() }
