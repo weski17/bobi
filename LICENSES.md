@@ -40,6 +40,7 @@ or blob digest. License texts are in the image under `/opt/demo/licenses/`.
 | Ollama (`ollama/ollama`) | v0.40.13 (CPU backends only) | MIT | Local model server (includes llama.cpp/ggml, MIT) |
 | Qwen3-4B-Instruct-2507, quantisation `q4_K_M` (Ollama library `qwen3:4b-instruct-2507-q4_K_M`) | blob `sha256-85e4a5b7…18b9` | Apache-2.0 | Bundled demo model |
 | ttyd (`tsl0922/ttyd`) | 1.7.7 (static release binaries) | MIT (statically linked libraries under permissive licences, see the ttyd release) | Terminal in the browser |
+| nginx (`nginx-light`, Debian package) | Debian 13 | BSD-2-Clause | Optional web IDE: password gate and WebSocket proxy (demo image) |
 | curl, less, nano (Debian trixie packages) | distribution | curl: curl license; less: GPL-3.0/BSD-2; nano: GPL-3.0 | Health checks and a pager/editor in the demo shell; unmodified Debian packages |
 
 ## Bobi workspace dependencies
@@ -60,9 +61,9 @@ or blob digest. License texts are in the image under `/opt/demo/licenses/`.
 | GitHub Actions `actions/checkout`, `oven-sh/setup-bun` | v4, v2 | MIT | CI |
 | GitHub Actions `docker/setup-qemu-action`, `setup-buildx-action`, `login-action`, `metadata-action`, `build-push-action`, `actions/setup-node` | v3, v3, v3, v5, v6, v4 | Apache-2.0 (docker/*), MIT (setup-node) | Image build and push to GitHub Packages; Node for the red team |
 | ignore | 7.0.11 | MIT | `.bobiignore` matching with gitignore semantics (`@bobi/core`) |
-| @modelcontextprotocol/server | 2.0.0 | MIT | Code graph MCP server (`mcp-servers/code-graph`), test fixtures |
-| @modelcontextprotocol/client | 2.0.0 | MIT | MCP protocol tests (dev) |
-| @modelcontextprotocol/core | 2.0.0 | MIT | Transitive (MCP SDK) |
+| @modelcontextprotocol/server | 2.4.0 | MIT | Code graph MCP server (`mcp-servers/code-graph`), test fixtures |
+| @modelcontextprotocol/client | 2.4.0 | MIT | MCP protocol tests (dev) |
+| @modelcontextprotocol/core | 2.4.0 | MIT | Transitive (MCP SDK) |
 | zod | 4.6.7 | MIT | Transitive (MCP SDK) |
 | Code-OSS (`microsoft/vscode`) | 1.141.2 (submodule `vendor/code-oss`) | MIT | Bobi IDE base; branding overlay `scripts/ide/brand.ts`, patches `patches/code-oss/` |
 | @types/vscode | 1.100.0 | MIT | Extension API types (dev) |

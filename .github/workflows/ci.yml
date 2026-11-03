@@ -28,6 +28,8 @@ jobs:
         run: bun install --frozen-lockfile
       - name: Install headless Chromium
         run: bun run browser:install --with-deps
+      - name: Dependency audit (known vulnerabilities, high and above fail the build)
+        run: bun audit --audit-level=high
       - name: Typecheck
         run: bun run typecheck
       - name: Tests with coverage gate
@@ -64,4 +66,4 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Semgrep (Bobi code only)
-        run: semgrep scan --config p/typescript --config p/secrets --error --exclude vendor --exclude .upstream packages mcp-servers tests scripts
+        run: semgrep scan --config p/typescript --config p/secrets --error --exclude vendor --exclude .upstream packages mcp-servers tests scripts sandbox

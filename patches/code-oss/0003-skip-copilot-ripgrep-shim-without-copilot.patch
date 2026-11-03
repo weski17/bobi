@@ -1,0 +1,17 @@
+Bobi IDE web server build: skip the Copilot ripgrep shim when the Copilot SDK is absent (ADR-0021).
+Bobi does not ship the Copilot SDK; the upstream gulp task vscode-reh-web-* failed at its last step.
+
+diff --git a/build/gulpfile.reh.ts b/build/gulpfile.reh.ts
+index c643cf99..232a1c24 100644
+--- a/build/gulpfile.reh.ts
++++ b/build/gulpfile.reh.ts
+@@ -527,6 +527,9 @@ function prepareCopilotRipgrepShimTaskREH(platform: string, arch: string, destin
+ 		const nodeModulesDir = path.join(outputDir, 'node_modules');
+ 
+ 		const builtInCopilotExtensionDir = path.join(outputDir, 'extensions', 'copilot');
++		if (!fs.existsSync(path.join(builtInCopilotExtensionDir, 'node_modules', '@github', 'copilot', 'sdk'))) {
++			return; // Bobi builds without the Copilot SDK
++		}
+ 		prepareBuiltInCopilotRipgrepShim(platform, arch, builtInCopilotExtensionDir, nodeModulesDir);
+ 	};
+ }

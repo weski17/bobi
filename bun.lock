@@ -14,7 +14,7 @@
         "@bobi/mock-model": "workspace:*",
         "@bobi/server": "workspace:*",
         "@bobi/shell": "workspace:*",
-        "@modelcontextprotocol/server": "2.0.0",
+        "@modelcontextprotocol/server": "2.4.0",
         "@types/bun": "1.4.0",
         "typescript": "5.8.2",
       },
@@ -27,10 +27,10 @@
       },
       "dependencies": {
         "@bobi/mcp-code-graph": "workspace:*",
-        "@modelcontextprotocol/server": "2.0.0",
+        "@modelcontextprotocol/server": "2.4.0",
       },
       "devDependencies": {
-        "@modelcontextprotocol/client": "2.0.0",
+        "@modelcontextprotocol/client": "2.4.0",
       },
     },
     "mcp-servers/code-graph": {
@@ -41,12 +41,12 @@
       },
       "dependencies": {
         "@bobi/core": "workspace:*",
-        "@modelcontextprotocol/server": "2.0.0",
+        "@modelcontextprotocol/server": "2.4.0",
         "ignore": "7.0.11",
         "typescript": "5.8.2",
       },
       "devDependencies": {
-        "@modelcontextprotocol/client": "2.0.0",
+        "@modelcontextprotocol/client": "2.4.0",
       },
     },
     "mcp-servers/zowe": {
@@ -56,10 +56,10 @@
         "bobi-mcp-zowe": "./src/cli.ts",
       },
       "dependencies": {
-        "@modelcontextprotocol/server": "2.0.0",
+        "@modelcontextprotocol/server": "2.4.0",
       },
       "devDependencies": {
-        "@modelcontextprotocol/client": "2.0.0",
+        "@modelcontextprotocol/client": "2.4.0",
       },
     },
     "packages/a2a": {
@@ -182,11 +182,11 @@
 
     "@bobi/tips": ["@bobi/tips@workspace:packages/tips"],
 
-    "@modelcontextprotocol/client": ["@modelcontextprotocol/client@2.0.0", "", { "dependencies": { "@modelcontextprotocol/core": "2.0.0", "cross-spawn": "^7.0.5", "eventsource": "^3.0.2", "eventsource-parser": "^3.0.0", "jose": "^6.1.3", "pkce-challenge": "^5.0.0", "zod": "^4.2.0" } }, "sha512-8f1OghQ2rjzIOfqgUCP+8GiUWqRs89njoWLNqAe8kWmDePv3s1fZXseej+QXemssEuuOvLLmLO/kqM3IQHtISw=="],
+    "@modelcontextprotocol/client": ["@modelcontextprotocol/client@2.4.0", "", { "dependencies": { "@modelcontextprotocol/core": "2.4.0", "cross-spawn": "^7.0.5", "eventsource": "^3.0.2", "eventsource-parser": "^3.0.8", "jose": "^6.1.3", "pkce-challenge": "^5.0.0", "zod": "^4.2.0" } }, "sha512-LgrD2OphHuG12vfKFKz6SOnq7bKHQmhGJIAYdD+MZBn2npHEyry6uD8zvktodtl5CQM85MO0anUyD9JwmUmxww=="],
 
-    "@modelcontextprotocol/core": ["@modelcontextprotocol/core@2.0.0", "", { "dependencies": { "zod": "^4.2.0" } }, "sha512-pJCEwGG7Lfr/+PQp9ZTwKXNeO5wzbfKL7H3MYpCorM4oFBoQrdjnBgEoqG+RjhsvS1FKrDbKux+M1HhlnGWqcA=="],
+    "@modelcontextprotocol/core": ["@modelcontextprotocol/core@2.4.0", "", { "dependencies": { "zod": "^4.2.0" } }, "sha512-z8QBKqdfXLPzkLQuG4xp8hrVEMm1PZ1IgxMN2sMbJiFiAKOWXnAzogXn2W4aqIBlP1ea6U5yiqVquvUNM1Cj6Q=="],
 
-    "@modelcontextprotocol/server": ["@modelcontextprotocol/server@2.0.0", "", { "dependencies": { "@modelcontextprotocol/core": "2.0.0", "zod": "^4.2.0" } }, "sha512-YhHWdHfpFMQfd0prsEnxKeS3Qz3ytIGmsS0sth4KDjnacIT7hxk6hXHkJ9KysxlkvTM+WZAtQbbcUhdoP4Hvtw=="],
+    "@modelcontextprotocol/server": ["@modelcontextprotocol/server@2.4.0", "", { "dependencies": { "@modelcontextprotocol/core": "2.4.0", "zod": "^4.2.0" } }, "sha512-rgR9yxSaAJ+bcsi/XroT/S2AfPiIWloXAnrdfYSCms9ivVju0ishu/wW0J21Ho6+ZOR1r7RyeRbjiRuF87ix5Q=="],
 
     "@types/bun": ["@types/bun@1.4.0", "", { "dependencies": { "bun-types": "1.4.0" } }, "sha512-K+lZULY23vRgK/CfTjFIV+tyifaNdSMlPh9j+6mQ/cLfpOznLyAuzgV/JQysyECpkBQLVMSyvjlr2fBUSA9wFQ=="],
 

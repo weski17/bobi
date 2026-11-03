@@ -4,7 +4,7 @@
 # DEMO_PASSWORD, pick "Bobi starten" and try every feature on a private copy of a sample project.
 #
 #   export DEMO_PASSWORD="$(openssl rand -base64 18)"      # at least 12 characters; keep it, you share it with visitors
-#   docker compose -f compose.demo.yaml up -d              # → http://127.0.0.1:7681
+#   docker compose -f compose.demo.yaml up -d              # → terminal http://127.0.0.1:7681, web IDE http://127.0.0.1:7682
 #   DEMO_BIND=0.0.0.0 docker compose -f compose.demo.yaml up -d      # reachable from the network (see "TLS" below)
 #
 # Needs about 8 GB RAM and 4 CPU cores for the model (CPU inference: answers take seconds to minutes).
@@ -45,6 +45,7 @@ services:
       - /home/bun/.ollama:uid=1000,gid=1000,mode=0700,size=16m
     volumes:
       - bobi-demo-home:/home/bun/.bobi
+      - bobi-demo-ide:/home/bun/ide
       # - ./tls:/run/tls:ro
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS -o /dev/null -u \"demo:$$DEMO_PASSWORD\" http://127.0.0.1:7681/ && curl -fsS -o /dev/null http://127.0.0.1:11434/api/version"]
@@ -61,6 +62,18 @@ services:
     ports: ["${DEMO_BIND:-127.0.0.1}:${DEMO_PORT:-7681}:7681"]
     depends_on: [demo]
 
+  # Web IDE (experimental, ADR-0021): only in images built with WEB_IDE_ARCHS=amd64, and only started with
+  #   docker compose --profile ide up -d
+  # Its chat panel needs a wildcard host name (see ADR-0021); without it the panel stays empty.
+  gateway-ide:
+    <<: *hardening
+    profiles: [ide]
+    networks: [internal, outside]
+    read_only: true
+    entrypoint: ["bun", "/opt/bobi/sandbox/forward.ts", "7682", "demo:7682"]
+    ports: ["${DEMO_BIND:-127.0.0.1}:${DEMO_IDE_PORT:-7682}:7682"]
+    depends_on: [demo]
+
 networks:
   internal:
     internal: true
@@ -68,3 +81,4 @@ networks:
 
 volumes:
   bobi-demo-home: {}
+  bobi-demo-ide: {}
