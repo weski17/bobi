@@ -566,6 +566,8 @@ Zum Bauen braucht Docker das Plugin `buildx` (`brew install docker-buildx` und
 
 ### Demo zum Ausprobieren (Image mit Modell)
 
+> Für den Betrieb auf einem Server (Link für alle): [DEPLOYMENT.md](DEPLOYMENT.md).
+
 Das Image `ghcr.io/weski17/bobi-demo` enthält **alles**, damit Kolleginnen und Kollegen jede Funktion ohne
 Installation und ohne eigenes Modell ausprobieren können: den Bobi-Server, ein lokales Modell (Ollama mit
 Qwen3 4B Instruct, Apache-2.0) und ein Terminal im Browser. Der Demo-Container hat **kein Internet** – das Modell
