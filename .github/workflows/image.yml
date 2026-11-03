@@ -115,6 +115,17 @@ jobs:
           tags: bobi-demo:ci
           cache-from: type=gha,scope=demo
           cache-to: type=gha,scope=demo,mode=max
+      # Vulnerability scan of the image (OS packages and libraries; fixable HIGH/CRITICAL only). Report-only for now:
+      # the base image and the model runtime bring findings we cannot fix ourselves; the table is in the job log.
+      - name: Scan the demo image for known vulnerabilities
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: bobi-demo:ci
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          vuln-type: os,library
+          format: table
+          exit-code: "0"
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.4.3
