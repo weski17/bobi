@@ -32,7 +32,7 @@
     "@bobi/mock-model": "workspace:*",
     "@bobi/server": "workspace:*",
     "@bobi/shell": "workspace:*",
-    "@modelcontextprotocol/server": "2.0.0",
+    "@modelcontextprotocol/server": "2.4.0",
     "@types/bun": "1.4.0",
     "typescript": "5.8.2"
   }

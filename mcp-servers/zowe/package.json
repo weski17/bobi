@@ -7,9 +7,9 @@
   "exports": { ".": "./src/index.ts" },
   "bin": { "bobi-mcp-zowe": "./src/cli.ts" },
   "dependencies": {
-    "@modelcontextprotocol/server": "2.0.0"
+    "@modelcontextprotocol/server": "2.4.0"
   },
   "devDependencies": {
-    "@modelcontextprotocol/client": "2.0.0"
+    "@modelcontextprotocol/client": "2.4.0"
   }
 }

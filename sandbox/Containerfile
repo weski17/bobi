@@ -65,6 +65,42 @@ RUN set -eux; \
     chmod -R a+rX /models /licenses
 
 # ---------------------------------------------------------------------------------------------------------
+# Web IDE stage (ADR-0021): Bobi IDE as a web server – Code-OSS' own "remote extension host, web" build with the
+# Bobi chat extension built in. Built natively for the target CPU (the server contains native modules), at the
+# pinned upstream revision, with the patches of patches/code-oss. The build takes a while and needs ~8 GB RAM, so
+# it is opt-in (--build-arg WEB_IDE_ARCHS="amd64"); without it the stage is empty and the demo has only the web terminal.
+FROM base AS ide-ext
+RUN cd packages/ide-extension && bun run build
+
+FROM node:24-trixie AS webide
+ARG TARGETARCH
+ARG WEB_IDE_ARCHS=""
+ARG CODE_OSS_REPO=https://github.com/microsoft/vscode.git
+ARG CODE_OSS_REV=16507d91be0dc1ce4f94c04d4d0430210b8685d9
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends libx11-dev libxkbfile-dev libsecret-1-dev libkrb5-dev pkg-config \
+ && rm -rf /var/lib/apt/lists/*
+COPY --from=base /usr/local/bin/bun /usr/local/bin/bun
+WORKDIR /bobi
+COPY scripts/apply-patches.ts scripts/apply-patches.ts
+COPY scripts/ide/brand.ts scripts/ide/brand.ts
+COPY patches/code-oss patches/code-oss
+COPY --from=ide-ext /opt/bobi/packages/ide-extension/package.json /ext/package.json
+COPY --from=ide-ext /opt/bobi/packages/ide-extension/dist /ext/dist
+COPY --from=ide-ext /opt/bobi/packages/ide-extension/media /ext/media
+RUN set -eux; mkdir -p /out; \
+    case " ${WEB_IDE_ARCHS} " in *" ${TARGETARCH} "*) ;; *) echo "web IDE not built for ${TARGETARCH}"; exit 0 ;; esac; \
+    case "${TARGETARCH}" in amd64) a=x64 ;; arm64) a=arm64 ;; *) exit 1 ;; esac; \
+    git init -q vendor/code-oss && cd vendor/code-oss \
+ && git remote add origin "${CODE_OSS_REPO}" && git fetch -q --depth 1 origin "${CODE_OSS_REV}" && git checkout -q FETCH_HEAD \
+ && cd /bobi && bun scripts/apply-patches.ts && bun scripts/ide/brand.ts \
+ && mkdir -p vendor/code-oss/extensions/bobi-chat && cp -R /ext/package.json /ext/dist /ext/media vendor/code-oss/extensions/bobi-chat/ \
+ && cd vendor/code-oss && npm ci \
+ && NODE_OPTIONS=--max-old-space-size=8192 npm run gulp "vscode-reh-web-linux-${a}-min" \
+ && cp -R "/bobi/vendor/vscode-reh-web-linux-${a}/." /out/ \
+ && rm -rf /root/.npm /root/.cache /bobi/vendor/code-oss
+
+# ---------------------------------------------------------------------------------------------------------
 FROM base AS demo
 ARG TARGETARCH
 ARG DEMO_MODEL=qwen3:4b-instruct-2507-q4_K_M
@@ -82,7 +118,7 @@ LABEL org.opencontainers.image.title="Bobi Demo" \
 ENV OLLAMA_VERSION=${OLLAMA_VERSION} OLLAMA_SHA256_AMD64=${OLLAMA_SHA256_AMD64} OLLAMA_SHA256_ARM64=${OLLAMA_SHA256_ARM64}
 COPY --chmod=0755 sandbox/demo/fetch-ollama.sh /usr/local/bin/fetch-ollama
 RUN set -eux; \
-    apt-get update; apt-get install -y --no-install-recommends curl zstd less nano; \
+    apt-get update; apt-get install -y --no-install-recommends curl zstd less nano nginx-light; \
     fetch-ollama "${TARGETARCH}" /opt/ollama; \
     ln -s /opt/ollama/bin/ollama /usr/local/bin/ollama; \
     case "${TARGETARCH}" in amd64) a=x86_64; sha="${TTYD_SHA256_AMD64}" ;; arm64) a=aarch64; sha="${TTYD_SHA256_ARM64}" ;; *) exit 1 ;; esac; \
@@ -99,13 +135,14 @@ RUN cd /opt/bobi/vendor/opencode && bun install --frozen-lockfile \
 
 COPY --from=model /models /opt/ollama-models
 COPY --from=model /licenses /opt/demo/licenses
+COPY --from=webide /out /opt/bobi-ide
 COPY sandbox/demo /opt/demo
 COPY --chmod=0644 vendor/opencode/LICENSE /opt/demo/licenses/opencode-LICENSE
 COPY --chmod=0644 LICENSE /opt/demo/licenses/bobi-LICENSE
 RUN chmod +x /opt/demo/*.sh \
  && mkdir -p /opt/demo/workspace/mainframe \
  && cp -R mcp-servers/cobol/test/fixture/. /opt/demo/workspace/mainframe/ \
- && mkdir -p /home/bun/.bobi /home/bun/.ollama && chown -R bun:bun /home/bun
+ && mkdir -p /home/bun/.bobi /home/bun/.ollama /home/bun/ide && chown -R bun:bun /home/bun
 
 ENV OLLAMA_MODELS=/opt/ollama-models \
     OLLAMA_HOST=127.0.0.1:11434 \
