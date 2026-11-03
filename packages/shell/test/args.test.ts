@@ -93,6 +93,24 @@ describe("parseArgs", () => {
     expect(() => parseArgs(["compare", "--x", "t"])).toThrow(/unknown option for compare/)
   })
 
+  test("registry", () => {
+    expect(parseArgs(["registry", "pack", "skills/x", "--version", "1.0.0", "--description", "d", "--out", "dist"])).toEqual({ kind: "registry", action: "pack", source: "skills/x", version: "1.0.0", description: "d", out: "dist" })
+    expect(parseArgs(["registry", "install", "x", "--from", "reg", "--project", "--force"])).toEqual({ kind: "registry", action: "install", target: "x", from: "reg", project: true, force: true })
+    expect(parseArgs(["registry", "install", "x.bobipkg.json"])).toMatchObject({ project: false, force: false })
+    expect(parseArgs(["registry", "trust", "a.pem"])).toEqual({ kind: "registry", action: "trust", target: "a.pem" })
+    expect(parseArgs(["registry", "untrust", "abc"])).toMatchObject({ action: "untrust" })
+    expect(parseArgs(["registry", "verify", "p.json"])).toMatchObject({ action: "verify" })
+    expect(parseArgs(["registry", "list", "--from", "reg"])).toEqual({ kind: "registry", action: "list", from: "reg" })
+    expect(parseArgs(["registry", "key"])).toEqual({ kind: "registry", action: "key" })
+    expect(() => parseArgs(["registry", "pack", "x"])).toThrow(/needs --version/)
+    expect(() => parseArgs(["registry", "pack", "--version", "1.0.0"])).toThrow(/needs a skill directory/)
+    expect(() => parseArgs(["registry", "install"])).toThrow(/needs a package name/)
+    expect(() => parseArgs(["registry", "install", "x", "--from"])).toThrow(/needs a value/)
+    expect(() => parseArgs(["registry", "install", "x", "--wat"])).toThrow(/unknown option/)
+    expect(() => parseArgs(["registry", "nope"])).toThrow(/registry commands/)
+    expect(() => parseArgs(["registry"])).toThrow(/registry commands/)
+  })
+
   test("audit and diagram", () => {
     expect(parseArgs(["audit"])).toEqual({ kind: "audit", format: "md" })
     expect(parseArgs(["audit", "report", "--from", "2026-10-01", "--to", "2026-10-31", "--user", "anna", "--format", "json"])).toEqual({

@@ -14,6 +14,11 @@ export type Command =
   | { kind: "dossier"; action: "list" | "seal"; session?: string; out?: string; format: "md" | "json"; diff: boolean; test?: string }
   | { kind: "dossier"; action: "verify"; file: string; key?: string }
   | { kind: "compare"; models: string[]; mode: string; task: string; test?: string; out?: string }
+  | { kind: "registry"; action: "pack"; source: string; version: string; description?: string; out?: string }
+  | { kind: "registry"; action: "install"; target: string; from?: string; project: boolean; force: boolean }
+  | { kind: "registry"; action: "verify" | "trust" | "untrust"; target: string }
+  | { kind: "registry"; action: "list"; from?: string }
+  | { kind: "registry"; action: "key" }
   | { kind: "tips"; paths: string[]; format: "text" | "json"; failOn?: "warning" | "info" }
   | { kind: "diagram"; source: "code" | "cobol"; program?: string; depth?: number; directory?: string }
   | { kind: "help" }
@@ -55,6 +60,14 @@ Usage:
   bobi compare --models <a,b[,c]> [--mode <slug>] [--test "<command>"] [--out FILE.json] <task...>
                                    Same task with several models, each in its own git worktree of HEAD (edits are
                                    approved automatically there, nothing else); then the test command on each result
+  bobi registry pack <skill-dir|command.md> --version 1.0.0 [--description T] [--out DIR]
+                                   Pack and sign a skill or slash command with your publisher key
+  bobi registry key|trust <public-key.pem>|untrust <key-id>
+                                   Show your public key; trust or distrust a publisher
+  bobi registry list [--from DIR]  Installed packages, or the packages in a registry folder
+  bobi registry install <name|file.bobipkg.json> [--from DIR] [--project] [--force]
+                                   Install a package from a trusted publisher (signature and files are checked)
+  bobi registry verify <file>      Check a package without installing it
   bobi tips [--format text|json] [--fail-on warning|info] [paths...]
                                    Code tips: complex functions and anti-patterns (TS/JS, COBOL), no model call
   bobi diagram [code|cobol] [--program P] [--depth N] [directory]
@@ -183,6 +196,42 @@ export function parseArgs(argv: readonly string[]): Command {
     if (out.models.length < 2 || out.models.length > 4) throw new UsageError("compare needs 2 to 4 models: --models a,b")
     if (!out.task) throw new UsageError("compare needs a task")
     return out
+  }
+
+  if (first === "registry") {
+    const [sub, ...args] = rest
+    const take = (list: string[], flags: string[]) => {
+      const values: Record<string, string> = {}
+      const switches = new Set<string>()
+      const words: string[] = []
+      for (let i = 0; i < list.length; i++) {
+        const arg = list[i]!
+        if (flags.includes(arg)) {
+          if (!list[i + 1]) throw new UsageError(`${arg} needs a value`)
+          values[arg] = list[++i]!
+        } else if (arg === "--project" || arg === "--force") switches.add(arg)
+        else if (arg.startsWith("-")) throw new UsageError(`unknown option for registry ${sub}: ${arg}`)
+        else words.push(arg)
+      }
+      return { values, switches, words }
+    }
+    const one = (words: string[], what: string) => {
+      if (words.length !== 1) throw new UsageError(`registry ${sub} needs ${what}`)
+      return words[0]!
+    }
+    if (sub === "pack") {
+      const { values, words } = take(args, ["--version", "--description", "--out"])
+      if (!values["--version"]) throw new UsageError("registry pack needs --version 1.0.0")
+      return { kind: "registry", action: "pack", source: one(words, "a skill directory or command file"), version: values["--version"], description: values["--description"], out: values["--out"] }
+    }
+    if (sub === "install") {
+      const { values, switches, words } = take(args, ["--from"])
+      return { kind: "registry", action: "install", target: one(words, "a package name or file"), from: values["--from"], project: switches.has("--project"), force: switches.has("--force") }
+    }
+    if (sub === "verify" || sub === "trust" || sub === "untrust") return { kind: "registry", action: sub, target: one(take(args, []).words, sub === "untrust" ? "a key id" : "a file") }
+    if (sub === "list") return { kind: "registry", action: "list", from: take(args, ["--from"]).values["--from"] }
+    if (sub === "key") return { kind: "registry", action: "key" }
+    throw new UsageError("registry commands: pack, install, list, verify, key, trust, untrust")
   }
 
   if (first === "tips") {
