@@ -5,7 +5,7 @@ import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync, w
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { findProjectRoot, loadConfig, TrustStore, trustFiles, type LoadedConfig } from "@bobi/config"
-import { auditReport, createMasker, hashOf, loadOrCreateKey, readAuditLog, renderAuditReport, renderDossier, renderUsageReport, sealDossier, sessionsOf, usageReport, verifyDossier, type Dossier, type ExtraEvent } from "@bobi/core"
+import { auditReport, createMasker, findInRegistry, installedPackages, installPackage, listRegistry, packSource, parsePackage, PublisherStore, verifyPackage, hashOf, loadOrCreateKey, readAuditLog, renderAuditReport, renderDossier, renderUsageReport, sealDossier, sessionsOf, usageReport, verifyDossier, type Dossier, type ExtraEvent } from "@bobi/core"
 import { CobolProject, paragraphDiagram, systemDiagram } from "@bobi/mcp-cobol"
 import { CodeGraph, dependencyDiagram, listSourceFiles } from "@bobi/mcp-code-graph"
 import { analyze, supported, type Tip } from "@bobi/tips"
@@ -233,6 +233,71 @@ export async function runApp(rawArgv: readonly string[], io: Io): Promise<number
       git(root, "worktree", "prune")
       rmSync(scratch, { recursive: true, force: true })
     }
+  }
+
+  if (command.kind === "registry") {
+    const home = bobiPaths(io.env).home
+    const publishers = new PublisherStore(path.join(home, "publishers"))
+    const read = (file: string) => {
+      try {
+        return readFileSync(path.resolve(io.cwd, file), "utf8")
+      } catch (error) {
+        throw new UsageError(`cannot read ${file}: ${(error as Error).message}`)
+      }
+    }
+    const guard = <T>(fn: () => T): T => {
+      try {
+        return fn()
+      } catch (error) {
+        throw new UsageError((error as Error).message)
+      }
+    }
+    if (command.action === "key") {
+      const key = loadOrCreateKey(path.join(home, "keys"), "publisher-ed25519.pem")
+      io.err(`bobi: your publisher key id is ${key.keyId}; give this public key to everyone who should trust your packages`)
+      io.out(key.publicKey.trim())
+      return 0
+    }
+    if (command.action === "trust") {
+      const id = guard(() => publishers.add(read(command.target)))
+      io.out(`trusted publisher ${id}`)
+      return 0
+    }
+    if (command.action === "untrust") {
+      if (!publishers.remove(command.target)) throw new UsageError(`no trusted publisher ${command.target}`)
+      io.out(`removed publisher ${command.target}`)
+      return 0
+    }
+    if (command.action === "pack") {
+      const key = loadOrCreateKey(path.join(home, "keys"), "publisher-ed25519.pem")
+      const pkg = guard(() => packSource(path.resolve(io.cwd, command.source), command.version, key, command.description))
+      const dir = path.resolve(io.cwd, command.out ?? ".")
+      mkdirSync(dir, { recursive: true })
+      const file = path.join(dir, `${pkg.manifest.name}-${pkg.manifest.version}.bobipkg.json`)
+      writeFileSync(file, `${JSON.stringify(pkg, null, 2)}\n`)
+      io.out(`${path.relative(io.cwd, file) || file}  (${pkg.manifest.kind} ${pkg.manifest.name} ${pkg.manifest.version}, ${Object.keys(pkg.contents).length} files, publisher ${pkg.keyId})`)
+      return 0
+    }
+    if (command.action === "list") {
+      if (command.from) for (const p of listRegistry(path.resolve(io.cwd, command.from))) io.out(`${p.name.padEnd(24)} ${p.version.padEnd(8)} ${p.kind.padEnd(8)} ${p.keyId}  ${p.description ?? ""}`.trimEnd())
+      else for (const r of installedPackages(home)) io.out(`${r.name.padEnd(24)} ${r.version.padEnd(8)} ${r.kind.padEnd(8)} ${r.keyId}  ${r.installedAt.slice(0, 10)}`)
+      return 0
+    }
+    if (command.action === "verify") {
+      const check = verifyPackage(guard(() => parsePackage(read(command.target))), publishers.keys())
+      if (!check.ok) io.err(`BROKEN: ${check.reason}`)
+      else io.out(`intact, signed by ${check.keyId} (${check.trusted ? "a trusted publisher" : "NOT a trusted publisher – install would be refused"})`)
+      return check.ok ? 0 : 1
+    }
+    if (command.action !== "install") throw new UsageError("unknown registry command")
+    const file =
+      command.from && !/\.bobipkg\.json$/.test(command.target) ? findInRegistry(path.resolve(io.cwd, command.from), command.target) : path.resolve(io.cwd, command.target)
+    if (!file) throw new UsageError(`no package "${command.target}" in ${command.from}`)
+    const root = command.project ? path.join(findProjectRoot(io.cwd), ".bobi") : home
+    const record = guard(() => installPackage(guard(() => parsePackage(read(file))), root, publishers.keys(), { force: command.force }))
+    io.out(`installed ${record.kind} ${record.name} ${record.version} (publisher ${record.keyId}) in ${root}`)
+    if (command.project) io.err("bobi: project packages are used only while the project is trusted")
+    return 0
   }
 
   if (command.kind === "usage") {

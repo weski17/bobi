@@ -55,8 +55,8 @@ export const hashOf = (text: string) => sha256(text)
 const eventHash = (e: Pick<DossierEvent, "seq" | "time" | "kind" | "fields" | "prev">) => sha256(canonical({ seq: e.seq, time: e.time, kind: e.kind, fields: e.fields, prev: e.prev }))
 
 /** The signing key of a user: created once, private part readable only by the user. */
-export function loadOrCreateKey(dir: string): { privateKey: KeyObject; publicKey: string; keyId: string } {
-  const file = path.join(dir, "dossier-ed25519.pem")
+export function loadOrCreateKey(dir: string, name = "dossier-ed25519.pem"): { privateKey: KeyObject; publicKey: string; keyId: string } {
+  const file = path.join(dir, name)
   if (!existsSync(file)) {
     mkdirSync(dir, { recursive: true, mode: 0o700 })
     const { privateKey } = generateKeyPairSync("ed25519")

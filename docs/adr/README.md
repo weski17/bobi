@@ -24,5 +24,6 @@
 | [0020](0020-demo-image-and-deployment.md) | Demo image with a bundled model, continuous deployment | Accepted |
 | [0021](0021-web-ide-in-the-demo-image.md) | Web IDE in the demo image (experimental, opt-in) | Accepted (experimental) |
 | [0022](0022-change-dossier.md) | Signed change dossier and model comparison | Accepted |
+| [0023](0023-signed-registry.md) | Signed registry for skills and slash commands | Accepted |
 
 New ADRs: copy [`0000-template.md`](0000-template.md), next free number.

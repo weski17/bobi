@@ -456,6 +456,30 @@ Modell; die Diffs stehen in `vergleich.json`. Die Modelle müssen am konfigurier
 - Ein Lauf pro Modell ist eine Momentaufnahme, kein Benchmark: mehrfach wiederholen, bevor du entscheidest.
 - Jeder Lauf steht im Audit-Log, ist also mit `bobi dossier` belegbar.
 
+### Signierte Registry für Skills und Slash-Befehle
+
+Skills und Befehle sind Anweisungen an das Modell – ein manipulierter Skill wäre ein Einfallstor. Deshalb gibt es
+keinen öffentlichen Marktplatz, sondern Pakete, die der Herausgeber signiert und die du nur von Herausgebern installierst,
+denen du ausdrücklich vertraust. Eine Registry ist einfach ein Ordner (Netzlaufwerk, Git-Checkout) mit Paketdateien.
+
+```bash
+# Herausgeber (Anna)
+bobi registry key > anna.pub.pem                       # öffentlichen Schlüssel weitergeben
+bobi registry pack skills/review-style --version 1.0.0 --out registry/
+
+# Nutzer (Ben)
+bobi registry trust anna.pub.pem                       # einmalig: Anna vertrauen
+bobi registry list --from registry/                    # was gibt es?
+bobi registry install review-style --from registry/    # prüft Signatur, Hashes, Pfade, Größe; installiert
+bobi registry list                                     # was ist installiert, von wem?
+bobi registry untrust <schluessel-id>                  # Vertrauen entziehen
+```
+
+Abgelehnt werden: unbekannte Herausgeber, veränderte Dateien, unsichere Pfade (`..`, versteckte Dateien, Links),
+Downgrades und fremde Dateien gleichen Namens (mit `--force` überschreibbar – außer Signatur und Vertrauen). MCP-Server und
+IDE-Erweiterungen führen Code aus und sind bewusst nicht Teil der Registry (ADR-0023). Wichtig: Ein gestohlener
+Herausgeber-Schlüssel erlaubt signierte Schad-Skills, bis ihm das Vertrauen entzogen wird.
+
 ---
 
 ## 13. Sicherheit und Sandbox
