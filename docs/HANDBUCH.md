@@ -420,6 +420,24 @@ erscheint nur als ausgewiesene Schätzung, wenn ihr sie konfiguriert:
 { "usage": { "minutesPerTask": 10, "minutesPerAcceptedChange": 5 } }
 ```
 
+### Änderungsprotokoll (Dossier)
+
+Zu jeder Sitzung kannst du ein **signiertes Änderungsprotokoll** erzeugen: Auftrag (Prompt), Modus, Modell, jeder
+Werkzeugaufruf mit Datei bzw. Befehl, jede Freigabe und – auf Wunsch – das Ergebnis eines Testlaufs und der Diff. Die
+Einträge sind verkettet (jeder enthält den Hash des vorigen) und der Kopf ist mit deinem Schlüssel signiert. Wer das
+Protokoll später ändert, kürzt oder umsortiert, wird beim Prüfen erkannt.
+
+```bash
+bobi dossier --list                                           # Sitzungen im Audit-Log
+bobi dossier --out aenderung.json --diff --test "bun test"    # letzte Sitzung versiegeln (Tests und Diff dazu)
+bobi dossier verify aenderung.json                            # Kette und Signatur prüfen
+bobi dossier verify aenderung.json --key kollege.pub.pem      # zusätzlich: wurde es mit DIESEM Schlüssel signiert?
+```
+
+Der Schlüssel liegt in `~/.bobi/keys/dossier-ed25519.pem` (nur für dich lesbar). Ohne `--key` beweist die Prüfung nur,
+dass das Protokoll unverändert ist – wer es signiert hat, weißt du erst, wenn du den öffentlichen Schlüssel der Person
+vorab kennst. Der Diff ist der Stand beim Versiegeln (nicht beim Entstehen der Änderung).
+
 ---
 
 ## 13. Sicherheit und Sandbox

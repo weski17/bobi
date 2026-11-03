@@ -23,6 +23,8 @@ export type AuditRecord = {
     readonly "bobi.resources"?: string
     readonly "bobi.result": "completed" | "error" | "allow" | "ask" | "deny" | "once" | "always" | "reject" | "started" | "recorded"
     readonly "bobi.error"?: string
+    /** What was done, masked and shortened: the shell command, the file path, or the start of the prompt. */
+    readonly "bobi.detail"?: string
     readonly "bobi.model"?: string
     readonly "bobi.tokens.input"?: number
     readonly "bobi.tokens.output"?: number

@@ -11,6 +11,8 @@ export type Command =
   | { kind: "modes"; json: boolean }
   | { kind: "audit"; from?: string; to?: string; user?: string; format: "md" | "json" }
   | { kind: "usage"; from?: string; to?: string; team?: string; format: "md" | "json" }
+  | { kind: "dossier"; action: "list" | "seal"; session?: string; out?: string; format: "md" | "json"; diff: boolean; test?: string }
+  | { kind: "dossier"; action: "verify"; file: string; key?: string }
   | { kind: "tips"; paths: string[]; format: "text" | "json"; failOn?: "warning" | "info" }
   | { kind: "diagram"; source: "code" | "cobol"; program?: string; depth?: number; directory?: string }
   | { kind: "help" }
@@ -44,6 +46,11 @@ Usage:
                                    Audit and compliance report from the local audit log
   bobi usage [--from YYYY-MM-DD] [--to YYYY-MM-DD] [--team T] [--format md|json]
                                    Usage per person, team, mode and day (tokens, tasks, approved changes)
+  bobi dossier [--list] [--session ID] [--out FILE.json] [--format md|json] [--diff] [--test "<command>"]
+                                   Signed change dossier of a session (default: the latest); --diff adds the project's
+                                   uncommitted changes, --test runs a command and adds its result
+  bobi dossier verify <FILE.json> [--key public.pem]
+                                   Check a dossier: chain, signature and (with --key) who signed it
   bobi tips [--format text|json] [--fail-on warning|info] [paths...]
                                    Code tips: complex functions and anti-patterns (TS/JS, COBOL), no model call
   bobi diagram [code|cobol] [--program P] [--depth N] [directory]
@@ -115,6 +122,41 @@ export function parseArgs(argv: readonly string[]): Command {
       } else if (arg !== "report") throw new UsageError(`unknown option for ${first}: ${arg}`)
     }
     return { kind: first, ...out } as Command
+  }
+
+  if (first === "dossier") {
+    if (rest[0] === "verify") {
+      const out: Extract<Command, { kind: "dossier"; action: "verify" }> = { kind: "dossier", action: "verify", file: "" }
+      for (let i = 1; i < rest.length; i++) {
+        const arg = rest[i]!
+        if (arg === "--key") {
+          const value = rest[++i]
+          if (!value) throw new UsageError("--key needs a file")
+          out.key = value
+        } else if (arg.startsWith("-")) throw new UsageError(`unknown option for dossier verify: ${arg}`)
+        else if (!out.file) out.file = arg
+        else throw new UsageError("dossier verify takes one file")
+      }
+      if (!out.file) throw new UsageError("dossier verify needs a dossier file")
+      return out
+    }
+    const out: Extract<Command, { kind: "dossier"; action: "list" | "seal" }> = { kind: "dossier", action: "seal", format: "md", diff: false }
+    for (let i = 0; i < rest.length; i++) {
+      const arg = rest[i]!
+      const value = rest[i + 1]
+      if (["--session", "--out", "--format", "--test"].includes(arg) && !value) throw new UsageError(`${arg} needs a value`)
+      if (arg === "--list") out.action = "list"
+      else if (arg === "--diff") out.diff = true
+      else if (arg === "--session") (out.session = value!), i++
+      else if (arg === "--out") (out.out = value!), i++
+      else if (arg === "--test") (out.test = value!), i++
+      else if (arg === "--format") {
+        if (value !== "md" && value !== "json") throw new UsageError("--format is md or json")
+        out.format = value
+        i++
+      } else throw new UsageError(`unknown option for dossier: ${arg}`)
+    }
+    return out
   }
 
   if (first === "tips") {

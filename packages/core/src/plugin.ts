@@ -107,6 +107,28 @@ export function localTitle(messages: readonly { role?: string; content?: unknown
   return line.length <= 60 ? line : `${line.slice(0, 57).trimEnd()}…`
 }
 
+const DETAIL_MAX = 400
+
+/** A short description of a tool call for the audit trail; the caller masks it. */
+export function toolDetail(tool: string, input: unknown): string | undefined {
+  if (!input || typeof input !== "object") return undefined
+  const i = input as Record<string, unknown>
+  const pick = (...keys: string[]) => keys.map((k) => i[k]).find((v): v is string => typeof v === "string" && v.length > 0)
+  const text = tool === "patch" ? patchPaths(String(i.patchText ?? "")).join(", ") : pick("command", "path", "filePath", "pattern", "url", "query")
+  return text ? (text.length > DETAIL_MAX ? `${text.slice(0, DETAIL_MAX)}…` : text) : undefined
+}
+
+/** The text of a prompt event, whatever shape the engine gives it; undefined when there is none. */
+export function promptText(event: unknown): string | undefined {
+  const e = event as { prompt?: unknown; text?: unknown; parts?: unknown } | null
+  const value = e?.prompt ?? e?.text
+  if (typeof value === "string") return value
+  const parts = Array.isArray(value) ? value : Array.isArray(e?.parts) ? e.parts : (value as { parts?: unknown } | undefined)?.parts
+  if (!Array.isArray(parts)) return typeof (value as { text?: unknown } | undefined)?.text === "string" ? (value as { text: string }).text : undefined
+  const joined = parts.map((p) => (p && typeof p === "object" && typeof (p as { text?: unknown }).text === "string" ? (p as { text: string }).text : "")).join(" ").trim()
+  return joined || undefined
+}
+
 const inputPath = (input: unknown): string | undefined =>
   input && typeof input === "object" && typeof (input as { path?: unknown }).path === "string" ? (input as { path: string }).path : undefined
 
@@ -209,7 +231,13 @@ export function createBobiCore(options: BobiCoreOptions): Plugin.Plugin & { read
         const agent = String(session.agent ?? DEFAULT_MODE)
         sessionMode.set(sessionID, agent)
         const now = Date.now()
-        audit.record({ name: "bobi.task", start: now, end: now, attributes: { ...who, "bobi.mode": agent, "bobi.session": sessionID, "bobi.result": "started" } })
+        const prompt = promptText(event)
+        audit.record({
+          name: "bobi.task",
+          start: now,
+          end: now,
+          attributes: { ...who, "bobi.mode": agent, "bobi.session": sessionID, "bobi.result": "started", ...(prompt ? { "bobi.detail": mask(prompt.length > DETAIL_MAX ? `${prompt.slice(0, DETAIL_MAX)}…` : prompt) } : {}) },
+        })
         if (lastAgent.get(sessionID) === agent) return
         lastAgent.set(sessionID, agent)
         // Only models the server's endpoint config declares can be selected.
@@ -285,11 +313,13 @@ export function createBobiCore(options: BobiCoreOptions): Plugin.Plugin & { read
       await ctx.tool.hook("execute.after", (event) => {
         const start = started.get(event.id) ?? Date.now()
         started.delete(event.id)
+        const detail = toolDetail(event.tool, event.input)
         const base = {
           ...who,
           "bobi.mode": String(event.agent),
           "bobi.session": String(event.sessionID),
           "bobi.tool": event.tool,
+          ...(detail ? { "bobi.detail": mask(detail) } : {}),
         } as const
         if (event.status === "error") {
           audit.record({ name: "bobi.tool", start, end: Date.now(), attributes: { ...base, "bobi.result": "error", "bobi.error": mask(event.error.message) } })

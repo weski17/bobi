@@ -55,6 +55,27 @@ describe("parseArgs", () => {
     expect(parseArgs(["run", "--mode", "plan", "x"])).toEqual({ kind: "run", client: ["--agent", "plan", "x"] })
   })
 
+  test("dossier", () => {
+    expect(parseArgs(["dossier"])).toEqual({ kind: "dossier", action: "seal", format: "md", diff: false })
+    expect(parseArgs(["dossier", "--list"])).toMatchObject({ action: "list" })
+    expect(parseArgs(["dossier", "--session", "s1", "--out", "d.json", "--diff", "--test", "bun test", "--format", "json"])).toEqual({
+      kind: "dossier",
+      action: "seal",
+      session: "s1",
+      out: "d.json",
+      diff: true,
+      test: "bun test",
+      format: "json",
+    })
+    expect(parseArgs(["dossier", "verify", "d.json", "--key", "pub.pem"])).toEqual({ kind: "dossier", action: "verify", file: "d.json", key: "pub.pem" })
+    expect(() => parseArgs(["dossier", "verify"])).toThrow(/needs a dossier file/)
+    expect(() => parseArgs(["dossier", "verify", "a", "b"])).toThrow(/one file/)
+    expect(() => parseArgs(["dossier", "verify", "a", "--x"])).toThrow(/unknown option/)
+    expect(() => parseArgs(["dossier", "--key"])).toThrow(/unknown option/)
+    expect(() => parseArgs(["dossier", "--out"])).toThrow(/needs a value/)
+    expect(() => parseArgs(["dossier", "--format", "pdf"])).toThrow(/md or json/)
+  })
+
   test("audit and diagram", () => {
     expect(parseArgs(["audit"])).toEqual({ kind: "audit", format: "md" })
     expect(parseArgs(["audit", "report", "--from", "2026-10-01", "--to", "2026-10-31", "--user", "anna", "--format", "json"])).toEqual({
