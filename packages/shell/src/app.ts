@@ -79,6 +79,31 @@ async function stop(started: Started) {
   await started.server.stop()
 }
 
+/** `bobi tips --since <ref>`: only the tips a change adds (changed files minus the tips they already had at `ref`). */
+function tipsSince(io: Io, command: Extract<Command, { kind: "tips" }>, limits: Parameters<typeof analyze>[2]): number {
+  const since = command.since!
+  const git = (...args: string[]) => spawnSync("git", args, { cwd: io.cwd, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 })
+  const top = git("rev-parse", "--show-toplevel")
+  if (top.status !== 0) throw new UsageError("tips --since needs a git repository")
+  const changed = git("diff", "--name-only", "--diff-filter=ACMR", `${since}...HEAD`)
+  if (changed.status !== 0) throw new UsageError(`git diff against ${since} failed: ${changed.stderr.trim()}`)
+  const root = top.stdout.trim()
+  const results = changed.stdout
+    .split("\n")
+    .filter((f) => f && supported(f) !== undefined)
+    .map((file) => {
+      const before = git("show", `${since}:${file}`)
+      return { file, tips: newTips(file, before.status === 0 ? before.stdout : undefined, readFileSync(path.join(root, file), "utf8"), limits) as Tip[] }
+    })
+    .filter((r) => r.tips.length)
+  if (command.format === "json") io.out(JSON.stringify(results, null, 2))
+  else for (const r of results) for (const t of r.tips) io.out(`${r.file}:${t.line}: ${t.severity} [${t.rule}] ${t.message}`)
+  const all = results.flatMap((r) => r.tips)
+  io.err(`bobi: ${all.length} new tip(s) in ${results.length} changed file(s) since ${since}`)
+  const failing = command.failOn === "info" ? all.length : command.failOn === "warning" ? all.filter((t) => t.severity === "warning").length : 0
+  return failing > 0 ? 1 : 0
+}
+
 export async function runApp(rawArgv: readonly string[], io: Io): Promise<number> {
   const trustFlag = rawArgv.includes("--trust")
   const argv = rawArgv.filter((a) => a !== "--trust")
@@ -314,30 +339,7 @@ export async function runApp(rawArgv: readonly string[], io: Io): Promise<number
     const project = findProjectRoot(io.cwd)
     const trusted = new TrustStore(bobiPaths(io.env).home).isTrusted(project)
     const { enabled: _enabled, ...limits } = loadConfig({ cwd: io.cwd, env: io.env, trustedProject: trusted }).config.tips
-    if (command.since) {
-      // Only what the change adds: tips of the changed files minus those the files already had at the given ref.
-      const git = (...args: string[]) => spawnSync("git", args, { cwd: io.cwd, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 })
-      const top = git("rev-parse", "--show-toplevel")
-      if (top.status !== 0) throw new UsageError("tips --since needs a git repository")
-      const changed = git("diff", "--name-only", "--diff-filter=ACMR", `${command.since}...HEAD`)
-      if (changed.status !== 0) throw new UsageError(`git diff against ${command.since} failed: ${changed.stderr.trim()}`)
-      const root = top.stdout.trim()
-      const results = changed.stdout
-        .split("\n")
-        .filter((f) => f && supported(f) !== undefined)
-        .map((file) => {
-          const before = git("show", `${command.since}:${file}`)
-          const after = readFileSync(path.join(root, file), "utf8")
-          return { file, tips: newTips(file, before.status === 0 ? before.stdout : undefined, after, limits) as Tip[] }
-        })
-        .filter((r) => r.tips.length)
-      if (command.format === "json") io.out(JSON.stringify(results, null, 2))
-      else for (const r of results) for (const t of r.tips) io.out(`${r.file}:${t.line}: ${t.severity} [${t.rule}] ${t.message}`)
-      const all = results.flatMap((r) => r.tips)
-      io.err(`bobi: ${all.length} new tip(s) in ${results.length} changed file(s) since ${command.since}`)
-      const failing = command.failOn === "info" ? all.length : command.failOn === "warning" ? all.filter((t) => t.severity === "warning").length : 0
-      return failing > 0 ? 1 : 0
-    }
+    if (command.since) return tipsSince(io, command, limits)
     const files = (command.paths.length ? command.paths : ["."]).flatMap((p) => {
       const target = path.resolve(io.cwd, p)
       const stat = statSync(target, { throwIfNoEntry: false })
