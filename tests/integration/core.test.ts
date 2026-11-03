@@ -82,6 +82,9 @@ test("tool calls and permission decisions are audited with user, mode, tool and 
   expect(tool?.attributes).toMatchObject({ "bobi.user": "tester", "bobi.mode": "code", "bobi.session": sessionID, "bobi.result": "completed" })
   const permission = h.audit.records.find((r) => r.name === "bobi.permission" && r.attributes["bobi.action"] === "edit")
   expect(permission?.attributes["bobi.result"]).toBe("allow")
+  // The dossier needs to know what was done: the path of the file and the prompt of the task.
+  expect(tool?.attributes["bobi.detail"]).toContain("audited.txt")
+  expect(h.audit.records.find((r) => r.name === "bobi.task")?.attributes["bobi.detail"]).toBe("create a file")
 }, 30_000)
 
 test("failed tool calls are audited as errors with masked messages", async () => {

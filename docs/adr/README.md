@@ -23,5 +23,6 @@
 | [0019](0019-container-distribution.md) | Container distribution: Docker Compose and GitHub Packages | Accepted |
 | [0020](0020-demo-image-and-deployment.md) | Demo image with a bundled model, continuous deployment | Accepted |
 | [0021](0021-web-ide-in-the-demo-image.md) | Web IDE in the demo image (experimental, opt-in) | Accepted (experimental) |
+| [0022](0022-change-dossier.md) | Signed change dossier and model comparison | Accepted |
 
 New ADRs: copy [`0000-template.md`](0000-template.md), next free number.

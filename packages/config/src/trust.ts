@@ -82,6 +82,17 @@ export class TrustStore {
     return status === "none" || status === "trusted"
   }
 
+  /** Removes the decision for a project (for throw-away worktrees). */
+  forget(directory: string): void {
+    const project = realpathSync(findProjectRoot(directory))
+    const data = this.read()
+    if (!(project in data.projects)) return
+    delete data.projects[project]
+    const tmp = `${this.file}.${process.pid}.tmp`
+    writeFileSync(tmp, JSON.stringify(data, null, 2), { mode: 0o600 })
+    renameSync(tmp, this.file)
+  }
+
   decide(directory: string, trusted: boolean): void {
     const project = realpathSync(findProjectRoot(directory))
     const data = this.read()

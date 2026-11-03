@@ -253,6 +253,115 @@ test("bobi audit renders the local audit log as Markdown or JSON", async () => {
   }
 })
 
+test("bobi dossier lists, seals (with test result and diff) and verifies; tampering is caught", async () => {
+  const { mkdir, writeFile, readFile } = await import("node:fs/promises")
+  const home = await mkdtemp(path.join(tmpdir(), "bobi-dossier-home-"))
+  const project = await mkdtemp(path.join(tmpdir(), "bobi-dossier-proj-"))
+  try {
+    const empty = io({ env: { BOBI_HOME: home }, cwd: project })
+    expect(await runApp(["dossier", "--list"], empty.io)).toBe(0)
+    expect(empty.err[0]).toContain("no audit records")
+    await expect(runApp(["dossier"], io({ env: { BOBI_HOME: home }, cwd: project }).io)).rejects.toThrow(/audit log is empty/)
+
+    await mkdir(path.join(home, "audit"))
+    const at = Date.parse("2026-11-03T10:00:00Z")
+    const base = { "bobi.user": "anna", "bobi.mode": "code", "bobi.session": "s1" }
+    const lines = [
+      { name: "bobi.task", start: at, end: at, attributes: { ...base, "bobi.result": "started", "bobi.detail": "fix it" } },
+      { name: "bobi.tool", start: at + 2, end: at + 3, attributes: { ...base, "bobi.tool": "edit", "bobi.detail": "a.txt", "bobi.result": "completed" } },
+    ]
+    await writeFile(path.join(home, "audit", "2026-11-03.jsonl"), lines.map((l) => JSON.stringify(l)).join("\n"))
+    const env = { BOBI_HOME: home }
+    const list = io({ env, cwd: project })
+    await runApp(["dossier", "--list"], list.io)
+    expect(list.out[0]).toContain("s1")
+
+    const git = (...a: string[]) => Bun.spawnSync(["git", "-c", "user.name=t", "-c", "user.email=t@t", ...a], { cwd: project })
+    git("init", "-q", "-b", "main")
+    await writeFile(path.join(project, "a.txt"), "one\n")
+    git("add", "-A")
+    git("commit", "-qm", "init")
+    await writeFile(path.join(project, "a.txt"), "two\n")
+
+    const sealed = io({ env, cwd: project })
+    expect(await runApp(["dossier", "--out", "d.json", "--diff", "--test", "echo ok"], sealed.io)).toBe(0)
+    expect(sealed.out[0]).toContain("Integrity: intact")
+    expect(sealed.out[0]).toContain("+two")
+    expect(sealed.out[0]).toContain("echo ok")
+    expect(Bun.spawnSync(["ls", "-l", path.join(project, "d.json")]).stdout.toString()).toContain("-rw-------")
+
+    const ok = io({ env, cwd: project })
+    expect(await runApp(["dossier", "verify", "d.json"], ok.io)).toBe(0)
+    expect(ok.out[0]).toContain("intact")
+
+    const pub = JSON.parse(await readFile(path.join(project, "d.json"), "utf8")).publicKey as string
+    await writeFile(path.join(project, "pub.pem"), pub)
+    const pinned = io({ env, cwd: project })
+    expect(await runApp(["dossier", "verify", "d.json", "--key", "pub.pem"], pinned.io)).toBe(0)
+    expect(pinned.out[0]).toContain("trusted key")
+
+    const doc = JSON.parse(await readFile(path.join(project, "d.json"), "utf8"))
+    doc.events[0].fields.prompt = "delete everything"
+    await writeFile(path.join(project, "forged.json"), JSON.stringify(doc))
+    const bad = io({ env, cwd: project })
+    expect(await runApp(["dossier", "verify", "forged.json"], bad.io)).toBe(1)
+    expect(bad.err[0]).toContain("BROKEN: event 0 was changed")
+    await expect(runApp(["dossier", "verify", "missing.json"], io({ env, cwd: project }).io)).rejects.toThrow(/cannot read/)
+  } finally {
+    await rm(home, { recursive: true, force: true })
+    await rm(project, { recursive: true, force: true })
+  }
+})
+
+test("bobi compare runs each model in its own worktree of HEAD and leaves the project untouched", async () => {
+  const { writeFile, readFile, access } = await import("node:fs/promises")
+  const project = await mkdtemp(path.join(tmpdir(), "bobi-compare-proj-"))
+  const out = path.join(project, "r.json")
+  try {
+    const git = (...a: string[]) => Bun.spawnSync(["git", "-c", "user.name=t", "-c", "user.email=t@t", ...a], { cwd: project })
+    git("init", "-q", "-b", "main")
+    await writeFile(path.join(project, "answer.txt"), "wrong\n")
+    git("add", "-A")
+    git("commit", "-qm", "init")
+    let call = 0
+    const seen: string[] = []
+    const t = io({
+      cwd: project,
+      // Stands in for the agent: the first model fixes the file, the second one makes it worse.
+      spawn: async (_argv, _env, cwd) => {
+        seen.push(cwd)
+        await writeFile(path.join(cwd, "answer.txt"), call++ === 0 ? "right\n" : "worse\n")
+        return 0
+      },
+    })
+    const test = `grep -q right answer.txt`
+    expect(await runApp(["compare", "--models", "big,small", "--test", test, "--out", out, "fix", "the", "answer"], t.io)).toBe(0)
+    expect(t.out[0]).toContain("| big | completed | passed |")
+    expect(t.out[0]).toContain("| small | completed | failed (exit 1) |")
+    expect(t.out[0]).toContain("Passed the tests: big.")
+    // Two different worktrees, none of them the project; the project itself is unchanged and the worktrees are gone.
+    expect(new Set(seen).size).toBe(2)
+    expect(seen.every((d) => !d.startsWith(project))).toBe(true)
+    expect(await readFile(path.join(project, "answer.txt"), "utf8")).toBe("wrong\n")
+    await expect(access(seen[0]!)).rejects.toThrow()
+    expect(Bun.spawnSync(["git", "worktree", "list"], { cwd: project }).stdout.toString().trim().split("\n")).toHaveLength(1)
+    const details = JSON.parse(await readFile(out, "utf8"))
+    expect(details.results[0].diff).toContain("+right")
+    expect(details.results[1].diff).toContain("+worse")
+  } finally {
+    await rm(project, { recursive: true, force: true })
+  }
+})
+
+test("bobi compare needs a git repository", async () => {
+  const plain = await mkdtemp(path.join(tmpdir(), "bobi-compare-plain-"))
+  try {
+    await expect(runApp(["compare", "--models", "a,b", "task"], io({ cwd: plain }).io)).rejects.toThrow(/git repository/)
+  } finally {
+    await rm(plain, { recursive: true, force: true })
+  }
+})
+
 test("bobi diagram prints Mermaid for code and COBOL projects", async () => {
   const repo = path.resolve(import.meta.dir, "..", "..", "..")
   const code = io()

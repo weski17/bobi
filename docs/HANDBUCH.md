@@ -420,6 +420,42 @@ erscheint nur als ausgewiesene Schätzung, wenn ihr sie konfiguriert:
 { "usage": { "minutesPerTask": 10, "minutesPerAcceptedChange": 5 } }
 ```
 
+### Änderungsprotokoll (Dossier)
+
+Zu jeder Sitzung kannst du ein **signiertes Änderungsprotokoll** erzeugen: Auftrag (Prompt), Modus, Modell, jeder
+Werkzeugaufruf mit Datei bzw. Befehl, jede Freigabe und – auf Wunsch – das Ergebnis eines Testlaufs und der Diff. Die
+Einträge sind verkettet (jeder enthält den Hash des vorigen) und der Kopf ist mit deinem Schlüssel signiert. Wer das
+Protokoll später ändert, kürzt oder umsortiert, wird beim Prüfen erkannt.
+
+```bash
+bobi dossier --list                                           # Sitzungen im Audit-Log
+bobi dossier --out aenderung.json --diff --test "bun test"    # letzte Sitzung versiegeln (Tests und Diff dazu)
+bobi dossier verify aenderung.json                            # Kette und Signatur prüfen
+bobi dossier verify aenderung.json --key kollege.pub.pem      # zusätzlich: wurde es mit DIESEM Schlüssel signiert?
+```
+
+Der Schlüssel liegt in `~/.bobi/keys/dossier-ed25519.pem` (nur für dich lesbar). Ohne `--key` beweist die Prüfung nur,
+dass das Protokoll unverändert ist – wer es signiert hat, weißt du erst, wenn du den öffentlichen Schlüssel der Person
+vorab kennst. Der Diff ist der Stand beim Versiegeln (nicht beim Entstehen der Änderung).
+
+### Modellvergleich auf deinem Code
+
+Dieselbe Aufgabe mit zwei bis vier Modellen, jedes in einem eigenen, frischen Git-Worktree von `HEAD`; danach läuft
+derselbe Testbefehl auf jedem Ergebnis. Dein Projektordner bleibt unberührt, die Worktrees werden gelöscht.
+
+```bash
+bobi compare --models gross,klein --test "bun test" --out vergleich.json "Behebe den Rundungsfehler in src/checkout.ts"
+```
+
+Ausgabe: Tabelle mit Lauf, Test bestanden/nicht, Zeit, geänderte Dateien, +/- Zeilen, Werkzeugaufrufe und Tokens je
+Modell; die Diffs stehen in `vergleich.json`. Die Modelle müssen am konfigurierten Endpunkt angeboten werden. Regeln:
+
+- **Nur Datei-Änderungen** werden in den Worktrees automatisch freigegeben. Shell, Netzwerk usw. fragen wie immer – ein
+  Lauf ohne Bildschirm kann nicht antworten, also sind sie verweigert (steht im Bericht). Den Testbefehl führt Bobi selbst aus.
+- Voraussetzung: Git-Projekt mit mindestens einem Commit; nicht eingecheckte Änderungen fließen nicht ein.
+- Ein Lauf pro Modell ist eine Momentaufnahme, kein Benchmark: mehrfach wiederholen, bevor du entscheidest.
+- Jeder Lauf steht im Audit-Log, ist also mit `bobi dossier` belegbar.
+
 ---
 
 ## 13. Sicherheit und Sandbox
