@@ -1,7 +1,8 @@
 // The `bobi` application: owns the server (engine + @bobi/core) and starts the terminal client.
 import { randomBytes } from "node:crypto"
 import { spawnSync } from "node:child_process"
-import { mkdirSync, readFileSync, realpathSync, statSync, writeFileSync } from "node:fs"
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs"
+import { tmpdir } from "node:os"
 import path from "node:path"
 import { findProjectRoot, loadConfig, TrustStore, trustFiles, type LoadedConfig } from "@bobi/config"
 import { auditReport, createMasker, hashOf, loadOrCreateKey, readAuditLog, renderAuditReport, renderDossier, renderUsageReport, sealDossier, sessionsOf, usageReport, verifyDossier, type Dossier, type ExtraEvent } from "@bobi/core"
@@ -12,6 +13,7 @@ import { bobiPaths, ensureCheckpointRepo, startBobiServer, type BobiPaths, type 
 import { loadModes, mcpServers, type Mode } from "@bobi/modes"
 import { HELP, parseArgs, UsageError, VERSION, type Command } from "./args.ts"
 import { clientSpec } from "./client.ts"
+import { compareModels, renderComparison } from "./compare.ts"
 
 export type Io = {
   readonly cwd: string
@@ -163,6 +165,74 @@ export async function runApp(rawArgv: readonly string[], io: Io): Promise<number
     }
     io.out(command.format === "json" ? JSON.stringify(dossier, null, 2) : renderDossier(dossier))
     return 0
+  }
+
+  if (command.kind === "compare") {
+    const git = (cwd: string, ...args: string[]) => spawnSync("git", args, { cwd, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 })
+    const top = git(io.cwd, "rev-parse", "--show-toplevel")
+    if (top.status !== 0 || git(io.cwd, "rev-parse", "--verify", "HEAD").status !== 0) throw new UsageError("compare needs a git repository with at least one commit (every model starts from HEAD)")
+    const root = realpathSync(top.stdout.trim())
+    const relative = path.relative(root, realpathSync(io.cwd))
+    const paths = bobiPaths(io.env)
+    const store = new TrustStore(paths.home)
+    const trustedProject = store.status(root) === "trusted"
+    const scratch = mkdtempSync(path.join(tmpdir(), "bobi-compare-"))
+    const mask = createMasker([])
+    try {
+      const results = await compareModels(command, {
+        worktree: (index) => {
+          const dir = path.join(scratch, `w${index}`)
+          const r = git(root, "worktree", "add", "--detach", "-q", dir, "HEAD")
+          if (r.status !== 0) throw new UsageError(`git worktree failed: ${r.stderr.trim()}`)
+          if (trustedProject) store.decide(dir, true)
+          return path.join(dir, relative)
+        },
+        runAgent: async (dir, model) => {
+          // Edits are approved in the worktree only; the model is set for the mode so a per-mode model cannot win.
+          const file = path.join(scratch, `${command.models.indexOf(model)}.jsonc`)
+          writeFileSync(
+            file,
+            JSON.stringify({ model: { default: model, models: command.models }, modes: { [command.mode]: { model } }, autoApprove: [{ action: "edit", resource: "*", modes: [command.mode] }] }),
+            { mode: 0o600 },
+          )
+          const code = await runApp(["run", "--mode", command.mode, command.task], { ...io, cwd: dir, env: { ...io.env, BOBI_CONFIG: file, BOBI_MODEL: model } })
+          // Usage records arrive through the event stream a moment after the last step.
+          await new Promise((resolve) => setTimeout(resolve, 300))
+          return code
+        },
+        changes: (dir) => {
+          git(dir, "add", "-A")
+          const stat = git(dir, "diff", "--cached", "HEAD", "--numstat").stdout.trim().split("\n").filter(Boolean)
+          const sums = stat.map((l) => l.split("\t")).reduce((acc, [a, r]) => ({ added: acc.added + (Number(a) || 0), removed: acc.removed + (Number(r) || 0) }), { added: 0, removed: 0 })
+          return { diff: mask(git(dir, "diff", "--cached", "HEAD", "--no-color").stdout), files: stat.length, ...sums }
+        },
+        runTest: (dir, test) => {
+          const began = Date.now()
+          const r = spawnSync(test, { shell: true, cwd: dir, encoding: "utf8", timeout: 600_000 })
+          return { exit: r.status ?? -1, seconds: Math.round((Date.now() - began) / 100) / 10, tail: mask(`${r.stdout ?? ""}${r.stderr ?? ""}`).slice(-1500) }
+        },
+        records: (from, to) => readAuditLog(path.join(paths.home, "audit")).records.filter((r) => r.start >= from && r.start <= to),
+        cleanup: (dir) => {
+          const worktree = path.join(scratch, path.relative(scratch, dir).split(path.sep)[0]!)
+          try {
+            store.forget(worktree)
+          } catch {
+            // never decided or already gone
+          }
+          git(root, "worktree", "remove", "--force", worktree)
+        },
+        now: () => Date.now(),
+      })
+      if (command.out) {
+        writeFileSync(path.resolve(io.cwd, command.out), `${JSON.stringify({ task: command.task, mode: command.mode, test: command.test, results }, null, 2)}\n`, { mode: 0o600 })
+        io.err(`bobi: details and diffs written to ${command.out}`)
+      }
+      io.out(renderComparison(command, results))
+      return 0
+    } finally {
+      git(root, "worktree", "prune")
+      rmSync(scratch, { recursive: true, force: true })
+    }
   }
 
   if (command.kind === "usage") {

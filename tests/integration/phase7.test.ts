@@ -22,6 +22,8 @@ test("every task and every model step's tokens are audited with user, team and m
     }
   })()
   expect(usage?.attributes).toMatchObject({ "bobi.mode": "plan", "bobi.team": "payments", "bobi.tokens.input": 10, "bobi.tokens.output": 5 })
+  // The dossier and the model comparison need to know which model worked.
+  expect(String(usage?.attributes["bobi.model"] ?? "")).not.toBe("")
 }, 30_000)
 
 test("sessions.titles local: the title comes from the first message and costs no model request", async () => {

@@ -313,6 +313,55 @@ test("bobi dossier lists, seals (with test result and diff) and verifies; tamper
   }
 })
 
+test("bobi compare runs each model in its own worktree of HEAD and leaves the project untouched", async () => {
+  const { writeFile, readFile, access } = await import("node:fs/promises")
+  const project = await mkdtemp(path.join(tmpdir(), "bobi-compare-proj-"))
+  const out = path.join(project, "r.json")
+  try {
+    const git = (...a: string[]) => Bun.spawnSync(["git", "-c", "user.name=t", "-c", "user.email=t@t", ...a], { cwd: project })
+    git("init", "-q", "-b", "main")
+    await writeFile(path.join(project, "answer.txt"), "wrong\n")
+    git("add", "-A")
+    git("commit", "-qm", "init")
+    let call = 0
+    const seen: string[] = []
+    const t = io({
+      cwd: project,
+      // Stands in for the agent: the first model fixes the file, the second one makes it worse.
+      spawn: async (_argv, _env, cwd) => {
+        seen.push(cwd)
+        await writeFile(path.join(cwd, "answer.txt"), call++ === 0 ? "right\n" : "worse\n")
+        return 0
+      },
+    })
+    const test = `grep -q right answer.txt`
+    expect(await runApp(["compare", "--models", "big,small", "--test", test, "--out", out, "fix", "the", "answer"], t.io)).toBe(0)
+    expect(t.out[0]).toContain("| big | completed | passed |")
+    expect(t.out[0]).toContain("| small | completed | failed (exit 1) |")
+    expect(t.out[0]).toContain("Passed the tests: big.")
+    // Two different worktrees, none of them the project; the project itself is unchanged and the worktrees are gone.
+    expect(new Set(seen).size).toBe(2)
+    expect(seen.every((d) => !d.startsWith(project))).toBe(true)
+    expect(await readFile(path.join(project, "answer.txt"), "utf8")).toBe("wrong\n")
+    await expect(access(seen[0]!)).rejects.toThrow()
+    expect(Bun.spawnSync(["git", "worktree", "list"], { cwd: project }).stdout.toString().trim().split("\n")).toHaveLength(1)
+    const details = JSON.parse(await readFile(out, "utf8"))
+    expect(details.results[0].diff).toContain("+right")
+    expect(details.results[1].diff).toContain("+worse")
+  } finally {
+    await rm(project, { recursive: true, force: true })
+  }
+})
+
+test("bobi compare needs a git repository", async () => {
+  const plain = await mkdtemp(path.join(tmpdir(), "bobi-compare-plain-"))
+  try {
+    await expect(runApp(["compare", "--models", "a,b", "task"], io({ cwd: plain }).io)).rejects.toThrow(/git repository/)
+  } finally {
+    await rm(plain, { recursive: true, force: true })
+  }
+})
+
 test("bobi diagram prints Mermaid for code and COBOL projects", async () => {
   const repo = path.resolve(import.meta.dir, "..", "..", "..")
   const code = io()

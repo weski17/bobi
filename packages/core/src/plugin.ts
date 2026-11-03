@@ -225,11 +225,14 @@ export function createBobiCore(options: BobiCoreOptions): Plugin.Plugin & { read
       // so Bobi switches it when the session enters another mode; a model the user picks within a mode is kept.
       const lastAgent = new Map<string, string>()
       const sessionMode = new Map<string, string>()
+      // The model a session works with, for the audit trail (usage records and the change dossier).
+      const sessionModel = new Map<string, string>()
       await ctx.session.hook("prompt", async (event) => {
         const sessionID = String(event.sessionID)
         const session = await ctx.session.get({ sessionID })
         const agent = String(session.agent ?? DEFAULT_MODE)
         sessionMode.set(sessionID, agent)
+        if (session.model?.id) sessionModel.set(sessionID, String(session.model.id))
         const now = Date.now()
         const prompt = promptText(event)
         audit.record({
@@ -247,6 +250,7 @@ export function createBobiCore(options: BobiCoreOptions): Plugin.Plugin & { read
         const target = wanted && known.includes(wanted) ? wanted : config.model.default
         if (session.model?.id === target && String(session.model.providerID) === PROVIDER_ID) return
         await ctx.session.switchModel({ sessionID, model: { providerID: PROVIDER_ID, id: target } })
+        sessionModel.set(sessionID, target)
       })
 
       // Session titles without a model call (sessions.titles: "local"): derived from the first message. The engine
@@ -400,6 +404,7 @@ export function createBobiCore(options: BobiCoreOptions): Plugin.Plugin & { read
                   "bobi.mode": sessionMode.get(sessionID) ?? "unknown",
                   "bobi.session": sessionID,
                   "bobi.result": "recorded",
+                  ...(sessionModel.has(sessionID) ? { "bobi.model": sessionModel.get(sessionID)! } : {}),
                   "bobi.tokens.input": tokens.input,
                   "bobi.tokens.output": tokens.output,
                   "bobi.tokens.reasoning": tokens.reasoning,

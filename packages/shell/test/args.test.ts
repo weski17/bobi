@@ -76,6 +76,23 @@ describe("parseArgs", () => {
     expect(() => parseArgs(["dossier", "--format", "pdf"])).toThrow(/md or json/)
   })
 
+  test("compare", () => {
+    expect(parseArgs(["compare", "--models", "a, b,a", "--mode", "plan", "--test", "bun test", "--out", "r.json", "fix", "the", "bug"])).toEqual({
+      kind: "compare",
+      models: ["a", "b"],
+      mode: "plan",
+      test: "bun test",
+      out: "r.json",
+      task: "fix the bug",
+    })
+    expect(parseArgs(["compare", "--models", "a,b", "task"])).toMatchObject({ mode: "code", task: "task" })
+    expect(() => parseArgs(["compare", "--models", "a", "task"])).toThrow(/2 to 4 models/)
+    expect(() => parseArgs(["compare", "--models", "a,b,c,d,e", "task"])).toThrow(/2 to 4 models/)
+    expect(() => parseArgs(["compare", "--models", "a,b"])).toThrow(/needs a task/)
+    expect(() => parseArgs(["compare", "--models"])).toThrow(/needs a value/)
+    expect(() => parseArgs(["compare", "--x", "t"])).toThrow(/unknown option for compare/)
+  })
+
   test("audit and diagram", () => {
     expect(parseArgs(["audit"])).toEqual({ kind: "audit", format: "md" })
     expect(parseArgs(["audit", "report", "--from", "2026-10-01", "--to", "2026-10-31", "--user", "anna", "--format", "json"])).toEqual({

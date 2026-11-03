@@ -438,6 +438,24 @@ Der Schlüssel liegt in `~/.bobi/keys/dossier-ed25519.pem` (nur für dich lesbar
 dass das Protokoll unverändert ist – wer es signiert hat, weißt du erst, wenn du den öffentlichen Schlüssel der Person
 vorab kennst. Der Diff ist der Stand beim Versiegeln (nicht beim Entstehen der Änderung).
 
+### Modellvergleich auf deinem Code
+
+Dieselbe Aufgabe mit zwei bis vier Modellen, jedes in einem eigenen, frischen Git-Worktree von `HEAD`; danach läuft
+derselbe Testbefehl auf jedem Ergebnis. Dein Projektordner bleibt unberührt, die Worktrees werden gelöscht.
+
+```bash
+bobi compare --models gross,klein --test "bun test" --out vergleich.json "Behebe den Rundungsfehler in src/checkout.ts"
+```
+
+Ausgabe: Tabelle mit Lauf, Test bestanden/nicht, Zeit, geänderte Dateien, +/- Zeilen, Werkzeugaufrufe und Tokens je
+Modell; die Diffs stehen in `vergleich.json`. Die Modelle müssen am konfigurierten Endpunkt angeboten werden. Regeln:
+
+- **Nur Datei-Änderungen** werden in den Worktrees automatisch freigegeben. Shell, Netzwerk usw. fragen wie immer – ein
+  Lauf ohne Bildschirm kann nicht antworten, also sind sie verweigert (steht im Bericht). Den Testbefehl führt Bobi selbst aus.
+- Voraussetzung: Git-Projekt mit mindestens einem Commit; nicht eingecheckte Änderungen fließen nicht ein.
+- Ein Lauf pro Modell ist eine Momentaufnahme, kein Benchmark: mehrfach wiederholen, bevor du entscheidest.
+- Jeder Lauf steht im Audit-Log, ist also mit `bobi dossier` belegbar.
+
 ---
 
 ## 13. Sicherheit und Sandbox

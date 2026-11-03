@@ -18,6 +18,17 @@ tamper-evident record per task.
 - Optional extras join the chain: the result of a test command (`--test`) and the uncommitted diff (`--diff`, masked).
 - `bobi dossier verify` recomputes the chain and checks the signature; with `--key` it also pins the signer.
 
+## Model comparison (`bobi compare`)
+
+- The same task runs once per model (2–4), one after another, each in its own `git worktree` of HEAD. The model is set
+  through an extra config file (`BOBI_CONFIG`: default model, the mode's model, auto-approval of `edit` for that mode),
+  so a per-mode model from the user's config cannot silently win.
+- Auto-approval covers file edits only. Shell, network and external directories still ask; a headless run cannot answer,
+  so they are refused and counted in the report. Bobi runs the test command itself after each run.
+- Trust of the project is carried over to the worktree for the run and removed afterwards (`TrustStore.forget`).
+- Tokens, tool calls and refusals come from the audit log (time window of the run); the model of each step is now part
+  of the usage record (`bobi.model`).
+
 ## Consequences
 
 - Detects editing, removing, adding and reordering of events, and truncation. It does **not** prove the dossier is

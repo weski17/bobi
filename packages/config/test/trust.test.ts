@@ -31,6 +31,15 @@ describe("trust store", () => {
     expect(store.isTrusted(project)).toBe(true)
   })
 
+  test("forget removes a decision", () => {
+    addBobiFiles()
+    store.decide(project, true)
+    expect(store.status(project)).toBe("trusted")
+    store.forget(project)
+    expect(store.status(project)).toBe("unknown")
+    store.forget(project)
+  })
+
   test("Bobi files make the project unknown until the user decides", () => {
     addBobiFiles()
     expect(trustFiles(project).map((f) => path.relative(project, f))).toEqual(["AGENTS.md", ".bobi/config.jsonc", ".bobi/custom_modes.yaml", ".bobi/rules-plan/p.md"])
