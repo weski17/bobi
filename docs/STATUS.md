@@ -8,6 +8,7 @@
 |---|---|---|
 | Signed, hash-chained change dossier per session (prompt, model, tool calls, approvals, optional test result and diff); `bobi dossier [verify]` | ✅ | `packages/core/src/dossier.ts`, ADR-0022 |
 | Model comparison on your own code (`bobi compare`): same task, 2–4 models, own worktrees, same test command | ✅ | `packages/shell/src/compare.ts`, ADR-0022 |
+| Web chat: the IDE chat panel as a web page in the demo image (port 7682), served by a narrow gate; web IDE moved to 7683 | ✅ | `packages/web-chat`, ADR-0024 |
 | Signed private registry for skills and slash commands (`bobi registry`); MCP servers and IDE extensions deliberately not included | ✅ | `packages/core/src/registry.ts`, ADR-0023 |
 
 ## After phase 7 (2026-10-20)

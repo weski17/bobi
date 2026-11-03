@@ -582,7 +582,12 @@ export DEMO_PASSWORD="$(openssl rand -base64 18)"                              #
 DEMO_BIND=0.0.0.0 docker compose -f compose.demo.yaml up -d                    # nur lokal: ohne DEMO_BIND → 127.0.0.1
 ```
 
-Dann im Browser `http://<server>:7681` öffnen, Benutzer `demo`, das Passwort eingeben. Das Menü bietet:
+Dann im Browser öffnen, Benutzer `demo`, das Passwort eingeben:
+
+- **`http://<server>:7682` – Web-Chat:** das Chat-Panel der IDE als Webseite (Modus wählen, Antworten mitlesen, Änderungen als
+  Diff freigeben oder ablehnen, Rückgängig). Der bequemste Einstieg, ohne Terminal. Alle Besucher teilen hier einen
+  Arbeitsordner (Kopie des Beispielprojekts); *Rückgängig* nimmt die Änderungen der letzten Anfrage zurück.
+- **`http://<server>:7681` – Web-Terminal** mit allen Funktionen. Das Menü bietet:
 **1)** Bobi starten (Chat, Modi, Freigaben, Diffs, Slash-Befehle), **2)** Beispiele zum Ausprobieren, **3)** Code-Tipps,
 **4)** COBOL-Diagramm, **5)** Nutzung und Audit, **6)** A2A-Agentenkarte, **7)** Shell, **8)** Beispielprojekt zurücksetzen.
 Jede Browser-Sitzung arbeitet an einer eigenen Kopie eines Beispielprojekts (TypeScript mit Fehler und unübersichtlicher
@@ -603,6 +608,7 @@ Gut zu wissen:
 - **Gemeinsam genutzt:** alle Besucher teilen das Modell, das Login und den Bobi-Server; Dateien und Sitzungen sind getrennt,
   Nutzung und Audit der Demo (Menüpunkt 5) sind gemeinsam.
 - **Nicht dabei:** Bobi IDE (Desktop-App) und Autovervollständigung. Die IDE lässt sich lokal mit eurem Gateway betreiben.
+  Eine Web-IDE ist nur experimentell und nicht im Standard-Image (Port 7683, ADR-0021); der Web-Chat ersetzt ihr leeres Chat-Panel (ADR-0024).
 - **Zurücksetzen:** `docker compose -f compose.demo.yaml down -v` löscht auch Audit und Nutzung der Demo.
 - **Aktualisieren:** `docker compose -f compose.demo.yaml pull && docker compose -f compose.demo.yaml up -d`.
 

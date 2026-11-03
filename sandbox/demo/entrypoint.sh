@@ -44,15 +44,23 @@ fi
 "${ttyd_args[@]}" /opt/demo/session.sh &
 pids+=($!)
 
+# Shared workspace of the web chat and the optional web IDE: a git copy of the sample project, trusted up front.
+ws=/home/bun/ide/workspace
+if [ ! -d "$ws/.git" ]; then
+  mkdir -p "$ws" && cp -a /opt/demo/workspace/. "$ws"/
+  git -C "$ws" init -q -b main && git -C "$ws" add -A && git -C "$ws" -c user.name=demo -c user.email=demo@localhost commit -qm "Sample project"
+fi
+bobi trust --yes "$ws" > /dev/null 2>&1 || echo "Bobi demo: could not pre-trust the sample project" >&2
+
+# Web chat (ADR-0024): the chat panel of the IDE as a plain web page, so nothing but a browser is needed. The gate on
+# :7682 serves it behind the same login as the terminal and forwards only the calls the chat needs to the Bobi server.
+echo "Bobi demo: starting the web chat …"
+WEBCHAT_DIRECTORY="$ws" bun /opt/bobi/packages/web-chat/src/cli.ts &
+pids+=($!)
+
 # Web IDE with the Bobi chat panel (only in images that contain it, see ADR-0021). It runs on 127.0.0.1; the password
-# gate on :7682 is the only way in. All visitors share one workspace folder (a copy of the sample project).
+# gate on :7683 is the only way in. All visitors share the workspace folder.
 if [ -x /opt/bobi-ide/node ]; then
-  ws=/home/bun/ide/workspace
-  if [ ! -d "$ws/.git" ]; then
-    mkdir -p "$ws" && cp -a /opt/demo/workspace/. "$ws"/
-    git -C "$ws" init -q -b main && git -C "$ws" add -A && git -C "$ws" -c user.name=demo -c user.email=demo@localhost commit -qm "Sample project"
-  fi
-  bobi trust --yes "$ws" > /dev/null 2>&1 || echo "Bobi demo: could not pre-trust the sample project" >&2
   # Machine settings of the demo IDE: dark theme, no telemetry or updates, the engine's own (empty) chat side bar hidden –
   # Bobi's chat panel is the one to try.
   mkdir -p /home/bun/ide/server-data/data/Machine
@@ -76,8 +84,8 @@ JSON
   # Origin check against cross-site WebSocket hijacking. Everything it writes goes to /tmp.
   mkdir -p /tmp/nginx
   perl -e 'my $s = join "", map { ("a".."z", "A".."Z", 0..9)[rand 62] } 1..12; print "demo:" . crypt($ARGV[0], "\$6\$$s\$") . "\n"' "$DEMO_PASSWORD" > /tmp/nginx/htpasswd
-  listen="7682"; tls=""
-  if [ -f /run/tls/tls.crt ] && [ -f /run/tls/tls.key ]; then listen="7682 ssl"; tls="ssl_certificate /run/tls/tls.crt; ssl_certificate_key /run/tls/tls.key;"; fi
+  listen="7683"; tls=""
+  if [ -f /run/tls/tls.crt ] && [ -f /run/tls/tls.key ]; then listen="7683 ssl"; tls="ssl_certificate /run/tls/tls.crt; ssl_certificate_key /run/tls/tls.key;"; fi
   cat > /tmp/nginx/nginx.conf <<NGINX
 daemon off;
 pid /tmp/nginx/nginx.pid;

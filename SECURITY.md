@@ -30,7 +30,7 @@ Supported version: the current `main` branch (Bobi is a research project; there 
 The demo exists so that others can try Bobi; treat it as an exposed service:
 
 - Access needs the password you set (`DEMO_PASSWORD`, at least 12 characters, otherwise the container refuses to
-  start). The web terminal (ttyd) and the optional, experimental web IDE use the same user (`demo`) and password;
+  start). The web terminal (ttyd), the web chat and the optional, experimental web IDE use the same user (`demo`) and password;
   there is no default password.
 - **Use TLS outside a trusted network.** The password and all keystrokes travel over the connection. Put a TLS
   reverse proxy in front or mount a certificate (see `compose.demo.yaml`).
@@ -54,4 +54,5 @@ The demo exists so that others can try Bobi; treat it as an exposed service:
 - A small local model can be steered by hostile content more easily than a large one; the permission system, not
   the model, is what stops harmful actions. Keep approvals on for untrusted projects.
 - The sandbox protects the host, not the project: a mounted project is writable by an approved agent.
+- The web chat (port 7682) forwards only the API calls the chat needs to the Bobi server, checks the `Origin` header and sets a strict content security policy ([ADR-0024](docs/adr/0024-web-chat.md)). All visitors share its workspace.
 - The web IDE is experimental and not part of the standard demo image (see [ADR-0021](docs/adr/0021-web-ide-in-the-demo-image.md)).
