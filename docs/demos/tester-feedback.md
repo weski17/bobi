@@ -27,7 +27,7 @@ den genauen Text und die Uhrzeit angeben.
 ## Eindruck
 
 1. Hast du verstanden, was Bobi gerade tut? Wo nicht?  
-2. War die Freigabe (Übernehmen/Ablehnen) klar? Hättest du dich sicher gefühlt, Bobi an echtem Code arbeiten zu lassen?  
+2. War die Freigabe (Accept / Always / Reject) klar? Würdest du verstehen, was „Always" bewirkt? Hättest du dich sicher gefühlt, Bobi an echtem Code arbeiten zu lassen?  
 3. Was hat dich genervt oder verwirrt?  
 4. Was hat dir gefallen?  
 5. Was fehlt dir, damit du Bobi im Alltag nutzen würdest?  

@@ -42,12 +42,14 @@ Im Projekt steckt ein Fehler: `total()` ignoriert die Menge (`qty`) der Artikel.
 
 > In `src/checkout.ts` ignoriert `total` die Menge (`qty`) der Artikel. Behebe das.
 
-Erwartet: Bobi zeigt die Änderung als **Diff** (rot/grün) und **fragt, ob er sie übernehmen darf**. Prüfe den Diff und
-klicke **Übernehmen**. Frage dich: War klar, was passiert? War der Diff verständlich?
+Erwartet: Bobi zeigt die Änderung als **Diff** (rot/grün) und **fragt, ob er sie übernehmen darf**. Du siehst drei Knöpfe
+(die Oberfläche ist englisch): **Accept** (einmal erlauben), **Always** (diese Art Aktion dauerhaft erlauben – bitte
+**nicht** klicken: es kann auch für die anderen Tester gelten) und **Reject** (ablehnen). Prüfe den Diff und klicke **Accept**. Frage dich: War
+klar, was passiert? War klar, was „Always" bedeutet?
 
 ### 3. Rückgängig machen
 
-Klicke auf **Rückgängig**. Erwartet: Die Änderung der letzten Anfrage ist wieder weg. Bitte stelle sicher, dass wirklich
+Klicke oben auf **Undo**. Erwartet: Die Änderung der letzten Anfrage ist wieder weg. Bitte stelle sicher, dass wirklich
 der alte Stand zurück ist (frag Bobi im Modus `ask`, die Datei zu lesen).
 
 ### 4. Eine Änderung ablehnen
@@ -56,7 +58,7 @@ Wähle `code` und schreibe:
 
 > Lege die Datei `notizen.md` mit dem Text „Hallo" an.
 
-Klicke diesmal **Ablehnen**. Erwartet: Die Datei entsteht nicht.
+Klicke diesmal **Reject**. Erwartet: Die Datei entsteht nicht.
 
 ### 5. Gesperrte Dateien (wichtig!)
 
