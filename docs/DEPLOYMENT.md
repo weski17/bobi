@@ -144,3 +144,8 @@ docker compose -f compose.demo.yaml down -v                # stoppen und die Gas
 | Terminal bleibt leer / „origin“-Fehler | Reverse Proxy ändert den Host-Header. Bei Caddy Standard lassen. |
 | Web-IDE leer | Die Web-IDE ist experimentell und standardmäßig nicht im Image (ADR-0021). Nimm den Web-Chat (Port 7682). |
 | Web-Chat zeigt „Login required“ oder nichts | Dieselben Zugangsdaten wie beim Terminal (Benutzer `demo`). Adresse mit `https://` und ohne Zugangsdaten in der URL öffnen. |
+
+## Testerinnen und Tester einladen
+
+Wenn die Demo läuft: schicke den Gästen die Adresse (Web-Chat, Port 7682 bzw. `https://chat.firma.de`) und das Passwort einzeln, nicht im Team-Chat. Dazu die [Testanleitung](demos/tester-anleitung.md) und den [Rückmeldebogen](demos/tester-feedback.md). Alle Gäste teilen einen Arbeitsordner; sprecht Zeiten ab.
+
