@@ -486,6 +486,29 @@ Downgrades und fremde Dateien gleichen Namens (mit `--force` überschreibbar –
 IDE-Erweiterungen führen Code aus und sind bewusst nicht Teil der Registry (ADR-0023). Wichtig: Ein gestohlener
 Herausgeber-Schlüssel erlaubt signierte Schad-Skills, bis ihm das Vertrauen entzogen wird.
 
+**Pakete sperren (Sperrliste, ADR-0025).** Ist *ein* Paket falsch (z. B. ein Token im Skill) oder ein Schlüssel
+gestohlen, kann ein vertrauter Herausgeber eine signierte Sperrliste in den Registry-Ordner legen:
+
+```bash
+bobi registry revoke review-style --reason "enthält ein Token" --out registry/           # alle Versionen
+bobi registry revoke review-style --version 1.0.0 --reason "fehlerhaft" --out registry/  # nur diese Version
+bobi registry revoke --key-id <schluessel-id> --reason "Schlüssel gestohlen" --out registry/
+bobi registry verify paket.bobipkg.json                  # zeigt den Hash für --hash (genau ein Build)
+```
+
+Nutzer übernehmen die Liste beim Installieren oder mit `check`:
+
+```bash
+bobi registry check --from registry/              # meldet gesperrte, schon installierte Pakete (Exit 1)
+bobi registry check --from registry/ --remove     # entfernt genau diese Pakete
+```
+
+Ein gesperrtes Paket lässt sich nicht installieren, auch nicht mit `--force`. Eine ältere Liste als die zuletzt
+gesehene wird abgelehnt (niemand kann eine Sperre durch Zurücklegen einer alten Datei aufheben). Eine Liste, die
+nicht stimmt oder von einem nicht vertrauten Herausgeber stammt, ist ein Fehler – kein stilles Ignorieren.
+Grenzen: Bobi prüft nicht von selbst; die Sperre wirkt erst bei `install` oder `check`. Bereits installierte,
+gesperrte Pakete bleiben aktiv, bis du `check --remove` ausführst.
+
 ---
 
 ## 13. Sicherheit und Sandbox

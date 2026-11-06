@@ -69,7 +69,7 @@ permissions and configuration. Pick the IDE for daily work, the shell for script
 | 🤝 | **A2A** | Agent card and read-only answers for other agents; Bobi can ask your other agents, with approval. |
 | 🧾 | **Change dossier** | A signed, tamper-evident record of one session: prompt, model, every tool call, approval, test result and diff. `bobi dossier verify` checks it. |
 | ⚖️ | **Model comparison** | The same task with several models on your own code, same test command, side by side. |
-| 📦 | **Signed registry** | Share skills and slash commands as signed packages; only trusted publishers can be installed. |
+| 📦 | **Signed registry** | Share skills and slash commands as signed packages; only trusted publishers can be installed, and bad packages can be revoked. |
 | 📊 | **Audit & usage** | Compliance reports, usage per team and person, architecture diagrams from code. |
 
 <p align="center">
