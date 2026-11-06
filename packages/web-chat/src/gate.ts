@@ -117,6 +117,14 @@ async function forward(request: Request, url: URL, upstream: string, upstreamAut
   return new Response(response.body, { status: response.status, headers: out })
 }
 
+/** The page itself: its files and the small config it reads at start. Anything else is a 404. */
+function page(request: Request, url: URL, directory: string, dirs: Record<"public" | "dist" | "media", string>): Response {
+  if (request.method !== "GET") return plain(404, "Not found")
+  if (url.pathname === "/config.json") return new Response(JSON.stringify({ directory }), { headers: { ...SECURITY_HEADERS, "content-type": "application/json" } })
+  const known = Object.hasOwn(FILES, url.pathname) ? FILES[url.pathname] : undefined
+  return known ? serveFile(known, dirs) : plain(404, "Not found")
+}
+
 /** `GET /chat/poll[?after=N]`: the events after N, waiting a while if there are none. Without `after`: only the position. */
 async function poll(request: Request, url: URL, hub: EventHub, waitMs: number): Promise<Response> {
   const raw = url.searchParams.get("after")
@@ -134,13 +142,9 @@ export function startGate(options: GateOptions) {
     const url = new URL(request.url)
     if (!authorized(request, options.password)) return plain(401, "Login required", { "www-authenticate": 'Basic realm="Bobi Demo"' })
     if (crossSite(request)) return plain(403, "Cross-site request refused")
-    if (url.pathname === "/config.json" && request.method === "GET")
-      return new Response(JSON.stringify({ directory: options.directory }), { headers: { ...SECURITY_HEADERS, "content-type": "application/json" } })
     if (url.pathname === "/chat/poll" && request.method === "GET") return poll(request, url, hub, options.pollWaitMs ?? 25_000)
-    const known = FILES[url.pathname]
-    if (known && request.method === "GET") return serveFile(known, dirs)
     if (url.pathname.startsWith("/api/")) return forward(request, url, options.upstream, upstreamAuth)
-    return plain(404, "Not found")
+    return page(request, url, options.directory, dirs)
   }
   const server = Bun.serve({
     port: options.port,
