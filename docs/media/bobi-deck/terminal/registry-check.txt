@@ -1,0 +1,4 @@
+$ bobi registry check --from reg
+revocation list reg/revocations.bobirev.json: serial 1, 1 entries
+REVOKED command erklaere 1.0.0 in ~/.bobi: enthält ein Token
+

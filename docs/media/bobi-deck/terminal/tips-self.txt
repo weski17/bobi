@@ -1,0 +1,4 @@
+$ bobi tips packages/core/src/registry.ts
+packages/core/src/registry.ts:87: warning [complexity] validate has cyclomatic complexity 19 (limit 10). Split it into smaller functions.
+packages/core/src/registry.ts:191: warning [complexity] installPackage has cyclomatic complexity 19 (limit 10). Split it into smaller functions.
+bobi: 2 tip(s) in 1 of 1 file(s)
