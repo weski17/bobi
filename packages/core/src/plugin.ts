@@ -129,6 +129,9 @@ export function promptText(event: unknown): string | undefined {
   return joined || undefined
 }
 
+/** The fields of an engine event the audit trail reads. */
+type EngineEvent = { type: string; location?: { directory?: unknown }; data?: Record<string, unknown> }
+
 const inputPath = (input: unknown): string | undefined =>
   input && typeof input === "object" && typeof (input as { path?: unknown }).path === "string" ? (input as { path: string }).path : undefined
 
@@ -381,11 +384,7 @@ export function createBobiCore(options: BobiCoreOptions): Plugin.Plugin & { read
       const events = new AbortController()
       void (async () => {
         try {
-          for await (const event of ctx.event.subscribe({ signal: events.signal } as never) as AsyncIterable<{
-            type: string
-            location?: { directory?: unknown }
-            data?: Record<string, unknown>
-          }>) {
+          for await (const event of ctx.event.subscribe({ signal: events.signal } as never) as AsyncIterable<EngineEvent>) {
             // Setup runs once per location, and every instance's stream carries the events of all locations. Only the
             // instance of the event's location records it (once, and with the mode and model its prompt hook saw).
             if (event.location?.directory !== undefined && String(event.location.directory) !== location) continue
