@@ -107,9 +107,15 @@ describe.skipIf(!available)("demo image", () => {
       const config = (await (await fetch(`${base}/config.json`, { headers: auth })).json()) as { directory: string }
       expect(config.directory).toBe("/home/bun/ide/workspace")
       // The chat's own calls work (the gate adds the server's credentials) ...
-      const agents = await fetch(`${base}/api/agent?location[directory]=${encodeURIComponent(config.directory)}`, { headers: auth })
-      expect(agents.status).toBe(200)
-      expect(await agents.text()).toContain("orchestrator")
+      // The engine loads the modes a moment after the location boots; the chat waits for them the same way.
+      let agents = ""
+      for (let i = 0; i < 60 && !agents.includes("orchestrator"); i++) {
+        const r = await fetch(`${base}/api/agent?location[directory]=${encodeURIComponent(config.directory)}`, { headers: auth })
+        expect(r.status).toBe(200)
+        agents = await r.text()
+        if (!agents.includes("orchestrator")) await Bun.sleep(500)
+      }
+      expect(agents).toContain("orchestrator")
       // ... everything else of the engine's API does not.
       expect((await fetch(`${base}/api/session`, { headers: auth })).status).toBe(404)
       expect((await fetch(`${base}/api/config`, { headers: auth })).status).toBe(404)
