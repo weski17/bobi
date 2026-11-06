@@ -7,9 +7,9 @@ import path from "node:path"
 import { DEFAULTS } from "@bobi/config"
 import { startMockModel, type MockModel } from "@bobi/mock-model"
 import { bobiPaths, startBobiServer, type BobiServer } from "@bobi/server"
-import { BobiClient } from "../../ide-extension/src/client.ts"
 import { ChatController, type ToUi } from "../../ide-extension/src/controller.ts"
 import { ALLOWED, startGate } from "../src/gate.ts"
+import { PollingClient } from "../src/polling-client.ts"
 
 const serverPassword = "gate-test-server-password"
 const visitor = "gate-test-visitor-password"
@@ -87,6 +87,7 @@ test("only the calls the chat needs reach the server", async () => {
   expect(ALLOWED.length).toBeGreaterThan(0)
   for (const [method, p] of [
     ["GET", "/api/session"],
+    ["GET", "/api/event"],
     ["DELETE", "/api/session/abc"],
     ["GET", "/api/config"],
     ["POST", "/api/session/abc/shell"],
@@ -100,6 +101,37 @@ test("only the calls the chat needs reach the server", async () => {
   }
 })
 
+test("/chat/poll: needs the login and the same site, takes only a number, returns events as plain JSON", async () => {
+  expect((await get("/chat/poll", {})).status).toBe(401)
+  expect((await get("/chat/poll", { authorization: login, origin: "https://evil.example" })).status).toBe(403)
+  for (const bad of ["abc", "-1", "1.5", "99999999999999999"]) expect([bad, (await get(`/chat/poll?after=${bad}`)).status]).toEqual([bad, 400])
+  expect((await fetch(new URL("/chat/poll", gate.url), { method: "POST", headers: { authorization: login }, body: "{}" })).status).toBe(404)
+  // Without `after` it only tells the position, at once.
+  const first = await get("/chat/poll")
+  expect(first.status).toBe(200)
+  expect(first.headers.get("content-type")).toBe("application/json")
+  expect(first.headers.get("cache-control")).toBe("no-store")
+  expect(first.headers.get("content-security-policy")).toContain("default-src 'none'")
+  const position = (await first.json()) as { last: number; events: unknown[] }
+  expect(position.events).toEqual([])
+  expect(Number.isInteger(position.last)).toBe(true)
+})
+
+test("/chat/poll answers empty after the wait when nothing happens", async () => {
+  // A quiet server (the real one sends events of its own at any time): a stream that never says anything.
+  const quiet = Bun.serve({ port: 0, hostname: "127.0.0.1", idleTimeout: 0, fetch: () => new Response(new ReadableStream({ start() {} }), { headers: { "content-type": "text/event-stream" } }) })
+  const quick = startGate({ port: 0, hostname: "127.0.0.1", password: visitor, upstream: `http://127.0.0.1:${quiet.port}`, serverPassword, directory: dir, publicDir: assets, distDir: assets, mediaDir: assets, pollWaitMs: 150 })
+  try {
+    const began = Date.now()
+    const r = await fetch(new URL("/chat/poll?after=0", quick.url), { headers: { authorization: login } })
+    expect(await r.json()).toEqual({ last: 0, events: [] })
+    expect(Date.now() - began).toBeGreaterThanOrEqual(140)
+  } finally {
+    void quick.stop(true)
+    void quiet.stop(true)
+  }
+})
+
 test("an unreachable server is a 502, not a crash", async () => {
   const lonely = startGate({ port: 0, hostname: "127.0.0.1", password: visitor, upstream: "http://127.0.0.1:1", serverPassword, directory: dir, publicDir: assets, distDir: assets, mediaDir: assets })
   const r = await fetch(new URL("/api/agent", lonely.url), { headers: { authorization: login } })
@@ -110,7 +142,7 @@ test("an unreachable server is a 502, not a crash", async () => {
 test("the whole chat works through the gate: modes, streamed answer, edit approval and undo", async () => {
   const posts: ToUi[] = []
   const withLogin = ((input: RequestInfo | URL, init?: RequestInit) => fetch(input, { ...init, headers: { ...(init?.headers as Record<string, string>), authorization: login } })) as typeof fetch
-  const controller = new ChatController(new BobiClient(gate.url.origin, undefined, withLogin), dir, {
+  const controller = new ChatController(new PollingClient(gate.url.origin, withLogin), dir, {
     post: (m) => void posts.push(m),
     showDiff: async () => {},
     error: (message) => void posts.push({ type: "error", message }),
