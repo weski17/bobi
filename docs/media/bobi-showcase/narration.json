@@ -1,0 +1,164 @@
+[
+ {
+  "id": "intro",
+  "text": "Das ist Bobi – dein KI-Entwicklungspartner. Er läuft komplett in eurem Firmennetz, mit eurem eigenen Modell."
+ },
+ {
+  "id": "onprem",
+  "text": "Bobi spricht mit jedem OpenAI- oder Anthropic-kompatiblen Endpunkt, zum Beispiel LiteLLM, vLLM oder Ollama. Code und Daten verlassen das Firmennetz nie.",
+  "speak": "Bobi spricht mit jedem OpenAI- oder Anthropic-kompatiblen Endpunkt, zum Beispiel Lait L L M, V L L M oder Ollama. Code und Daten verlassen das Firmennetz nie."
+ },
+ {
+  "id": "surfaces",
+  "text": "Es gibt zwei Oberflächen: die Bobi IDE und die Bobi Shell. Beide teilen sich denselben Kern – dieselben Modi, Regeln und Einstellungen."
+ },
+ {
+  "id": "loop",
+  "text": "Bobi plant, ruft Werkzeuge auf, prüft das Ergebnis und macht weiter. Jede Änderung und jeder Terminal-Befehl braucht deine Freigabe."
+ },
+ {
+  "id": "diff",
+  "text": "In der IDE siehst du jede Änderung als Diff, bevor sie geschrieben wird. Und mit einem Klick machst du alles wieder rückgängig."
+ },
+ {
+  "id": "modes",
+  "text": "Modi geben Bobi eine Rolle und eigene Rechte: Code, Plan, Ask nur zum Lesen, Advanced mit MCP, Orchestrator und Security. Eigene Modi legst du pro Projekt an.",
+  "speak": "Modi geben Bobi eine Rolle und eigene Rechte: Code, Plan, Ask nur zum Lesen, Advanced mit M C P, Orchestrator und Security. Eigene Modi legst du pro Projekt an."
+ },
+ {
+  "id": "context",
+  "text": "Mit Slash init entsteht die Datei AGENTS. Regeln im Ordner Punkt bobi gelten immer – und was in der bobiignore steht, bekommt Bobi nie zu sehen.",
+  "speak": "Mit Slash init entsteht die Datei Agents. Regeln im Ordner Punkt Bobi gelten immer – und was in der Bobi-Ignore steht, bekommt Bobi nie zu sehen."
+ },
+ {
+  "id": "orchestrator",
+  "text": "Der Orchestrator zerlegt große Aufgaben und verteilt sie an die passenden Modi."
+ },
+ {
+  "id": "commands",
+  "text": "Skills und eigene Slash-Befehle machen Abläufe wiederholbar – zum Beispiel commit, pr oder security-review.",
+  "speak": "Skills und eigene Slash-Befehle machen Abläufe wiederholbar – zum Beispiel Commit, P R oder Security-Review."
+ },
+ {
+  "id": "literate",
+  "text": "Literate Coding: Schreib in Klartext an die Stelle, was passieren soll, drück Befehl, Alt, Enter – und Bobi liefert den Code als Diff."
+ },
+ {
+  "id": "autocomplete",
+  "text": "Die Autovervollständigung schlägt ganze Zeilen und Blöcke vor, mit eurem eigenen Modell. Tab übernimmt den Vorschlag."
+ },
+ {
+  "id": "tips",
+  "text": "Code-Tipps markieren komplexe Funktionen und Anti-Patterns schon beim Tippen – lokal, ohne Modellaufruf. Auf Wunsch vereinfacht Bobi den Code."
+ },
+ {
+  "id": "security",
+  "text": "Der Security-Modus sucht Schwachstellen und Code-Smells und schlägt Patches vor."
+ },
+ {
+  "id": "git",
+  "text": "Bobi schreibt Commit-Nachrichten aus dem Diff und erstellt Pull Requests. Vor dem Pushen fragt er natürlich nach."
+ },
+ {
+  "id": "mcp",
+  "text": "Über MCP bindet Bobi weitere Werkzeuge an, lokal oder im Netz. Der eingebaute Code-Graph zeigt Aufrufketten und Abhängigkeiten.",
+  "speak": "Über M C P bindet Bobi weitere Werkzeuge an, lokal oder im Netz. Der eingebaute Code-Graph zeigt Aufrufketten und Abhängigkeiten."
+ },
+ {
+  "id": "cobol",
+  "text": "Für den Mainframe analysiert Bobi COBOL: Programme, Datenfluss und die Auswirkung einer Änderung – getestet an CardDemo.",
+  "speak": "Für den Mainframe analysiert Bobi Kobol: Programme, Datenfluss und die Auswirkung einer Änderung – getestet an Card Demo."
+ },
+ {
+  "id": "zowe",
+  "text": "Über Zowe liest Bobi Datasets und startet Jobs – nur auf freigegebenen Datasets und immer mit deiner Bestätigung.",
+  "speak": "Über Zowi liest Bobi Datasets und startet Jobs – nur auf freigegebenen Datasets und immer mit deiner Bestätigung."
+ },
+ {
+  "id": "tools",
+  "text": "Bobi nutzt Terminal und Browser. Alles, was dort steht, ist für ihn nur Daten – niemals eine Anweisung."
+ },
+ {
+  "id": "safety",
+  "text": "Darunter liegt eine Sandbox im Container, Netzwerk nur per Allowlist, maskierte Geheimnisse und ein Audit jeder Aktion über OpenTelemetry.",
+  "speak": "Darunter liegt eine Sandbox im Container, Netzwerk nur per Allowlist, maskierte Geheimnisse und ein Audit jeder Aktion über Open Telemetry."
+ },
+ {
+  "id": "reports",
+  "text": "Audit-Berichte und eine Nutzungsstatistik pro Team erzeugst du mit einem einzigen Befehl."
+ },
+ {
+  "id": "diagrams",
+  "text": "Architekturdiagramme entstehen direkt aus dem Code."
+ },
+ {
+  "id": "a2a",
+  "text": "Und per A2A arbeitet Bobi mit anderen Agenten zusammen. Fremde Agenten dürfen bei Bobi nur lesen.",
+  "speak": "Und per A zwei A arbeitet Bobi mit anderen Agenten zusammen. Fremde Agenten dürfen bei Bobi nur lesen."
+ },
+ {
+  "id": "phase8",
+  "text": "Neu dazugekommen: Bobi macht seine Arbeit nachweisbar – und lässt sich leichter teilen und prüfen."
+ },
+ {
+  "id": "dossier",
+  "text": "Zu jeder Sitzung, und jetzt auch zu jeder einzelnen Aufgabe, erzeugt Bobi ein signiertes Änderungsprotokoll: Auftrag, Modell, jedes Werkzeug und jede Freigabe."
+ },
+ {
+  "id": "dossier-broken",
+  "text": "Die Einträge sind verkettet und signiert. Ändert jemand nachträglich auch nur den Auftrag, meldet die Prüfung sofort: gebrochen."
+ },
+ {
+  "id": "compare",
+  "text": "Mit bobi compare löst jedes Modell dieselbe Aufgabe auf eurem eigenen Code, jedes in einer eigenen Arbeitskopie und mit demselben Testbefehl. So seht ihr, welches Modell wirklich passt."
+ },
+ {
+  "id": "registry",
+  "text": "Skills und Slash-Befehle teilt ihr als signierte Pakete. Installiert wird nur, was von einem vertrauten Herausgeber kommt und unverändert ist."
+ },
+ {
+  "id": "revoke",
+  "text": "Ist ein Paket fehlerhaft, sperrt der Herausgeber es. Bobi verweigert dann die Installation, sogar mit force, und findet schon installierte Kopien.",
+  "speak": "Ist ein Paket fehlerhaft, sperrt der Herausgeber es. Bobi verweigert dann die Installation, sogar mit Fohrs, und findet schon installierte Kopien."
+ },
+ {
+  "id": "webchat",
+  "text": "Der Web-Chat bringt das Chat-Panel der IDE in den Browser. So probieren Kolleginnen und Kollegen Bobi aus, ohne etwas zu installieren."
+ },
+ {
+  "id": "ci",
+  "text": "Und in der CI prüft Bobi jeden Pull Request: Neue Code-Tipps lassen ihn scheitern, und das Image wird auf bekannte Schwachstellen gescannt.",
+  "speak": "Und in der C I prüft Bobi jeden Pull Request: Neue Code-Tipps lassen ihn scheitern, und das Image wird auf bekannte Schwachstellen gescannt."
+ },
+ {
+  "id": "live-intro",
+  "text": "Jetzt live: die echte Demo, mit einem kleinen lokalen Modell auf der CPU. Die Wartezeiten des Modells kürzen wir – und zeigen das auch.",
+  "speak": "Jetzt live: die echte Demo, mit einem kleinen lokalen Modell auf der C P U. Die Wartezeiten des Modells kürzen wir – und zeigen das auch."
+ },
+ {
+  "id": "live-ask",
+  "text": "Im Modus Ask darf Bobi nur lesen. Er öffnet die Datei und erklärt die Funktion in zwei Sätzen.",
+  "clip": "ask"
+ },
+ {
+  "id": "live-fix",
+  "text": "Im Modus Code ändert Bobi die Datei. Die Änderung erscheint als Diff, und wir übernehmen sie. Den Testbefehl danach lehnen wir ab: Ohne Freigabe läuft nichts. Und mit Undo ist alles wieder zurück.",
+  "clip": "fix",
+  "speak": "Im Modus Code ändert Bobi die Datei. Die Änderung erscheint als Diff, und wir übernehmen sie. Den Testbefehl danach lehnen wir ab: Ohne Freigabe läuft nichts. Und mit Andu ist alles wieder zurück."
+ },
+ {
+  "id": "live-secret",
+  "text": "Und die Geheimnisse? Bobi versucht, die Datei zu lesen, und wird blockiert: Sie steht in der bobiignore. Vom Inhalt ist nichts zu sehen.",
+  "speak": "Und die Geheimnisse? Bobi versucht, die Datei zu lesen, und wird blockiert: Sie steht in der bobi-ignore. Vom Inhalt ist nichts zu sehen.",
+  "clip": "secret"
+ },
+ {
+  "id": "quality",
+  "text": "Alles ist getestet: 484 automatisierte Tests, 99 Prozent Zeilenabdeckung, acht von acht Angriffen im Red-Team eingedämmt und hundert parallele Sitzungen ohne Fehler."
+ },
+ {
+  "id": "outro",
+  "text": "Bobi. On-Prem. Sicher. Offen.",
+  "speak": "Bobi. On-Prem. Sicher. Offen."
+ }
+]
