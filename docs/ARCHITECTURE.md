@@ -44,12 +44,13 @@ through A2A, restricted to reading.
 | Package | Responsibility | ADR |
 |---|---|---|
 | `vendor/opencode` | Engine: agent loop, tools, permissions, snapshots, MCP client, SQLite, HTTP API (pinned submodule, minimal patches) | 0001, 0002 |
-| `packages/core` (`@bobi/core`) | The host plugin that makes the engine Bobi: secure policy and protected rules, modes as agents, rules/AGENTS.md, `.bobiignore`, project trust, secret masking, untrusted-data marking, audit (OTLP + JSONL incl. approvals, tasks, tokens), skills and commands, the read-only `a2a` agent, audit and usage reports | 0002, 0005, 0010, 0014, 0016–0018 |
+| `packages/core` (`@bobi/core`) | The host plugin that makes the engine Bobi: secure policy and protected rules, modes as agents, rules/AGENTS.md, `.bobiignore`, project trust, secret masking, untrusted-data marking, audit (OTLP + JSONL incl. approvals, tasks, tokens), skills and commands, the read-only `a2a` agent, audit and usage reports, the signed change dossier and the signed registry for skills and commands | 0002, 0005, 0010, 0014, 0016–0018, 0022, 0023 |
 | `packages/config` | `bobi.jsonc` schema, layering (global → project if trusted → `BOBI_CONFIG` → env), offline switches, trust store | 0003, 0014 |
 | `packages/modes` | Built-in modes, `custom_modes.yaml`, tool groups → permission rules and visible tools | 0004 |
 | `packages/server` | Embeds the engine on a Node HTTP server (WebSockets for terminals), password auth, checkpoint repos, Bobi routes (autocomplete, tips, A2A) | 0013, 0017, 0018 |
 | `packages/shell` | The `bobi` application and its commands | 0009, 0013 |
 | `packages/ide-extension` | Bobi chat panel for Bobi IDE: chat, diffs, literate coding, commit messages, autocomplete, code tips | 0008, 0016–0018 |
+| `packages/web-chat` | The IDE chat panel as a web page: browser bundle of the same chat controller plus a gate that serves it and forwards only the chat's API calls | 0024 |
 | `packages/browser` | Headless-browser tool (Playwright), one approval per page | 0007 |
 | `packages/egress-proxy` | Allowlist proxy for the sandbox (one request per connection) | 0007 |
 | `packages/a2a` | A2A agent card, inbound JSON-RPC handler, outbound client and `a2a` tool | 0017 |
@@ -148,6 +149,11 @@ Project files are used only after the user trusts the project (fingerprint of th
 | 18 | Audit reports, diagrams | `bobi audit`, `bobi diagram` | 6 |
 | 19 | Usage statistics | `bobi usage` | 7 |
 | 20 | A2A | `packages/a2a` | 6 |
+| – | Signed change dossier | `@bobi/core/dossier`, `bobi dossier` | 8 |
+| – | Model comparison | `packages/shell/src/compare.ts`, `bobi compare` | 8 |
+| – | Signed registry (skills, commands) | `@bobi/core/registry`, `bobi registry` | 8 |
+| – | Web chat | `packages/web-chat` | 8 |
+| – | Tips as a pull request check | `packages/tips/src/ratchet.ts`, `bobi tips --since` | 8 |
 
 ## 7. Quality gates
 

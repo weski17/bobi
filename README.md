@@ -67,6 +67,9 @@ permissions and configuration. Pick the IDE for daily work, the shell for script
 | 🔌 | **MCP** | Local and remote MCP servers per mode; built-in code graph for call chains and dependencies. |
 | 🖥️ | **COBOL & mainframe** | COBOL analysis (tested on AWS CardDemo) and mainframe datasets and jobs via Zowe. |
 | 🤝 | **A2A** | Agent card and read-only answers for other agents; Bobi can ask your other agents, with approval. |
+| 🧾 | **Change dossier** | A signed, tamper-evident record of one session: prompt, model, every tool call, approval, test result and diff. `bobi dossier verify` checks it. |
+| ⚖️ | **Model comparison** | The same task with several models on your own code, same test command, side by side. |
+| 📦 | **Signed registry** | Share skills and slash commands as signed packages; only trusted publishers can be installed. |
 | 📊 | **Audit & usage** | Compliance reports, usage per team and person, architecture diagrams from code. |
 
 <p align="center">
@@ -114,11 +117,11 @@ terminal. The container has no internet access; visitors log in once and try eve
 
 ```bash
 export DEMO_PASSWORD="$(openssl rand -base64 18)"
-DEMO_BIND=0.0.0.0 docker compose -f compose.demo.yaml up -d      # → http://<server>:7681  (user: demo)
+DEMO_BIND=0.0.0.0 docker compose -f compose.demo.yaml up -d      # → web chat :7682, web terminal :7681  (user: demo)
 ```
 
 About 8 GB RAM and 4 CPU cores; the model runs on the CPU, so answers take a while. Details, TLS and automatic
-deployment: [Handbuch](docs/HANDBUCH.md#demo-zum-ausprobieren-image-mit-modell) · image: `ghcr.io/weski17/bobi-demo`.
+deployment: [DEPLOYMENT.md](docs/DEPLOYMENT.md) · [Handbuch](docs/HANDBUCH.md#demo-zum-ausprobieren-image-mit-modell) · image: `ghcr.io/weski17/bobi-demo`.
 
 ## How it works
 
