@@ -49,23 +49,27 @@ function pickTask(records: readonly AuditRecord[], session: string, which: numbe
   return task
 }
 
+function testEvent(io: Io, command: string, mask: (text: string) => string): ExtraEvent {
+  const began = Date.now()
+  const r = spawnSync(command, { shell: true, cwd: io.cwd, encoding: "utf8", timeout: 600_000 })
+  const output = mask(`${r.stdout ?? ""}${r.stderr ?? ""}`)
+  return { kind: "test", time: Date.now(), fields: { command: mask(command), exit: r.status ?? -1, seconds: Math.round((Date.now() - began) / 100) / 10, output: hashOf(output).slice(0, 16), tail: output.slice(-400) } }
+}
+
+function diffEvent(io: Io, mask: (text: string) => string): ExtraEvent {
+  const r = spawnSync("git", ["diff", "HEAD", "--no-color"], { cwd: io.cwd, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 })
+  if (r.status !== 0) throw new UsageError(`git diff failed: ${(r.stderr ?? "").trim() || "not a git repository"}`)
+  const diff = mask(r.stdout)
+  return { kind: "diff", time: Date.now(), fields: { sha256: hashOf(diff), files: (diff.match(/^diff --git /gm) ?? []).length, diff: diff.length > 200_000 ? `${diff.slice(0, 200_000)}\n… (cut)` : diff } }
+}
+
 function extrasFor(io: Io, command: SealCommand): ExtraEvent[] {
   const mask = createMasker([])
   const extras: ExtraEvent[] = []
-  if (command.test) {
-    const began = Date.now()
-    const r = spawnSync(command.test, { shell: true, cwd: io.cwd, encoding: "utf8", timeout: 600_000 })
-    const output = mask(`${r.stdout ?? ""}${r.stderr ?? ""}`)
-    extras.push({ kind: "test", time: Date.now(), fields: { command: mask(command.test), exit: r.status ?? -1, seconds: Math.round((Date.now() - began) / 100) / 10, output: hashOf(output).slice(0, 16), tail: output.slice(-400) } })
-  }
-  if (command.diff) {
-    const r = spawnSync("git", ["diff", "HEAD", "--no-color"], { cwd: io.cwd, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 })
-    if (r.status !== 0) throw new UsageError(`git diff failed: ${(r.stderr ?? "").trim() || "not a git repository"}`)
-    const diff = mask(r.stdout)
-    extras.push({ kind: "diff", time: Date.now(), fields: { sha256: hashOf(diff), files: (diff.match(/^diff --git /gm) ?? []).length, diff: diff.length > 200_000 ? `${diff.slice(0, 200_000)}\n… (cut)` : diff } })
-    // The working tree is not recorded per task, so be clear about what the diff is.
-    if (command.task !== undefined) io.err("bobi: --diff is the project's uncommitted state now, not only the changes of this task")
-  }
+  if (command.test) extras.push(testEvent(io, command.test, mask))
+  if (command.diff) extras.push(diffEvent(io, mask))
+  // The working tree is not recorded per task, so be clear about what the diff is.
+  if (command.diff && command.task !== undefined) io.err("bobi: --diff is the project's uncommitted state now, not only the changes of this task")
   return extras
 }
 
@@ -74,7 +78,7 @@ function seal(io: Io, records: readonly AuditRecord[], home: string, command: Se
   if (!session) throw new UsageError("no session to seal: the audit log is empty")
   const task = command.task === undefined ? undefined : pickTask(records, session, command.task)
   const key = loadOrCreateKey(path.join(home, "keys"))
-  const dossier = sealDossier(task ? task.records : records, session, key, extrasFor(io, command), undefined, task?.index)
+  const dossier = sealDossier(task ? task.records : records, session, key, { extras: extrasFor(io, command), task: task?.index })
   if (command.out) {
     writeFileSync(path.resolve(io.cwd, command.out), `${JSON.stringify(dossier, null, 2)}\n`, { mode: 0o600 })
     io.err(`bobi: dossier written to ${command.out} (key ${dossier.keyId}); check it with: bobi dossier verify ${command.out}`)

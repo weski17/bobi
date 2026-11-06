@@ -125,10 +125,9 @@ export function sealDossier(
   records: readonly AuditRecord[],
   session: string,
   key: { privateKey: KeyObject; publicKey: string; keyId: string },
-  extras: readonly ExtraEvent[] = [],
-  now: () => Date = () => new Date(),
-  task?: number,
+  options: { extras?: readonly ExtraEvent[]; now?: () => Date; /** Seals only this task (1-based); `records` must be that task's records. */ task?: number } = {},
 ): Dossier {
+  const { extras = [], now = () => new Date(), task } = options
   const mine = records.filter((r) => r.attributes["bobi.session"] === session).sort((a, b) => a.start - b.start)
   if (mine.length === 0) throw new Error(`no audit records for session ${session}`)
   const raw = [

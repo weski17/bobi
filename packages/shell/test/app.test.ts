@@ -439,9 +439,7 @@ test("bobi dossier --task: lists tasks, seals one task, refuses a wrong number, 
 
     // Sessions show their number of tasks; with --session the tasks are listed.
     expect((await run(["dossier", "--list"])).out).toContain("2 tasks, 4 records")
-    const tasks = await run(["dossier", "--list", "--session", "s1"])
-    expect(tasks.out).toContain("fix the rounding")
-    expect(tasks.out).toContain("add a test")
+    expect((await run(["dossier", "--list", "--session", "s1"])).out).toMatch(/fix the rounding[\s\S]*add a test/)
     await expect(run(["dossier", "--list", "--session", "nope"])).rejects.toThrow(/no audit records for session nope/)
 
     // Task 1 only; the file verifies and says which task it is.
@@ -450,8 +448,7 @@ test("bobi dossier --task: lists tasks, seals one task, refuses a wrong number, 
     expect(one.out).toContain("session s1, task 1")
     expect(one.out).toContain("fix the rounding")
     expect(one.out).not.toContain("add a test")
-    const ok = await run(["dossier", "verify", "t1.json"])
-    expect(ok.out).toContain("session s1, task 1")
+    expect((await run(["dossier", "verify", "t1.json"])).out).toContain("session s1, task 1")
 
     // `last` is the newest task; a whole-session dossier is still the default.
     const last = await run(["dossier", "--task", "last"])

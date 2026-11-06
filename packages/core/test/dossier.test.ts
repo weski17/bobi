@@ -30,7 +30,8 @@ const records = [
   rec("bobi.tool", { "bobi.tool": "read" }, 50, "other"),
 ]
 const key = () => loadOrCreateKey(path.join(temp(), "keys"))
-const seal = (extras = [] as Parameters<typeof sealDossier>[3]) => sealDossier(records, "s1", key(), extras, () => new Date("2026-11-03T09:00:00Z"))
+const NOW = () => new Date("2026-11-03T09:00:00Z")
+const seal = (extras = [] as NonNullable<Parameters<typeof sealDossier>[3]>["extras"]) => sealDossier(records, "s1", key(), { extras, now: NOW })
 type Mutable = { -readonly [K in keyof Dossier]: K extends "events" ? DossierEvent[] : Dossier[K] }
 const clone = (d: Dossier) => JSON.parse(JSON.stringify(d)) as Mutable
 
@@ -77,7 +78,7 @@ test("any change to the content, order or length is detected", () => {
 test("a rehashed forgery fails the signature; a swapped key fails the key id", () => {
   const d = seal()
   const other = key()
-  const forged = sealDossier(records, "s1", other, [], () => new Date("2026-11-03T09:00:00Z"))
+  const forged = sealDossier(records, "s1", other, { now: NOW })
   // The attacker re-signs with their own key but keeps the original key id: refused.
   expect(verifyDossier({ ...forged, keyId: d.keyId }).reason).toContain("key id")
   // Valid signature of another key, but the verifier trusts only the original one.
@@ -165,7 +166,7 @@ test("records with the same time keep their written order", () => {
 test("a task dossier holds only that task, carries the task number and verifies", () => {
   const k = key()
   const task2 = tasksOf(twoTasks, "s1")[1]!
-  const d = sealDossier(task2.records, "s1", k, [], () => new Date("2026-11-03T09:00:00Z"), task2.index)
+  const d = sealDossier(task2.records, "s1", k, { now: NOW, task: task2.index })
   expect(d.task).toBe(2)
   expect(d.events.map((e) => e.kind)).toEqual(["task", "tool", "usage"])
   expect(verifyDossier(d, k.publicKey)).toMatchObject({ ok: true, trusted: true })
@@ -177,7 +178,7 @@ test("a task dossier holds only that task, carries the task number and verifies"
 test("the task number is signed: it cannot be added, removed or changed afterwards", () => {
   const k = key()
   const task1 = tasksOf(twoTasks, "s1")[0]!
-  const taskDossier = sealDossier(task1.records, "s1", k, [], () => new Date("2026-11-03T09:00:00Z"), 1)
+  const taskDossier = sealDossier(task1.records, "s1", k, { now: NOW, task: 1 })
   const wrong = clone(taskDossier)
   wrong.task = 2
   expect(verifyDossier(wrong as Dossier).reason).toBe("the signature does not match")
@@ -185,7 +186,7 @@ test("the task number is signed: it cannot be added, removed or changed afterwar
   delete removed.task
   expect(verifyDossier(removed as Dossier).reason).toBe("the signature does not match")
   // A whole-session dossier cannot be passed off as a task either.
-  const whole = clone(sealDossier(twoTasks, "s1", k, [], () => new Date("2026-11-03T09:00:00Z")))
+  const whole = clone(sealDossier(twoTasks, "s1", k, { now: NOW }))
   whole.task = 1
   expect(verifyDossier(whole as Dossier).reason).toBe("the signature does not match")
 })
