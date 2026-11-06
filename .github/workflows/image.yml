@@ -115,6 +115,12 @@ jobs:
           tags: bobi-demo:ci
           cache-from: type=gha,scope=demo
           cache-to: type=gha,scope=demo,mode=max
+      # Vulnerability scan of the image (OS packages and libraries; fixable HIGH/CRITICAL only). Report-only for now:
+      # the base image and the model runtime bring findings we cannot fix ourselves; the table is in the job log.
+      - name: Scan the demo image for known vulnerabilities
+        run: |
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.57.0 image \
+            --severity HIGH,CRITICAL --ignore-unfixed --exit-code 0 --scanners vuln bobi-demo:ci
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.4.3
