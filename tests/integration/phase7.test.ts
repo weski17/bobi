@@ -1,6 +1,9 @@
 // Phase 7: usage records (tasks, tokens) with person and team.
 import { afterEach, expect, test } from "bun:test"
-import { createHarness, type Harness } from "./harness.ts"
+import { mkdtemp, realpath, rm } from "node:fs/promises"
+import { tmpdir } from "node:os"
+import path from "node:path"
+import { createHarness, pendingPermission, waitFor, type Harness } from "./harness.ts"
 
 let h: Harness | undefined
 afterEach(async () => {
@@ -24,6 +27,35 @@ test("every task and every model step's tokens are audited with user, team and m
   expect(usage?.attributes).toMatchObject({ "bobi.mode": "plan", "bobi.team": "payments", "bobi.tokens.input": 10, "bobi.tokens.output": 5 })
   // The dossier and the model comparison need to know which model worked.
   expect(String(usage?.attributes["bobi.model"] ?? "")).not.toBe("")
+}, 30_000)
+
+test("with several projects open, each model step and each approval is audited once, with mode and model", async () => {
+  h = await createHarness({})
+  // A session in another project: the engine now runs Bobi's setup for two locations, and every instance's event
+  // stream carries the events of both.
+  const other = await realpath(await mkdtemp(path.join(tmpdir(), "bobi-it-other-")))
+  try {
+    h.mock.enqueue({ text: "first" })
+    const first = await h.opencode.sessions.create({ location: { directory: other }, agent: "ask" })
+    await h.opencode.sessions.prompt({ sessionID: first.id, text: "hi" })
+    await h.opencode.sessions.wait({ sessionID: first.id })
+
+    const sessionID = await h.promptIn("code", "write x.txt", { toolCalls: [{ name: "write", arguments: { path: path.join(h.dir, "x.txt"), content: "x" } }] }, { text: "done" })
+    const request = await pendingPermission(h, sessionID)
+    await h.opencode.permission.reply({ sessionID, requestID: request.id, decision: "once" })
+    await h.opencode.sessions.wait({ sessionID })
+    // Wait for both steps, then give duplicates time to arrive before counting.
+    await waitFor(async () => (h!.audit.records.filter((r) => r.name === "bobi.usage" && r.attributes["bobi.session"] === String(sessionID)).length >= 2 ? true : undefined))
+    await Bun.sleep(300)
+
+    const of = (name: string) => h!.audit.records.filter((r) => r.name === name && r.attributes["bobi.session"] === String(sessionID))
+    // Two model steps (tool call, answer): two usage records, not four.
+    expect(of("bobi.usage").map((r) => r.attributes["bobi.mode"])).toEqual(["code", "code"])
+    for (const r of of("bobi.usage")) expect(r.attributes["bobi.model"]).toBe("mock-model")
+    expect(of("bobi.approval").map((r) => `${r.attributes["bobi.result"]}:${r.attributes["bobi.mode"]}`)).toEqual(["once:code"])
+  } finally {
+    await rm(other, { recursive: true, force: true })
+  }
 }, 30_000)
 
 test("sessions.titles local: the title comes from the first message and costs no model request", async () => {

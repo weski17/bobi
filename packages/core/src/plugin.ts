@@ -381,7 +381,14 @@ export function createBobiCore(options: BobiCoreOptions): Plugin.Plugin & { read
       const events = new AbortController()
       void (async () => {
         try {
-          for await (const event of ctx.event.subscribe({ signal: events.signal } as never) as AsyncIterable<{ type: string; data?: Record<string, unknown> }>) {
+          for await (const event of ctx.event.subscribe({ signal: events.signal } as never) as AsyncIterable<{
+            type: string
+            location?: { directory?: unknown }
+            data?: Record<string, unknown>
+          }>) {
+            // Setup runs once per location, and every instance's stream carries the events of all locations. Only the
+            // instance of the event's location records it (once, and with the mode and model its prompt hook saw).
+            if (event.location?.directory !== undefined && String(event.location.directory) !== location) continue
             const data = event.data ?? {}
             if (event.type === "permission.asked")
               asked.set(String(data.id), {
