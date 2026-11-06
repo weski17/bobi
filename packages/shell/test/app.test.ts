@@ -415,6 +415,69 @@ test("bobi registry: pack, trust, install, verify; untrusted, tampered and unsaf
   }
 })
 
+test("bobi dossier --task: lists tasks, seals one task, refuses a wrong number, binds the task number", async () => {
+  const { mkdir, writeFile } = await import("node:fs/promises")
+  const home = await mkdtemp(path.join(tmpdir(), "bobi-dossier-task-home-"))
+  const project = await mkdtemp(path.join(tmpdir(), "bobi-dossier-task-proj-"))
+  try {
+    await mkdir(path.join(home, "audit"))
+    const at = Date.parse("2026-11-03T10:00:00Z")
+    const base = { "bobi.user": "anna", "bobi.mode": "code", "bobi.session": "s1" }
+    const lines = [
+      { name: "bobi.task", start: at, end: at, attributes: { ...base, "bobi.result": "started", "bobi.detail": "fix the rounding" } },
+      { name: "bobi.tool", start: at + 2, end: at + 3, attributes: { ...base, "bobi.tool": "edit", "bobi.detail": "a.txt", "bobi.result": "completed" } },
+      { name: "bobi.task", start: at + 100, end: at + 100, attributes: { ...base, "bobi.result": "started", "bobi.detail": "add a test" } },
+      { name: "bobi.tool", start: at + 102, end: at + 103, attributes: { ...base, "bobi.tool": "write", "bobi.detail": "a.test.ts", "bobi.result": "completed" } },
+    ]
+    await writeFile(path.join(home, "audit", "2026-11-03.jsonl"), lines.map((l) => JSON.stringify(l)).join("\n"))
+    const env = { BOBI_HOME: home }
+    const run = async (args: string[]) => {
+      const t = io({ env, cwd: project })
+      const code = await runApp(args, t.io)
+      return { code, out: t.out.join("\n"), err: t.err.join("\n") }
+    }
+
+    // Sessions show their number of tasks; with --session the tasks are listed.
+    expect((await run(["dossier", "--list"])).out).toContain("2 tasks, 4 records")
+    const tasks = await run(["dossier", "--list", "--session", "s1"])
+    expect(tasks.out).toContain("fix the rounding")
+    expect(tasks.out).toContain("add a test")
+    await expect(run(["dossier", "--list", "--session", "nope"])).rejects.toThrow(/no audit records for session nope/)
+
+    // Task 1 only; the file verifies and says which task it is.
+    const one = await run(["dossier", "--task", "1", "--out", "t1.json"])
+    expect(one.code).toBe(0)
+    expect(one.out).toContain("session s1, task 1")
+    expect(one.out).toContain("fix the rounding")
+    expect(one.out).not.toContain("add a test")
+    const ok = await run(["dossier", "verify", "t1.json"])
+    expect(ok.out).toContain("session s1, task 1")
+
+    // `last` is the newest task; a whole-session dossier is still the default.
+    const last = await run(["dossier", "--task", "last"])
+    expect(last.out).toContain("task 2")
+    expect(last.out).toContain("add a test")
+    expect(last.out).not.toContain("fix the rounding")
+    const whole = await run(["dossier"])
+    expect(whole.out).toContain("fix the rounding")
+    expect(whole.out).toContain("add a test")
+    expect(whole.out).not.toContain(", task ")
+
+    // A wrong number names how many tasks there are.
+    await expect(run(["dossier", "--task", "3"])).rejects.toThrow(/has 2 tasks, not 3/)
+
+    // Changing the task number in the file breaks the signature.
+    const forged = JSON.parse(await Bun.file(path.join(project, "t1.json")).text())
+    forged.task = 2
+    await writeFile(path.join(project, "forged.json"), JSON.stringify(forged))
+    const bad = await run(["dossier", "verify", "forged.json"])
+    expect(bad.code).toBe(1)
+    expect(bad.err).toContain("signature does not match")
+  } finally {
+    for (const d of [home, project]) await rm(d, { recursive: true, force: true })
+  }
+})
+
 test("bobi tips --since reports only what a change adds", async () => {
   const { writeFile } = await import("node:fs/promises")
   const project = await mkdtemp(path.join(tmpdir(), "bobi-tips-since-"))

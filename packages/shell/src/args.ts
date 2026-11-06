@@ -11,7 +11,7 @@ export type Command =
   | { kind: "modes"; json: boolean }
   | { kind: "audit"; from?: string; to?: string; user?: string; format: "md" | "json" }
   | { kind: "usage"; from?: string; to?: string; team?: string; format: "md" | "json" }
-  | { kind: "dossier"; action: "list" | "seal"; session?: string; out?: string; format: "md" | "json"; diff: boolean; test?: string }
+  | { kind: "dossier"; action: "list" | "seal"; session?: string; task?: number | "last"; out?: string; format: "md" | "json"; diff: boolean; test?: string }
   | { kind: "dossier"; action: "verify"; file: string; key?: string }
   | { kind: "compare"; models: string[]; mode: string; task: string; test?: string; out?: string }
   | { kind: "registry"; action: "pack"; source: string; version: string; description?: string; out?: string }
@@ -52,8 +52,9 @@ Usage:
                                    Audit and compliance report from the local audit log
   bobi usage [--from YYYY-MM-DD] [--to YYYY-MM-DD] [--team T] [--format md|json]
                                    Usage per person, team, mode and day (tokens, tasks, approved changes)
-  bobi dossier [--list] [--session ID] [--out FILE.json] [--format md|json] [--diff] [--test "<command>"]
-                                   Signed change dossier of a session (default: the latest); --diff adds the project's
+  bobi dossier [--list] [--session ID] [--task N|last] [--out FILE.json] [--format md|json] [--diff] [--test "<command>"]
+                                   Signed change dossier of a session (default: the latest) or of one task (prompt) of
+                                   it; --list shows the sessions, or the tasks of --session; --diff adds the project's
                                    uncommitted changes, --test runs a command and adds its result
   bobi dossier verify <FILE.json> [--key public.pem]
                                    Check a dossier: chain, signature and (with --key) who signed it
@@ -92,6 +93,13 @@ function intFlag(value: string | undefined, name: string): number {
   const n = Number(value)
   if (!Number.isInteger(n) || n < 0 || n > 65_535) throw new UsageError(`${name} needs a port number`)
   return n
+}
+
+/** `--task` takes a task number (1, 2, …) or `last`. */
+function taskNumber(value: string): number | "last" {
+  if (value === "last") return value
+  if (!/^[1-9]\d{0,5}$/.test(value)) throw new UsageError("--task is a task number like 2, or last")
+  return Number(value)
 }
 
 export function parseArgs(argv: readonly string[]): Command {
@@ -161,10 +169,11 @@ export function parseArgs(argv: readonly string[]): Command {
     for (let i = 0; i < rest.length; i++) {
       const arg = rest[i]!
       const value = rest[i + 1]
-      if (["--session", "--out", "--format", "--test"].includes(arg) && !value) throw new UsageError(`${arg} needs a value`)
+      if (["--session", "--task", "--out", "--format", "--test"].includes(arg) && !value) throw new UsageError(`${arg} needs a value`)
       if (arg === "--list") out.action = "list"
       else if (arg === "--diff") out.diff = true
       else if (arg === "--session") (out.session = value!), i++
+      else if (arg === "--task") (out.task = taskNumber(value!)), i++
       else if (arg === "--out") (out.out = value!), i++
       else if (arg === "--test") (out.test = value!), i++
       else if (arg === "--format") {

@@ -2,7 +2,7 @@ import { afterAll, expect, test } from "bun:test"
 import { mkdtempSync, rmSync, statSync } from "node:fs"
 import { tmpdir } from "node:os"
 import path from "node:path"
-import { loadOrCreateKey, promptText, renderDossier, sealDossier, sessionsOf, toolDetail, verifyDossier, type AuditRecord, type Dossier, type DossierEvent } from "../src/index.ts"
+import { loadOrCreateKey, promptText, renderDossier, sealDossier, sessionsOf, tasksOf, toolDetail, verifyDossier, type AuditRecord, type Dossier, type DossierEvent } from "../src/index.ts"
 
 const dirs: string[] = []
 const temp = () => {
@@ -131,4 +131,68 @@ test("prompt text from the shapes the engine may use", () => {
   expect(promptText({ prompt: { text: "y" } })).toBe("y")
   expect(promptText({})).toBeUndefined()
   expect(promptText(null)).toBeUndefined()
+})
+
+// Two prompts in one session, plus a record that comes before the first task record and a record of another session.
+const twoTasks = [
+  rec("bobi.permission", { "bobi.action": "read", "bobi.result": "allow" }, -5),
+  rec("bobi.task", { "bobi.result": "started", "bobi.detail": "First: fix rounding", "bobi.mode": "code" }, 0),
+  rec("bobi.tool", { "bobi.tool": "edit", "bobi.detail": "a.ts" }, 10),
+  rec("bobi.tool", { "bobi.tool": "read" }, 15, "other"),
+  rec("bobi.task", { "bobi.result": "started", "bobi.detail": "Second: add a test", "bobi.mode": "plan" }, 100),
+  rec("bobi.tool", { "bobi.tool": "write", "bobi.detail": "a.test.ts" }, 110),
+  rec("bobi.usage", { "bobi.model": "qwen3", "bobi.tokens.input": 7, "bobi.tokens.output": 3, "bobi.result": "recorded" }, 120),
+]
+
+test("a session splits into tasks at every task record; earlier records belong to the first task", () => {
+  const tasks = tasksOf(twoTasks, "s1")
+  expect(tasks.map((t) => [t.index, t.mode, t.prompt, t.records.length])).toEqual([
+    [1, "code", "First: fix rounding", 3],
+    [2, "plan", "Second: add a test", 3],
+  ])
+  expect(tasks[0]!.records[0]!.name).toBe("bobi.permission")
+  expect(tasks.flatMap((t) => t.records).every((r) => r.attributes["bobi.session"] === "s1")).toBe(true)
+  expect(tasksOf(twoTasks, "other")).toHaveLength(1)
+  expect(tasksOf(twoTasks, "nope")).toEqual([])
+  expect(sessionsOf(twoTasks).find((s) => s.session === "s1")).toMatchObject({ tasks: 2, records: 6 })
+})
+
+test("records with the same time keep their written order", () => {
+  const same = [rec("bobi.task", { "bobi.detail": "a" }, 0), rec("bobi.tool", { "bobi.tool": "x" }, 0), rec("bobi.task", { "bobi.detail": "b" }, 0), rec("bobi.tool", { "bobi.tool": "y" }, 0)]
+  expect(tasksOf(same, "s1").map((t) => t.records.map((r) => r.attributes["bobi.tool"] ?? r.attributes["bobi.detail"]))).toEqual([["a", "x"], ["b", "y"]])
+})
+
+test("a task dossier holds only that task, carries the task number and verifies", () => {
+  const k = key()
+  const task2 = tasksOf(twoTasks, "s1")[1]!
+  const d = sealDossier(task2.records, "s1", k, [], () => new Date("2026-11-03T09:00:00Z"), task2.index)
+  expect(d.task).toBe(2)
+  expect(d.events.map((e) => e.kind)).toEqual(["task", "tool", "usage"])
+  expect(verifyDossier(d, k.publicKey)).toMatchObject({ ok: true, trusted: true })
+  expect(renderDossier(d)).toContain("session s1, task 2")
+  expect(renderDossier(d)).toContain("Second: add a test")
+  expect(renderDossier(d)).not.toContain("First: fix rounding")
+})
+
+test("the task number is signed: it cannot be added, removed or changed afterwards", () => {
+  const k = key()
+  const task1 = tasksOf(twoTasks, "s1")[0]!
+  const taskDossier = sealDossier(task1.records, "s1", k, [], () => new Date("2026-11-03T09:00:00Z"), 1)
+  const wrong = clone(taskDossier)
+  wrong.task = 2
+  expect(verifyDossier(wrong as Dossier).reason).toBe("the signature does not match")
+  const removed = clone(taskDossier)
+  delete removed.task
+  expect(verifyDossier(removed as Dossier).reason).toBe("the signature does not match")
+  // A whole-session dossier cannot be passed off as a task either.
+  const whole = clone(sealDossier(twoTasks, "s1", k, [], () => new Date("2026-11-03T09:00:00Z")))
+  whole.task = 1
+  expect(verifyDossier(whole as Dossier).reason).toBe("the signature does not match")
+})
+
+test("a dossier sealed before tasks existed (no task field) still verifies", () => {
+  const d = seal()
+  expect(d.task).toBeUndefined()
+  expect("task" in d).toBe(false)
+  expect(verifyDossier(d).ok).toBe(true)
 })

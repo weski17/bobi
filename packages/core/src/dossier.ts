@@ -2,6 +2,7 @@
 // Ed25519 key. Anyone with the dossier can check that nothing was added, removed, reordered or edited afterwards.
 // The signature proves the dossier is unchanged since it was sealed; who the key belongs to is only known when the
 // verifier compares the key id with a key it trusts (`verifyDossier(..., trustedPublicKey)`).
+// A dossier covers a whole session or, with `task`, one prompt of it (ADR-0026); the task number is part of the signature.
 // Only node:crypto, no dependency.
 import { createHash, createPrivateKey, createPublicKey, generateKeyPairSync, sign, verify, type KeyObject } from "node:crypto"
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
@@ -25,10 +26,12 @@ export type Dossier = {
   readonly session: string
   readonly user: string
   readonly sealedAt: string
+  /** Set when the dossier covers only this task (1-based) of the session; absent for a whole session. */
+  readonly task?: number
   readonly events: readonly DossierEvent[]
   /** Hash of the last event. */
   readonly head: string
-  /** Ed25519 signature (base64) over canonical({version, session, user, sealedAt, count, head}). */
+  /** Ed25519 signature (base64) over canonical({version, session, user, sealedAt, count, head[, task]}). */
   readonly signature: string
   /** SPKI PEM of the signing key. */
   readonly publicKey: string
@@ -81,17 +84,40 @@ const clean = (fields: Record<string, string | number | undefined>): Record<stri
   Object.fromEntries(Object.entries(fields).filter(([, v]) => v !== undefined && v !== "")) as Record<string, string | number>
 
 /** The sessions in the records, newest first, with their first time and user. */
-export function sessionsOf(records: readonly AuditRecord[]): { session: string; user: string; start: number; records: number }[] {
-  const out = new Map<string, { session: string; user: string; start: number; records: number }>()
+export function sessionsOf(records: readonly AuditRecord[]): { session: string; user: string; start: number; records: number; tasks: number }[] {
+  const out = new Map<string, { session: string; user: string; start: number; records: number; tasks: number }>()
   for (const r of records) {
     const id = r.attributes["bobi.session"]
-    const row = out.get(id)
-    if (row) {
-      row.start = Math.min(row.start, r.start)
-      row.records++
-    } else out.set(id, { session: id, user: r.attributes["bobi.user"], start: r.start, records: 1 })
+    const row = out.get(id) ?? { session: id, user: r.attributes["bobi.user"], start: r.start, records: 0, tasks: 0 }
+    row.start = Math.min(row.start, r.start)
+    row.records++
+    if (r.name === "bobi.task") row.tasks++
+    out.set(id, row)
   }
   return [...out.values()].sort((a, b) => b.start - a.start)
+}
+
+export type TaskSlice = { readonly index: number; readonly start: number; readonly mode: string; readonly prompt: string; readonly records: readonly AuditRecord[] }
+
+/**
+ * The tasks of a session: a task starts with a `bobi.task` record (one prompt) and runs to the next one. Records
+ * before the first task record belong to the first task, so nothing of the session is left out.
+ */
+export function tasksOf(records: readonly AuditRecord[], session: string): TaskSlice[] {
+  const mine = records
+    .map((r, order) => ({ r, order }))
+    .filter(({ r }) => r.attributes["bobi.session"] === session)
+    .sort((a, b) => a.r.start - b.r.start || a.order - b.order)
+    .map(({ r }) => r)
+  const out: { start: number; mode: string; prompt: string; hasTask: boolean; records: AuditRecord[] }[] = []
+  for (const r of mine) {
+    const isTask = r.name === "bobi.task"
+    if (out.length === 0 || (isTask && out[out.length - 1]!.hasTask)) out.push({ start: r.start, mode: r.attributes["bobi.mode"], prompt: "", hasTask: false, records: [] })
+    const slice = out[out.length - 1]!
+    slice.records.push(r)
+    if (isTask) Object.assign(slice, { hasTask: true, mode: r.attributes["bobi.mode"], prompt: r.attributes["bobi.detail"] ?? "" })
+  }
+  return out.map(({ start, mode, prompt, records: list }, i) => ({ index: i + 1, start, mode, prompt, records: list }))
 }
 
 /** Chains the records of `session` (plus extra events such as the diff and the test result) and signs the head. */
@@ -101,6 +127,7 @@ export function sealDossier(
   key: { privateKey: KeyObject; publicKey: string; keyId: string },
   extras: readonly ExtraEvent[] = [],
   now: () => Date = () => new Date(),
+  task?: number,
 ): Dossier {
   const mine = records.filter((r) => r.attributes["bobi.session"] === session).sort((a, b) => a.start - b.start)
   if (mine.length === 0) throw new Error(`no audit records for session ${session}`)
@@ -116,9 +143,9 @@ export function sealDossier(
     events.push({ ...body, hash })
     prev = hash
   })
-  const header = { version: 1 as const, session, user: mine[0]!.attributes["bobi.user"], sealedAt: now().toISOString(), count: events.length, head: prev }
+  const header = { version: 1 as const, session, user: mine[0]!.attributes["bobi.user"], sealedAt: now().toISOString(), count: events.length, head: prev, ...(task === undefined ? {} : { task }) }
   const signature = sign(null, Buffer.from(canonical(header)), key.privateKey).toString("base64")
-  return { version: 1, session, user: header.user, sealedAt: header.sealedAt, events, head: prev, signature, publicKey: key.publicKey, keyId: key.keyId }
+  return { version: 1, session, user: header.user, sealedAt: header.sealedAt, ...(task === undefined ? {} : { task }), events, head: prev, signature, publicKey: key.publicKey, keyId: key.keyId }
 }
 
 export type Verification = { readonly ok: boolean; readonly reason?: string; readonly brokenAt?: number; readonly keyId: string; readonly trusted: boolean }
@@ -146,7 +173,7 @@ export function verifyDossier(d: Dossier, trustedPublicKey?: string): Verificati
     prev = e.hash
   }
   if (prev !== d.head) return fail("events were removed from the end (head does not match)", d.events.length)
-  const header = { version: 1, session: d.session, user: d.user, sealedAt: d.sealedAt, count: d.events.length, head: d.head }
+  const header = { version: 1, session: d.session, user: d.user, sealedAt: d.sealedAt, count: d.events.length, head: d.head, ...(d.task === undefined ? {} : { task: d.task }) }
   let valid = false
   try {
     valid = verify(null, Buffer.from(canonical(header)), createPublicKey(d.publicKey), Buffer.from(d.signature, "base64"))
@@ -167,7 +194,7 @@ export function renderDossier(d: Dossier, verification: Verification = verifyDos
   const models = [...new Set(d.events.map((e) => e.fields.model).filter((m): m is string => typeof m === "string"))]
   const tokens = d.events.reduce((n, e) => n + (Number(e.fields.input) || 0) + (Number(e.fields.output) || 0), 0)
   const lines = [
-    `# Change dossier – session ${d.session}`,
+    `# Change dossier – session ${d.session}${d.task === undefined ? "" : `, task ${d.task}`}`,
     "",
     `- User: ${d.user}`,
     `- Sealed: ${d.sealedAt}`,
