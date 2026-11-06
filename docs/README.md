@@ -7,6 +7,7 @@ Where everything lives. German user documentation first, then the engineering do
 | [`../README.md`](../README.md) | Product overview, quick start | everyone |
 | [`HANDBUCH.md`](HANDBUCH.md) | User manual (German): install, modes, features, demo, containers | users |
 | [`DEPLOYMENT.md`](DEPLOYMENT.md) | Demo auf einem Linux-Server betreiben: Ausrollen, HTTPS, Betrieb | operators |
+| [`GITHUB-AGENTS.md`](GITHUB-AGENTS.md) | Bobi als Prüfer in GitHub Actions: Tipps-Check, Review mit Modell auf eigenem Runner | operators |
 | [`DEVELOPMENT.md`](DEVELOPMENT.md) | Prerequisites, build, test, IDE and container development | developers |
 | [`ARCHITECTURE.md`](ARCHITECTURE.md) | Components, request flow, security architecture, requirement mapping | developers, reviewers |
 | [`adr/`](adr/README.md) | Architecture decision records (one decision per file, numbered) | developers, reviewers |

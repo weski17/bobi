@@ -415,6 +415,39 @@ test("bobi registry: pack, trust, install, verify; untrusted, tampered and unsaf
   }
 })
 
+test("bobi tips --since reports only what a change adds", async () => {
+  const { writeFile } = await import("node:fs/promises")
+  const project = await mkdtemp(path.join(tmpdir(), "bobi-tips-since-"))
+  const branchy = (name: string) => `export function ${name}(x: number) {\n${Array.from({ length: 12 }, (_, i) => `  if (x === ${i}) return ${i}`).join("\n")}\n  return -1\n}\n`
+  try {
+    const git = (...a: string[]) => Bun.spawnSync(["git", "-c", "user.name=t", "-c", "user.email=t@t", ...a], { cwd: project })
+    git("init", "-q", "-b", "main")
+    await writeFile(path.join(project, "old.ts"), branchy("legacy"))
+    git("add", "-A")
+    git("commit", "-qm", "base")
+    git("checkout", "-q", "-b", "feature")
+    // The old finding stays; a new file brings a new one; a markdown file is ignored.
+    await writeFile(path.join(project, "old.ts"), `// touched\n${branchy("legacy")}`)
+    await writeFile(path.join(project, "new.ts"), branchy("fresh"))
+    await writeFile(path.join(project, "notes.md"), "x")
+    git("add", "-A")
+    git("commit", "-qm", "change")
+
+    const t = io({ cwd: project })
+    expect(await runApp(["tips", "--since", "main", "--fail-on", "warning"], t.io)).toBe(1)
+    expect(t.out.join("\n")).toContain("new.ts")
+    expect(t.out.join("\n")).not.toContain("old.ts")
+    expect(t.err.at(-1)).toContain("1 new tip(s) in 1 changed file(s) since main")
+
+    const clean = io({ cwd: project })
+    expect(await runApp(["tips", "--since", "feature"], clean.io)).toBe(0)
+    expect(clean.err.at(-1)).toContain("0 new tip(s)")
+    await expect(runApp(["tips", "--since", "no-such-ref"], io({ cwd: project }).io)).rejects.toThrow(/git diff against no-such-ref failed/)
+  } finally {
+    await rm(project, { recursive: true, force: true })
+  }
+})
+
 test("bobi compare needs a git repository", async () => {
   const plain = await mkdtemp(path.join(tmpdir(), "bobi-compare-plain-"))
   try {

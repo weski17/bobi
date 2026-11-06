@@ -76,6 +76,12 @@ describe("parseArgs", () => {
     expect(() => parseArgs(["dossier", "--format", "pdf"])).toThrow(/md or json/)
   })
 
+  test("tips --since", () => {
+    expect(parseArgs(["tips", "--since", "origin/main", "--fail-on", "warning"])).toMatchObject({ kind: "tips", since: "origin/main", failOn: "warning" })
+    expect(() => parseArgs(["tips", "--since"])).toThrow(/needs a git ref/)
+    expect(() => parseArgs(["tips", "--since", "--format"])).toThrow(/needs a git ref/)
+  })
+
   test("compare", () => {
     expect(parseArgs(["compare", "--models", "a, b,a", "--mode", "plan", "--test", "bun test", "--out", "r.json", "fix", "the", "bug"])).toEqual({
       kind: "compare",
