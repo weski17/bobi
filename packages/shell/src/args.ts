@@ -19,7 +19,7 @@ export type Command =
   | { kind: "registry"; action: "verify" | "trust" | "untrust"; target: string }
   | { kind: "registry"; action: "list"; from?: string }
   | { kind: "registry"; action: "key" }
-  | { kind: "tips"; paths: string[]; format: "text" | "json"; failOn?: "warning" | "info" }
+  | { kind: "tips"; paths: string[]; format: "text" | "json"; failOn?: "warning" | "info"; since?: string }
   | { kind: "diagram"; source: "code" | "cobol"; program?: string; depth?: number; directory?: string }
   | { kind: "help" }
   | { kind: "version" }
@@ -68,7 +68,7 @@ Usage:
   bobi registry install <name|file.bobipkg.json> [--from DIR] [--project] [--force]
                                    Install a package from a trusted publisher (signature and files are checked)
   bobi registry verify <file>      Check a package without installing it
-  bobi tips [--format text|json] [--fail-on warning|info] [paths...]
+  bobi tips [--format text|json] [--fail-on warning|info] [--since <git-ref>] [paths...]
                                    Code tips: complex functions and anti-patterns (TS/JS, COBOL), no model call
   bobi diagram [code|cobol] [--program P] [--depth N] [directory]
                                    Architecture diagram (Mermaid) from the code graph or the COBOL index
@@ -246,6 +246,10 @@ export function parseArgs(argv: readonly string[]): Command {
         const value = rest[++i]
         if (value !== "warning" && value !== "info") throw new UsageError("--fail-on is warning or info")
         out.failOn = value
+      } else if (arg === "--since") {
+        const value = rest[++i]
+        if (!value || value.startsWith("-")) throw new UsageError("--since needs a git ref, e.g. origin/main")
+        out.since = value
       } else if (arg.startsWith("-")) throw new UsageError(`unknown option for tips: ${arg}`)
       else out.paths.push(arg)
     }

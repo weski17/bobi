@@ -37,6 +37,28 @@ jobs:
       - name: End-to-end terminal UI (approval prompt)
         run: bun run test:e2e
 
+  # Code tips as a check: a pull request must not add complexity warnings (complex functions, anti-patterns). Only what the
+  # change adds counts; existing findings do not block. No model needed.
+  tips:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Checkout the engine submodule
+        run: git submodule update --init --depth 1 vendor/opencode
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.3
+      - name: Install upstream
+        run: cd vendor/opencode && bun install --frozen-lockfile
+      - name: Install Bobi
+        run: bun install --frozen-lockfile
+      - name: No new code-tip warnings in the changed files
+        run: bun packages/shell/src/cli.ts tips --since "origin/${{ github.base_ref }}" --fail-on warning
+
   redteam:
     runs-on: ubuntu-24.04
     timeout-minutes: 20

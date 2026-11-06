@@ -304,7 +304,13 @@ In der Shell und in der CI:
 ```bash
 bobi tips src                      # datei:zeile: schwere [regel] meldung
 bobi tips --fail-on warning src    # Exit-Code 1 bei Warnungen – als CI-Gate
+bobi tips --since origin/main --fail-on warning   # nur das, was die Änderung NEU hinzufügt (für Pull Requests)
 ```
+
+`--since` vergleicht die geänderten Dateien mit dem Stand am angegebenen Git-Stand und meldet nur neue Tipps (je Regel und
+Funktion; verschobene Zeilen zählen nicht). Alte Funde blockieren eine Änderung also nicht – aber eine schon komplexe Funktion
+darf in dieser Prüfung noch komplexer werden, solange sie dieselbe Regel nur einmal verletzt. In diesem Repository läuft das als
+Check `tips` bei jedem Pull Request (`.github/workflows/ci.yml`); für euer Projekt genügt derselbe Schritt.
 
 Schwellwerte pro Projekt (Standard: 10 / 60 / 4 / 5):
 

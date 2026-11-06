@@ -27,3 +27,5 @@ export function analyze(file: string, text: string, limits: Partial<Limits> = {}
   const all = { ...DEFAULT_LIMITS, ...limits }
   return kind === "typescript" ? analyzeTypeScript(text, file, all) : analyzeCobol(text, file, all)
 }
+export { newTips, ratchet } from "./ratchet.ts"
+export type { FileChange } from "./ratchet.ts"
