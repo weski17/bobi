@@ -150,34 +150,28 @@ function check(ctx: Ctx, command: Extract<RegistryCommand, { action: "check" }>)
   return remaining ? 1 : 0
 }
 
+function key(ctx: Ctx): number {
+  const publisher = publisherKey(ctx.home)
+  ctx.io.err(`bobi: your publisher key id is ${publisher.keyId}; give this public key to everyone who should trust your packages`)
+  ctx.io.out(publisher.publicKey.trim())
+  return 0
+}
+
+function trust(ctx: Ctx, command: { target: string }): number {
+  ctx.io.out(`trusted publisher ${guard(() => ctx.publishers.add(read(ctx.io, command.target)))}`)
+  return 0
+}
+
+function untrust(ctx: Ctx, command: { target: string }): number {
+  if (!ctx.publishers.remove(command.target)) throw new UsageError(`no trusted publisher ${command.target}`)
+  ctx.io.out(`removed publisher ${command.target}`)
+  return 0
+}
+
+const HANDLERS = { key, trust, untrust, pack, list, verify, install, revoke, check } satisfies Record<RegistryCommand["action"], (ctx: Ctx, command: never) => number>
+
 export function runRegistry(io: Io, command: RegistryCommand): number {
   const home = bobiPaths(io.env).home
   const ctx: Ctx = { io, home, publishers: new PublisherStore(path.join(home, "publishers")), revocations: new RevocationStore(path.join(home, "registry")) }
-  switch (command.action) {
-    case "key": {
-      const key = publisherKey(home)
-      io.err(`bobi: your publisher key id is ${key.keyId}; give this public key to everyone who should trust your packages`)
-      io.out(key.publicKey.trim())
-      return 0
-    }
-    case "trust":
-      io.out(`trusted publisher ${guard(() => ctx.publishers.add(read(io, command.target)))}`)
-      return 0
-    case "untrust":
-      if (!ctx.publishers.remove(command.target)) throw new UsageError(`no trusted publisher ${command.target}`)
-      io.out(`removed publisher ${command.target}`)
-      return 0
-    case "pack":
-      return pack(ctx, command)
-    case "list":
-      return list(ctx, command)
-    case "verify":
-      return verify(ctx, command)
-    case "install":
-      return install(ctx, command)
-    case "revoke":
-      return revoke(ctx, command)
-    case "check":
-      return check(ctx, command)
-  }
+  return (HANDLERS[command.action] as (ctx: Ctx, command: RegistryCommand) => number)(ctx, command)
 }

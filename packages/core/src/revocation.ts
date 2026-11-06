@@ -36,14 +36,18 @@ export const manifestHash = (manifest: PackageManifest) => hashOf(canonical(mani
 
 const REASON_MAX = 400
 
+const RULES: readonly (readonly [bad: (e: Revocation) => boolean, message: string])[] = [
+  [(e) => !e.name && !e.keyId && !e.manifestHash, "a revocation needs a name, a key id or a manifest hash"],
+  [(e) => !!e.version && !e.name, "a revocation with a version needs the package name"],
+  [(e) => typeof e.reason !== "string" || !e.reason.trim(), "a revocation needs a reason"],
+  [(e) => e.reason.length > REASON_MAX, `the reason is longer than ${REASON_MAX} characters`],
+  [(e) => typeof e.revokedAt !== "string" || Number.isNaN(Date.parse(e.revokedAt)), "revokedAt is not a date"],
+]
+
 /** Throws with the reason when an entry cannot be used safely. */
 export function checkRevocation(entry: Revocation) {
   if (!entry || typeof entry !== "object") throw new Error("revocation entry is not an object")
-  if (!entry.name && !entry.keyId && !entry.manifestHash) throw new Error("a revocation needs a name, a key id or a manifest hash")
-  if (entry.version && !entry.name) throw new Error("a revocation with a version needs the package name")
-  if (typeof entry.reason !== "string" || !entry.reason.trim()) throw new Error("a revocation needs a reason")
-  if (entry.reason.length > REASON_MAX) throw new Error(`the reason is longer than ${REASON_MAX} characters`)
-  if (typeof entry.revokedAt !== "string" || Number.isNaN(Date.parse(entry.revokedAt))) throw new Error("revokedAt is not a date")
+  for (const [bad, message] of RULES) if (bad(entry)) throw new Error(message)
 }
 
 const signedPart = (list: Pick<RevocationList, "format" | "serial" | "entries" | "keyId">) => canonical({ format: list.format, serial: list.serial, entries: list.entries, keyId: list.keyId })
