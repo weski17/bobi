@@ -11,7 +11,7 @@ Where everything lives. German user documentation first, then the engineering do
 | [`DEVELOPMENT.md`](DEVELOPMENT.md) | Prerequisites, build, test, IDE and container development | developers |
 | [`ARCHITECTURE.md`](ARCHITECTURE.md) | Components, request flow, security architecture, requirement mapping | developers, reviewers |
 | [`adr/`](adr/README.md) | Architecture decision records (one decision per file, numbered) | developers, reviewers |
-| [`security/`](security/) | Security reviews and the threat model; the policy is [`../SECURITY.md`](../SECURITY.md) | security, operators |
+| [`security/`](security/) | Security reviews, the image-scan gate and the threat model; the policy is [`../SECURITY.md`](../SECURITY.md) | security, operators |
 | [`STATUS.md`](STATUS.md) | Progress per phase and requirement | project owner |
 | [`demos/`](demos/) | One demo script per phase (`phase-N.md`) | project owner |
 | [`analysis/`](analysis/) | Clean-room analysis of the upstream projects (public sources only) | developers |
