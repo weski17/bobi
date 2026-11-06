@@ -74,6 +74,11 @@ describe("parseArgs", () => {
     expect(() => parseArgs(["dossier", "--key"])).toThrow(/unknown option/)
     expect(() => parseArgs(["dossier", "--out"])).toThrow(/needs a value/)
     expect(() => parseArgs(["dossier", "--format", "pdf"])).toThrow(/md or json/)
+    expect(parseArgs(["dossier", "--task", "2", "--session", "s1"])).toMatchObject({ action: "seal", task: 2, session: "s1" })
+    expect(parseArgs(["dossier", "--task", "last"])).toMatchObject({ task: "last" })
+    expect(parseArgs(["dossier"])).not.toHaveProperty("task")
+    for (const bad of ["0", "-1", "1.5", "two", "9999999"]) expect(() => parseArgs(["dossier", "--task", bad])).toThrow(/task number/)
+    expect(() => parseArgs(["dossier", "--task"])).toThrow(/needs a value/)
   })
 
   test("tips --since", () => {

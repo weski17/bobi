@@ -5,7 +5,7 @@ import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync, w
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { findProjectRoot, loadConfig, TrustStore, trustFiles, type LoadedConfig } from "@bobi/config"
-import { auditReport, createMasker, findInRegistry, installedPackages, installPackage, listRegistry, packSource, parsePackage, PublisherStore, verifyPackage, hashOf, loadOrCreateKey, readAuditLog, renderAuditReport, renderDossier, renderUsageReport, sealDossier, sessionsOf, usageReport, verifyDossier, type Dossier, type ExtraEvent } from "@bobi/core"
+import { auditReport, createMasker, findInRegistry, installedPackages, installPackage, listRegistry, packSource, parsePackage, PublisherStore, verifyPackage, loadOrCreateKey, readAuditLog, renderAuditReport, renderUsageReport, usageReport } from "@bobi/core"
 import { CobolProject, paragraphDiagram, systemDiagram } from "@bobi/mcp-cobol"
 import { CodeGraph, dependencyDiagram, listSourceFiles } from "@bobi/mcp-code-graph"
 import { analyze, newTips, supported, type Tip } from "@bobi/tips"
@@ -14,6 +14,7 @@ import { loadModes, mcpServers, type Mode } from "@bobi/modes"
 import { HELP, parseArgs, UsageError, VERSION, type Command } from "./args.ts"
 import { clientSpec } from "./client.ts"
 import { compareModels, renderComparison } from "./compare.ts"
+import { runDossier } from "./dossier.ts"
 import { runRegistry } from "./registry.ts"
 
 export type Io = {
@@ -146,52 +147,7 @@ export async function runApp(rawArgv: readonly string[], io: Io): Promise<number
     return 0
   }
 
-  if (command.kind === "dossier") {
-    const home = bobiPaths(io.env).home
-    if (command.action === "verify") {
-      let dossier: Dossier
-      try {
-        dossier = JSON.parse(readFileSync(path.resolve(io.cwd, command.file), "utf8")) as Dossier
-      } catch (error) {
-        throw new UsageError(`cannot read ${command.file}: ${(error as Error).message}`)
-      }
-      const trusted = command.key ? readFileSync(path.resolve(io.cwd, command.key), "utf8") : undefined
-      const result = verifyDossier(dossier, trusted)
-      if (result.ok) io.out(`intact: ${dossier.events.length} events, session ${dossier.session}, key ${result.keyId}${result.trusted ? " (trusted key)" : " (key not checked; pass --key to pin the signer)"}`)
-      else io.err(`BROKEN: ${result.reason}${result.brokenAt === undefined ? "" : ` (at event ${result.brokenAt})`}`)
-      return result.ok ? 0 : 1
-    }
-    const { records } = readAuditLog(path.join(home, "audit"))
-    const sessions = sessionsOf(records)
-    if (command.action === "list") {
-      if (sessions.length === 0) io.err(`bobi: no audit records in ${path.join(home, "audit")}`)
-      for (const s of sessions) io.out(`${s.session}  ${new Date(s.start).toISOString().slice(0, 19)}Z  ${s.user}  ${s.records} records`)
-      return 0
-    }
-    const session = command.session ?? sessions[0]?.session
-    if (!session) throw new UsageError("no session to seal: the audit log is empty")
-    const mask = createMasker([])
-    const extras: ExtraEvent[] = []
-    if (command.test) {
-      const began = Date.now()
-      const r = spawnSync(command.test, { shell: true, cwd: io.cwd, encoding: "utf8", timeout: 600_000 })
-      const output = mask(`${r.stdout ?? ""}${r.stderr ?? ""}`)
-      extras.push({ kind: "test", time: Date.now(), fields: { command: mask(command.test), exit: r.status ?? -1, seconds: Math.round((Date.now() - began) / 100) / 10, output: hashOf(output).slice(0, 16), tail: output.slice(-400) } })
-    }
-    if (command.diff) {
-      const r = spawnSync("git", ["diff", "HEAD", "--no-color"], { cwd: io.cwd, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 })
-      if (r.status !== 0) throw new UsageError(`git diff failed: ${(r.stderr ?? "").trim() || "not a git repository"}`)
-      const diff = mask(r.stdout)
-      extras.push({ kind: "diff", time: Date.now(), fields: { sha256: hashOf(diff), files: (diff.match(/^diff --git /gm) ?? []).length, diff: diff.length > 200_000 ? `${diff.slice(0, 200_000)}\n… (cut)` : diff } })
-    }
-    const dossier = sealDossier(readAuditLog(path.join(home, "audit")).records, session, loadOrCreateKey(path.join(home, "keys")), extras)
-    if (command.out) {
-      writeFileSync(path.resolve(io.cwd, command.out), `${JSON.stringify(dossier, null, 2)}\n`, { mode: 0o600 })
-      io.err(`bobi: dossier written to ${command.out} (key ${dossier.keyId}); check it with: bobi dossier verify ${command.out}`)
-    }
-    io.out(command.format === "json" ? JSON.stringify(dossier, null, 2) : renderDossier(dossier))
-    return 0
-  }
+  if (command.kind === "dossier") return runDossier(io, command)
 
   if (command.kind === "compare") {
     const git = (cwd: string, ...args: string[]) => spawnSync("git", args, { cwd, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 })

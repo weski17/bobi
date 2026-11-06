@@ -7,6 +7,7 @@
 | Task | Status | Where |
 |---|---|---|
 | Signed, hash-chained change dossier per session (prompt, model, tool calls, approvals, optional test result and diff); `bobi dossier [verify]` | ✅ | `packages/core/src/dossier.ts`, ADR-0022 |
+| Dossier per task (`bobi dossier --task N|last`): task number is part of the signature; older dossiers still verify | ✅ | `packages/core/src/dossier.ts`, `packages/shell/src/dossier.ts`, ADR-0026 |
 | Model comparison on your own code (`bobi compare`): same task, 2–4 models, own worktrees, same test command | ✅ | `packages/shell/src/compare.ts`, ADR-0022 |
 | Code tips as a pull request check (`bobi tips --since`, CI job `tips`); guide for model-based review on GitHub | ✅ | `packages/tips/src/ratchet.ts`, `docs/GITHUB-AGENTS.md` |
 | Web chat: the IDE chat panel as a web page in the demo image (port 7682), served by a narrow gate; web IDE moved to 7683 | ✅ | `packages/web-chat`, ADR-0024 |

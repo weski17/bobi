@@ -434,8 +434,10 @@ Einträge sind verkettet (jeder enthält den Hash des vorigen) und der Kopf ist 
 Protokoll später ändert, kürzt oder umsortiert, wird beim Prüfen erkannt.
 
 ```bash
-bobi dossier --list                                           # Sitzungen im Audit-Log
+bobi dossier --list                                           # Sitzungen im Audit-Log (mit Zahl der Aufgaben)
+bobi dossier --list --session <id>                            # die Aufgaben (Prompts) einer Sitzung
 bobi dossier --out aenderung.json --diff --test "bun test"    # letzte Sitzung versiegeln (Tests und Diff dazu)
+bobi dossier --task last --out aufgabe.json                   # nur die letzte Aufgabe (oder --task 2, mit --session)
 bobi dossier verify aenderung.json                            # Kette und Signatur prüfen
 bobi dossier verify aenderung.json --key kollege.pub.pem      # zusätzlich: wurde es mit DIESEM Schlüssel signiert?
 ```
@@ -443,6 +445,13 @@ bobi dossier verify aenderung.json --key kollege.pub.pem      # zusätzlich: wur
 Der Schlüssel liegt in `~/.bobi/keys/dossier-ed25519.pem` (nur für dich lesbar). Ohne `--key` beweist die Prüfung nur,
 dass das Protokoll unverändert ist – wer es signiert hat, weißt du erst, wenn du den öffentlichen Schlüssel der Person
 vorab kennst. Der Diff ist der Stand beim Versiegeln (nicht beim Entstehen der Änderung).
+
+**Pro Aufgabe statt pro Sitzung (ADR-0026).** Eine Aufgabe ist ein Prompt: Sie beginnt mit dem Auftrag und reicht bis
+zum nächsten Auftrag derselben Sitzung. Mit `--task` enthält das Protokoll nur diese Aufgabe; die Aufgabennummer ist
+mit signiert, ein Aufgaben-Protokoll lässt sich also weder als ganze Sitzung noch als andere Aufgabe ausgeben. Ältere
+Protokolle bleiben gültig. Grenze: Der Diff mit `--diff` ist weiterhin der Stand des Projekts beim Versiegeln, nicht
+nur die Änderungen dieser einen Aufgabe (Bobi merkt sich den Arbeitsstand nicht pro Aufgabe); Bobi weist beim Versiegeln
+darauf hin.
 
 ### Modellvergleich auf deinem Code
 

@@ -36,5 +36,5 @@ tamper-evident record per task.
 - The diff is the state at sealing time. Prompts and details are masked by pattern; unknown secret formats can slip
   through (as everywhere, see SECURITY.md).
 - Key loss means old dossiers can no longer be attributed; there is no revocation list yet.
-- Possible later steps: anchoring the head in an external log, dossiers per task instead of per session, signed
-  registry for skills/modes/MCP servers.
+- Per-task dossiers were added in [ADR-0026](0026-dossier-per-task.md). Possible later steps: anchoring the head in an
+  external log, a per-task diff, signed registry for skills/modes/MCP servers.
