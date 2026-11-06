@@ -54,75 +54,84 @@ const SECURITY_HEADERS = {
   "cache-control": "no-cache",
 } as const
 
+const plain = (status: number, text: string, extra: Record<string, string> = {}) =>
+  new Response(text, { status, headers: { ...SECURITY_HEADERS, "content-type": "text/plain; charset=utf-8", ...extra } })
+
+/** HTTP Basic: user `demo` and the visitors' password, compared in constant time. */
+function authorized(request: Request, password: string): boolean {
+  const header = request.headers.get("authorization") ?? ""
+  if (!header.startsWith("Basic ")) return false
+  let decoded: string
+  try {
+    decoded = atob(header.slice(6))
+  } catch {
+    return false
+  }
+  const colon = decoded.indexOf(":")
+  return colon > 0 && same(decoded.slice(0, colon), "demo") && same(decoded.slice(colon + 1), password)
+}
+
+/** Browsers send Origin on every request that could change something; it has to be this very site. */
+function crossSite(request: Request): boolean {
+  const origin = request.headers.get("origin")
+  return origin !== null && new URL(origin).host !== request.headers.get("host")
+}
+
+function serveFile(known: (typeof FILES)[string], dirs: Record<"public" | "dist" | "media", string>): Response {
+  try {
+    return new Response(readFileSync(path.join(dirs[known.dir], known.file)), { headers: { ...SECURITY_HEADERS, "content-type": known.type } })
+  } catch {
+    return plain(404, `${known.file} is not built`)
+  }
+}
+
+/** Forwards one allowed API call to the Bobi server with the server's own credentials. */
+async function forward(request: Request, url: URL, upstream: string, upstreamAuth: string): Promise<Response> {
+  if (!ALLOWED.some((r) => r.method === request.method && r.path.test(url.pathname))) return plain(404, "Not available")
+  const headers = new Headers({ authorization: upstreamAuth, "accept-encoding": "identity" })
+  for (const name of ["content-type", "accept"]) {
+    const value = request.headers.get(name)
+    if (value) headers.set(name, value)
+  }
+  let response: Response
+  try {
+    response = await fetch(`${upstream}${url.pathname}${url.search}`, {
+      method: request.method,
+      headers,
+      ...(request.method === "GET" ? {} : { body: await request.arrayBuffer() }),
+      signal: request.signal,
+    })
+  } catch {
+    return plain(502, "The Bobi server is not reachable")
+  }
+  const out = new Headers(SECURITY_HEADERS)
+  const type = response.headers.get("content-type")
+  if (type) out.set("content-type", type)
+  out.set("cache-control", "no-store")
+  out.set("x-accel-buffering", "no")
+  return new Response(response.body, { status: response.status, headers: out })
+}
+
 export function startGate(options: GateOptions) {
   const upstreamAuth = `Basic ${btoa(`opencode:${options.serverPassword}`)}`
   const dirs = { public: options.publicDir, dist: options.distDir, media: options.mediaDir }
-  const authorized = (request: Request) => {
-    const header = request.headers.get("authorization") ?? ""
-    if (!header.startsWith("Basic ")) return false
-    let decoded: string
-    try {
-      decoded = atob(header.slice(6))
-    } catch {
-      return false
-    }
-    const colon = decoded.indexOf(":")
-    return colon > 0 && same(decoded.slice(0, colon), "demo") && same(decoded.slice(colon + 1), options.password)
+  const handle = async (request: Request): Promise<Response> => {
+    const url = new URL(request.url)
+    if (!authorized(request, options.password)) return plain(401, "Login required", { "www-authenticate": 'Basic realm="Bobi Demo"' })
+    if (crossSite(request)) return plain(403, "Cross-site request refused")
+    if (url.pathname === "/config.json" && request.method === "GET")
+      return new Response(JSON.stringify({ directory: options.directory }), { headers: { ...SECURITY_HEADERS, "content-type": "application/json" } })
+    const known = FILES[url.pathname]
+    if (known && request.method === "GET") return serveFile(known, dirs)
+    if (url.pathname.startsWith("/api/")) return forward(request, url, options.upstream, upstreamAuth)
+    return plain(404, "Not found")
   }
-
   return Bun.serve({
     port: options.port,
     hostname: options.hostname ?? "0.0.0.0",
     // Server-sent events stay open for hours.
     idleTimeout: 0,
     ...(options.tls ? { tls: { cert: Bun.file(options.tls.cert), key: Bun.file(options.tls.key) } } : {}),
-    async fetch(request) {
-      const url = new URL(request.url)
-      const plain = (status: number, text: string, extra: Record<string, string> = {}) => new Response(text, { status, headers: { ...SECURITY_HEADERS, "content-type": "text/plain; charset=utf-8", ...extra } })
-      if (!authorized(request)) return plain(401, "Login required", { "www-authenticate": 'Basic realm="Bobi Demo"' })
-      // Cross-site protection: browsers send Origin on every request that could change something.
-      const origin = request.headers.get("origin")
-      if (origin !== null && new URL(origin).host !== request.headers.get("host")) return plain(403, "Cross-site request refused")
-
-      if (url.pathname === "/config.json" && request.method === "GET")
-        return new Response(JSON.stringify({ directory: options.directory }), { headers: { ...SECURITY_HEADERS, "content-type": "application/json" } })
-      const known = FILES[url.pathname]
-      if (known && request.method === "GET") {
-        try {
-          return new Response(readFileSync(path.join(dirs[known.dir], known.file)), { headers: { ...SECURITY_HEADERS, "content-type": known.type } })
-        } catch {
-          return plain(404, `${known.file} is not built`)
-        }
-      }
-
-      if (url.pathname.startsWith("/api/")) {
-        if (!ALLOWED.some((r) => r.method === request.method && r.path.test(url.pathname))) return plain(404, "Not available")
-        const headers = new Headers({ authorization: upstreamAuth, "accept-encoding": "identity" })
-        for (const name of ["content-type", "accept"]) {
-          const value = request.headers.get(name)
-          if (value) headers.set(name, value)
-        }
-        let response: Response
-        try {
-          response = await fetch(`${options.upstream}${url.pathname}${url.search}`, {
-            method: request.method,
-            headers,
-            ...(request.method === "GET" ? {} : { body: await request.arrayBuffer() }),
-            signal: request.signal,
-          })
-        } catch {
-          return plain(502, "The Bobi server is not reachable")
-        }
-        const out = new Headers(SECURITY_HEADERS)
-        for (const name of ["content-type", "cache-control"]) {
-          const value = response.headers.get(name)
-          if (value) out.set(name, value)
-        }
-        out.set("cache-control", "no-store")
-        out.set("x-accel-buffering", "no")
-        return new Response(response.body, { status: response.status, headers: out })
-      }
-      return plain(404, "Not found")
-    },
+    fetch: handle,
   })
 }

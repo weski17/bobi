@@ -17,18 +17,19 @@ function el(tag: string, cls: string, text?: string) {
   return e
 }
 
+const lineClass = (line: string) =>
+  line.startsWith("@@") ? "hunk" : line.startsWith("+") && !line.startsWith("+++") ? "add" : line.startsWith("-") && !line.startsWith("---") ? "del" : ""
+
 /** Renders the patches of an edit request below its approval card (text only, never HTML). */
 function showDiff(request: PermissionRequest) {
   const card = document.getElementById(`approval-${request.id}`)
   if (!card) return
+  const buttons = card.querySelector(".buttons")
   for (const file of request.metadata?.files ?? []) {
-    card.insertBefore(el("div", "diff-file", file.file), card.querySelector(".buttons"))
+    card.insertBefore(el("div", "diff-file", file.file), buttons)
     const pre = el("pre", "diff")
-    for (const line of file.patch.split("\n")) {
-      const cls = line.startsWith("@@") ? "hunk" : line.startsWith("+") && !line.startsWith("+++") ? "add" : line.startsWith("-") && !line.startsWith("---") ? "del" : ""
-      pre.appendChild(el("div", cls, line || " "))
-    }
-    card.insertBefore(pre, card.querySelector(".buttons"))
+    for (const line of file.patch.split("\n")) pre.appendChild(el("div", lineClass(line), line || " "))
+    card.insertBefore(pre, buttons)
   }
 }
 
@@ -45,16 +46,19 @@ async function boot() {
   await controller.start()
 }
 
+const actions: Record<string, (c: ChatController, m: FromPage) => Promise<unknown> | unknown> = {
+  send: (c, m) => c.send(m.text ?? ""),
+  reply: (c, m) => c.reply(m.id!, m.decision!),
+  mode: (c, m) => c.setMode(m.mode!),
+  stop: (c) => c.stopRequest(),
+  new: (c) => c.newChat(),
+  undo: async (c) => toPage({ type: "info", message: (await c.undo()) ? "Undone: the last request's changes were reverted." : "Nothing to undo." }),
+}
+
 async function handle(m: FromPage) {
   try {
     if (m.type === "loaded") await boot()
-    else if (!controller) return
-    else if (m.type === "send") await controller.send(m.text ?? "")
-    else if (m.type === "reply") await controller.reply(m.id!, m.decision!)
-    else if (m.type === "mode") await controller.setMode(m.mode!)
-    else if (m.type === "stop") await controller.stopRequest()
-    else if (m.type === "new") controller.newChat()
-    else if (m.type === "undo") toPage({ type: "info", message: (await controller.undo()) ? "Undone: the last request's changes were reverted." : "Nothing to undo." })
+    else if (controller && Object.hasOwn(actions, m.type)) await actions[m.type]!(controller, m)
   } catch (error) {
     toPage({ type: "error", message: (error as Error).message })
   }
