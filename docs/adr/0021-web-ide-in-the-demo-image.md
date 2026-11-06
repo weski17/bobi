@@ -19,7 +19,7 @@ the graphical chat panel, diffs and the editor.
   of Debian 12 cannot compile the Electron headers of this revision). Result: 662 MB, verified for arm64.
 - **Opt-in:** the stage builds only with `--build-arg WEB_IDE_ARCHS="amd64"` (needs ~8 GB RAM, ~10 minutes); by default
   the stage is empty, so the standard demo image stays small and its CI build short.
-- **Access:** the IDE server listens on 127.0.0.1:8080; **nginx** on port 7682 is the only way in (HTTP Basic, user
+- **Access:** the IDE server listens on 127.0.0.1:8080; **nginx** on port 7683 is the only way in (HTTP Basic, user
   `demo`, same `DEMO_PASSWORD` as the terminal; WebSocket support; Origin check against cross-site WebSocket hijacking;
   `Cache-Control: no-cache`, because the IDE's file names contain the upstream commit and do not change on rebuilds).
   `compose.demo.yaml` publishes it through a second forwarder (`--profile ide`).
@@ -37,6 +37,8 @@ host (or `*.localhost` for local tests) plus a server patch that hands the templ
 ask for "just try it"; until it is solved the panel stays empty. Options for later: (a) document the wildcard setup and
 add the patch, (b) render the chat without a webview (VS Code chat participant API), (c) a small standalone web chat
 served by the Bobi server itself.
+
+**Update 2026-11-03:** option (c) was built as the [web chat](0024-web-chat.md) (port 7682, always on). The web IDE moved to port 7683 and stays experimental.
 
 ## Consequences
 

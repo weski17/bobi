@@ -1,0 +1,11 @@
+{
+  "name": "@bobi/web-chat",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "exports": { ".": "./src/gate.ts" },
+  "scripts": {
+    "build": "bun build src/main.ts --target=browser --format=iife --outfile dist/main.js"
+  }
+}

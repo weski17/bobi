@@ -4,7 +4,7 @@
 # DEMO_PASSWORD, pick "Bobi starten" and try every feature on a private copy of a sample project.
 #
 #   export DEMO_PASSWORD="$(openssl rand -base64 18)"      # at least 12 characters; keep it, you share it with visitors
-#   docker compose -f compose.demo.yaml up -d              # → terminal http://127.0.0.1:7681, web IDE http://127.0.0.1:7682
+#   docker compose -f compose.demo.yaml up -d              # → terminal http://127.0.0.1:7681, web chat http://127.0.0.1:7682
 #   DEMO_BIND=0.0.0.0 docker compose -f compose.demo.yaml up -d      # reachable from the network (see "TLS" below)
 #
 # Needs about 8 GB RAM and 4 CPU cores for the model (CPU inference: answers take seconds to minutes).
@@ -62,16 +62,25 @@ services:
     ports: ["${DEMO_BIND:-127.0.0.1}:${DEMO_PORT:-7681}:7681"]
     depends_on: [demo]
 
+  # Web chat (ADR-0024): the Bobi chat panel as a web page – chat, approvals with diffs, undo. Same login as the terminal.
+  gateway-chat:
+    <<: *hardening
+    networks: [internal, outside]
+    read_only: true
+    entrypoint: ["bun", "/opt/bobi/sandbox/forward.ts", "7682", "demo:7682"]
+    ports: ["${DEMO_BIND:-127.0.0.1}:${DEMO_CHAT_PORT:-7682}:7682"]
+    depends_on: [demo]
+
   # Web IDE (experimental, ADR-0021): only in images built with WEB_IDE_ARCHS=amd64, and only started with
   #   docker compose --profile ide up -d
-  # Its chat panel needs a wildcard host name (see ADR-0021); without it the panel stays empty.
+  # Its chat panel needs a wildcard host name (see ADR-0021); without it the panel stays empty – use the web chat.
   gateway-ide:
     <<: *hardening
     profiles: [ide]
     networks: [internal, outside]
     read_only: true
-    entrypoint: ["bun", "/opt/bobi/sandbox/forward.ts", "7682", "demo:7682"]
-    ports: ["${DEMO_BIND:-127.0.0.1}:${DEMO_IDE_PORT:-7682}:7682"]
+    entrypoint: ["bun", "/opt/bobi/sandbox/forward.ts", "7683", "demo:7683"]
+    ports: ["${DEMO_BIND:-127.0.0.1}:${DEMO_IDE_PORT:-7683}:7683"]
     depends_on: [demo]
 
 networks:

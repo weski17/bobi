@@ -25,5 +25,6 @@
 | [0021](0021-web-ide-in-the-demo-image.md) | Web IDE in the demo image (experimental, opt-in) | Accepted (experimental) |
 | [0022](0022-change-dossier.md) | Signed change dossier and model comparison | Accepted |
 | [0023](0023-signed-registry.md) | Signed registry for skills and slash commands | Accepted |
+| [0024](0024-web-chat.md) | Web chat: the IDE chat panel as a web page | Accepted |
 
 New ADRs: copy [`0000-template.md`](0000-template.md), next free number.

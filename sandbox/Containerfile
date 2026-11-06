@@ -133,6 +133,9 @@ RUN set -eux; \
 RUN cd /opt/bobi/vendor/opencode && bun install --frozen-lockfile \
       --filter "@opencode/sdk" --filter "@opencode/core" --filter "@opencode/server" --filter "@opencode/plugin" --filter "@opencode/cli"
 
+# The web chat page (ADR-0024): the IDE chat panel's controller bundled for the browser.
+RUN cd /opt/bobi/packages/web-chat && bun run build
+
 COPY --from=model /models /opt/ollama-models
 COPY --from=model /licenses /opt/demo/licenses
 COPY --from=webide /out /opt/bobi-ide
@@ -163,7 +166,7 @@ ENV OLLAMA_MODELS=/opt/ollama-models \
 
 USER bun
 WORKDIR /home/bun
-EXPOSE 7681
+EXPOSE 7681 7682
 ENTRYPOINT ["/opt/demo/entrypoint.sh"]
 
 # ---------------------------------------------------------------------------------------------------------

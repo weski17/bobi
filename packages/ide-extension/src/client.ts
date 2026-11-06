@@ -37,14 +37,16 @@ function appendQuery(params: URLSearchParams, key: string, value: unknown) {
 }
 
 export class BobiClient {
-  private readonly auth: string
+  /** Without a password no Authorization header is sent: in a browser the page's own login (same origin) applies. */
+  private readonly auth: Record<string, string>
 
   constructor(
     readonly url: string,
-    password: string,
-    private readonly fetchImpl: typeof fetch = fetch,
+    password: string | undefined,
+    // Wrapped: browsers refuse to call `fetch` with the client as `this` ("Illegal invocation").
+    private readonly fetchImpl: typeof fetch = ((input, init) => fetch(input, init)) as typeof fetch,
   ) {
-    this.auth = `Basic ${Buffer.from(`opencode:${password}`).toString("base64")}`
+    this.auth = password === undefined ? {} : { authorization: `Basic ${btoa(`opencode:${password}`)}` }
   }
 
   private async request<T>(method: string, path: string, options: { body?: unknown; query?: Record<string, unknown> } = {}): Promise<T> {
@@ -53,7 +55,7 @@ export class BobiClient {
     const qs = params.toString()
     const response = await this.fetchImpl(`${this.url}${path}${qs ? `?${qs}` : ""}`, {
       method,
-      headers: { authorization: this.auth, ...(options.body === undefined ? {} : { "content-type": "application/json" }) },
+      headers: { ...this.auth, ...(options.body === undefined ? {} : { "content-type": "application/json" }) },
       ...(options.body === undefined ? {} : { body: JSON.stringify(options.body) }),
     })
     const text = await response.text()
@@ -116,7 +118,7 @@ export class BobiClient {
   async complete(input: { file: string; prefix: string; suffix: string; multiline: boolean }, signal?: AbortSignal): Promise<{ text?: string; off?: string; status: number }> {
     const response = await this.fetchImpl(`${this.url}/bobi/complete`, {
       method: "POST",
-      headers: { authorization: this.auth, "content-type": "application/json" },
+      headers: { ...this.auth, "content-type": "application/json" },
       body: JSON.stringify(input),
       ...(signal ? { signal } : {}),
     })
@@ -130,7 +132,7 @@ export class BobiClient {
   async tips(file: string, text: string, signal?: AbortSignal): Promise<Tip[]> {
     const response = await this.fetchImpl(`${this.url}/bobi/tips`, {
       method: "POST",
-      headers: { authorization: this.auth, "content-type": "application/json" },
+      headers: { ...this.auth, "content-type": "application/json" },
       body: JSON.stringify({ file, text }),
       ...(signal ? { signal } : {}),
     })
@@ -141,7 +143,7 @@ export class BobiClient {
 
   /** Server-sent events, until `signal` aborts. */
   async *events(signal: AbortSignal): AsyncGenerator<BobiEvent> {
-    const response = await this.fetchImpl(`${this.url}/api/event`, { headers: { authorization: this.auth }, signal })
+    const response = await this.fetchImpl(`${this.url}/api/event`, { headers: this.auth, signal })
     if (!response.ok || !response.body) throw new BobiApiError(response.status, "event stream unavailable")
     const reader = response.body.getReader()
     const decoder = new TextDecoder()

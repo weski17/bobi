@@ -54,7 +54,7 @@ printf 'DEMO_PASSWORD=%s\n' "$(openssl rand -base64 18)" > .env      # mindesten
 cat .env                                                             # notieren – das gibst du den Gästen (Benutzer: demo)
 ```
 
-Bleibt `DEMO_BIND` unset, hört die Demo nur auf `127.0.0.1` (richtig, wenn Caddy davor steht, Abschnitt 6).
+Bleibt `DEMO_BIND` ungesetzt, hört die Demo nur auf `127.0.0.1` (richtig, wenn Caddy davor steht, Abschnitt 6).
 
 ## 5. GitHub einrichten
 
@@ -87,12 +87,20 @@ demo.firma.de {
 sudo systemctl reload caddy
 ```
 
+Der Web-Chat (Port 7682) bekommt eine eigene Adresse, z. B. `chat.firma.de` – ebenfalls auf die Server-IP zeigen lassen:
+
+```
+chat.firma.de {
+	reverse_proxy 127.0.0.1:7682
+}
+```
+
 Caddy holt das Zertifikat selbst (Let's Encrypt) und leitet WebSockets automatisch durch. Das Web-Terminal prüft, dass
 die Anfrage von derselben Adresse kommt (`ttyd -O`); Caddy gibt den Host-Header unverändert weiter, daher geht das.
 
 ## 7. Firewall
 
-Nur SSH und HTTPS nach außen. Der Demo-Port 7681 bleibt zu (die Demo hört ohnehin nur lokal):
+Nur SSH und HTTPS nach außen. Die Demo-Ports 7681 und 7682 bleiben zu (die Demo hört ohnehin nur lokal):
 
 ```bash
 sudo ufw allow OpenSSH && sudo ufw allow 80,443/tcp && sudo ufw enable
@@ -105,6 +113,7 @@ Achtung: Docker umgeht `ufw` für veröffentlichte Ports. Deshalb bindet `compos
 
 1. `https://demo.firma.de` öffnen → Anmeldefenster; Benutzer `demo`, Passwort aus `.env`.
 2. Menü erscheint → „Bobi starten“. Die erste Modellantwort braucht einen Moment (Modell wird geladen).
+   Der Web-Chat unter `https://chat.firma.de` (gleiche Anmeldung) zeigt oben die Modi und nimmt Fragen entgegen.
 3. Auf dem Server: `docker compose -f ~/bobi-demo/compose.demo.yaml ps` zeigt `healthy`.
 
 ## 9. Betrieb
@@ -133,4 +142,5 @@ docker compose -f compose.demo.yaml down -v                # stoppen und die Gas
 | Container wird nicht „healthy“ | `logs --tail 100`. Meist zu wenig RAM (mindestens 8 GB) oder zu wenige Kerne. |
 | Anmeldefenster kommt immer wieder | Falsches Passwort oder `.env` nach dem Start geändert, ohne `up -d`. |
 | Terminal bleibt leer / „origin“-Fehler | Reverse Proxy ändert den Host-Header. Bei Caddy Standard lassen. |
-| Web-IDE leer | Die Web-IDE ist experimentell und standardmäßig nicht im Image (ADR-0021). |
+| Web-IDE leer | Die Web-IDE ist experimentell und standardmäßig nicht im Image (ADR-0021). Nimm den Web-Chat (Port 7682). |
+| Web-Chat zeigt „Login required“ oder nichts | Dieselben Zugangsdaten wie beim Terminal (Benutzer `demo`). Adresse mit `https://` und ohne Zugangsdaten in der URL öffnen. |
