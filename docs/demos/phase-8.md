@@ -17,7 +17,9 @@ Choose a mode, ask something, watch the answer stream. For an edit the approval 
 After a task in any surface:
 
 ```bash
-bobi dossier --list                                            # sessions in the audit log
+bobi dossier --list                                            # sessions in the audit log (with their number of tasks)
+bobi dossier --list --session <id>                             # the tasks (prompts) of one session
+bobi dossier --task last --out task.json                       # seal only the latest task (or --task 2)
 bobi dossier --out change.json --diff --test "bun test"        # seal the latest session with the diff and a test run
 bobi dossier verify change.json                                # intact: N events, key …
 ```
@@ -25,6 +27,10 @@ bobi dossier verify change.json                                # intact: N event
 Now change one character in `change.json` (for example a prompt or a result) and run `verify` again:
 `BROKEN: event N was changed`. Give a colleague the public key (`publicKey` in the file) and let them pin it:
 `bobi dossier verify change.json --key colleague.pub.pem`.
+
+A task dossier carries its task number inside the signature: change `"task": 1` to `2` in `task.json` and `verify`
+says `BROKEN: the signature does not match`. (`--diff` is still the project's current uncommitted state, not only that
+task's changes.)
 
 ## 3. Model comparison
 
@@ -48,6 +54,17 @@ bobi registry list
 ```
 
 Edit a file inside `registry/review-style-1.0.0.bobipkg.json` and install again: refused (`file … was changed`).
+
+Revoke a package (the publisher) and see it refused and found on the user's side:
+
+```bash
+bobi registry revoke review-style --reason "contains a token" --out registry/   # signs registry/revocations.bobirev.json
+bobi registry install review-style --from registry/ --force                      # refused: is revoked – also with --force
+bobi registry check --from registry/                                             # lists installed packages that are revoked (exit 1)
+bobi registry check --from registry/ --remove                                    # removes exactly those
+```
+
+Put an older `revocations.bobirev.json` back: refused (`rollback`), nothing is un-revoked.
 
 ## 5. Tips as a pull request check
 

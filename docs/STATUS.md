@@ -12,6 +12,7 @@
 | Code tips as a pull request check (`bobi tips --since`, CI job `tips`); guide for model-based review on GitHub | ✅ | `packages/tips/src/ratchet.ts`, `docs/GITHUB-AGENTS.md` |
 | Web chat: the IDE chat panel as a web page in the demo image (port 7682), served by a narrow gate; web IDE moved to 7683 | ✅ | `packages/web-chat`, ADR-0024 |
 | Signed private registry for skills and slash commands (`bobi registry`); MCP servers and IDE extensions deliberately not included | ✅ | `packages/core/src/registry.ts`, ADR-0023 |
+| Image scan fails on new findings (Trivy, HIGH/CRITICAL with a fix); the 54 findings known on 2026-11-06 are a dated baseline that expires 2027-02-06 | ✅ | `.github/workflows/image.yml`, `.trivyignore.yaml`, `docs/security/image-scan.md` |
 | Revocation list for the registry: signed, with serial (no rollback); install refuses revoked packages even with `--force`; `bobi registry check [--remove]` | ✅ | `packages/core/src/revocation.ts`, `packages/shell/src/registry.ts`, ADR-0025 |
 
 ## After phase 7 (2026-10-20)
