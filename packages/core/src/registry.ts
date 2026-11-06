@@ -7,6 +7,7 @@ import { createPublicKey, sign, verify, type KeyObject } from "node:crypto"
 import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs"
 import path from "node:path"
 import { canonical, hashOf, keyIdOf } from "./dossier.ts"
+import { findRevocation, manifestHash, type Revocation } from "./revocation.ts"
 
 export type PackageKind = "skill" | "command"
 
@@ -176,7 +177,7 @@ export class PublisherStore {
   }
 }
 
-export type InstalledRecord = { name: string; kind: PackageKind; version: string; keyId: string; installedAt: string }
+export type InstalledRecord = { name: string; kind: PackageKind; version: string; keyId: string; installedAt: string; /** Absent in records written before revocation existed. */ manifestHash?: string }
 
 /** Where a package goes: skills/<name>/…, commands/<name>.md under the Bobi home (or a project's .bobi). */
 export function targetDir(root: string, pkg: PackageManifest): string {
@@ -184,13 +185,16 @@ export function targetDir(root: string, pkg: PackageManifest): string {
 }
 
 /**
- * Installs a verified package from a trusted publisher. Refuses unknown publishers, downgrades and overwriting
- * something that was not installed from a package (unless `force`). The files are written next to the target and renamed.
+ * Installs a verified package from a trusted publisher. Refuses revoked packages (also with `force`), unknown
+ * publishers, downgrades and overwriting something that was not installed from a package (unless `force`). The files are written next to the target and renamed.
  */
-export function installPackage(pkg: Package, root: string, trustedKeys: readonly string[], options: { force?: boolean; now?: () => Date } = {}): InstalledRecord {
+export function installPackage(pkg: Package, root: string, trustedKeys: readonly string[], options: { force?: boolean; now?: () => Date; revocations?: readonly Revocation[] } = {}): InstalledRecord {
   const check = verifyPackage(pkg, trustedKeys)
   if (!check.ok) throw new Error(`refused: ${check.reason}`)
   if (!check.trusted) throw new Error(`refused: publisher key ${check.keyId} is not trusted (add it with: bobi registry trust <public-key.pem>)`)
+  const hash = manifestHash(pkg.manifest)
+  const revoked = findRevocation(options.revocations ?? [], { name: pkg.manifest.name, version: pkg.manifest.version, keyId: check.keyId, manifestHash: hash })
+  if (revoked) throw new Error(`refused: ${pkg.manifest.name} ${pkg.manifest.version} is revoked (${revoked.reason})`)
   const ledger = path.join(root, "registry", "installed.json")
   const records: InstalledRecord[] = existsSync(ledger) ? (JSON.parse(readFileSync(ledger, "utf8")) as InstalledRecord[]) : []
   const previous = records.find((r) => r.name === pkg.manifest.name && r.kind === pkg.manifest.kind)
@@ -216,7 +220,7 @@ export function installPackage(pkg: Package, root: string, trustedKeys: readonly
     writeFileSync(staging, pkg.contents[`${pkg.manifest.name}.md`]!)
     renameSync(staging, target)
   }
-  const record: InstalledRecord = { name: pkg.manifest.name, kind: pkg.manifest.kind, version: pkg.manifest.version, keyId: check.keyId, installedAt: (options.now?.() ?? new Date()).toISOString() }
+  const record: InstalledRecord = { name: pkg.manifest.name, kind: pkg.manifest.kind, version: pkg.manifest.version, keyId: check.keyId, installedAt: (options.now?.() ?? new Date()).toISOString(), manifestHash: hash }
   mkdirSync(path.dirname(ledger), { recursive: true })
   writeFileSync(ledger, `${JSON.stringify([...records.filter((r) => r !== previous), record], null, 2)}\n`)
   return record
@@ -225,6 +229,24 @@ export function installPackage(pkg: Package, root: string, trustedKeys: readonly
 export function installedPackages(root: string): InstalledRecord[] {
   const ledger = path.join(root, "registry", "installed.json")
   return existsSync(ledger) ? (JSON.parse(readFileSync(ledger, "utf8")) as InstalledRecord[]) : []
+}
+
+/** Installed packages that a revocation matches, with the entry that matched. */
+export function revokedInstalled(root: string, revocations: readonly Revocation[]): { record: InstalledRecord; revocation: Revocation }[] {
+  return installedPackages(root).flatMap((record) => {
+    const revocation = findRevocation(revocations, record)
+    return revocation ? [{ record, revocation }] : []
+  })
+}
+
+/** Deletes an installed package's files and its ledger entry. Only what the ledger lists; nothing else is touched. */
+export function removeInstalled(root: string, record: InstalledRecord) {
+  // The ledger is a plain file the user can edit; never build a path from a name that is not a valid package name.
+  if (!NAME.test(record.name)) throw new Error(`refusing to remove "${record.name}": not a valid package name`)
+  const target = record.kind === "skill" ? path.join(root, "skills", record.name) : path.join(root, "commands", `${record.name}.md`)
+  rmSync(target, { recursive: true, force: true })
+  const ledger = path.join(root, "registry", "installed.json")
+  writeFileSync(ledger, `${JSON.stringify(installedPackages(root).filter((r) => !(r.name === record.name && r.kind === record.kind)), null, 2)}\n`)
 }
 
 /** Finds a package in a registry folder: <dir>/<name>.bobipkg.json (newest version file wins for <name>-<version>). */

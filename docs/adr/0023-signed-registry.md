@@ -29,8 +29,8 @@ user would trust by default. Sharing therefore needs to prove *who* published a 
 
 - **MCP servers and IDE extensions** run code. Distributing them needs a separate review (what runs, with which rights,
   in the sandbox) and probably reproducible builds; not part of this decision.
-- Revocation lists, key rotation, expiry and a server index/search. Today: remove the publisher (`untrust`) and the
-  package is no longer installable; already installed packages stay (check `bobi registry list`).
+- Key rotation, expiry and a server index/search. Revocation lists were added in [ADR-0025](0025-registry-revocation.md);
+  removing a whole publisher (`untrust`) still works, and already installed packages stay until `bobi registry check --remove`.
 
 ## Consequences
 

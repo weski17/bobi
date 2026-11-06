@@ -19,6 +19,8 @@ export type Command =
   | { kind: "registry"; action: "verify" | "trust" | "untrust"; target: string }
   | { kind: "registry"; action: "list"; from?: string }
   | { kind: "registry"; action: "key" }
+  | { kind: "registry"; action: "revoke"; name?: string; version?: string; keyId?: string; hash?: string; reason: string; out?: string }
+  | { kind: "registry"; action: "check"; from?: string; project: boolean; remove: boolean }
   | { kind: "tips"; paths: string[]; format: "text" | "json"; failOn?: "warning" | "info"; since?: string }
   | { kind: "diagram"; source: "code" | "cobol"; program?: string; depth?: number; directory?: string }
   | { kind: "help" }
@@ -68,6 +70,10 @@ Usage:
   bobi registry install <name|file.bobipkg.json> [--from DIR] [--project] [--force]
                                    Install a package from a trusted publisher (signature and files are checked)
   bobi registry verify <file>      Check a package without installing it
+  bobi registry revoke [<name>] [--version V] [--key-id ID] [--hash H] --reason T [--out DIR]
+                                   Sign a revocation: the package can no longer be installed or used
+  bobi registry check [--from DIR] [--project] [--remove]
+                                   Take over the revocation list of a registry folder; report (or remove) revoked installs
   bobi tips [--format text|json] [--fail-on warning|info] [--since <git-ref>] [paths...]
                                    Code tips: complex functions and anti-patterns (TS/JS, COBOL), no model call
   bobi diagram [code|cobol] [--program P] [--depth N] [directory]
@@ -209,7 +215,7 @@ export function parseArgs(argv: readonly string[]): Command {
         if (flags.includes(arg)) {
           if (!list[i + 1]) throw new UsageError(`${arg} needs a value`)
           values[arg] = list[++i]!
-        } else if (arg === "--project" || arg === "--force") switches.add(arg)
+        } else if (arg === "--project" || arg === "--force" || arg === "--remove") switches.add(arg)
         else if (arg.startsWith("-")) throw new UsageError(`unknown option for registry ${sub}: ${arg}`)
         else words.push(arg)
       }
@@ -231,7 +237,18 @@ export function parseArgs(argv: readonly string[]): Command {
     if (sub === "verify" || sub === "trust" || sub === "untrust") return { kind: "registry", action: sub, target: one(take(args, []).words, sub === "untrust" ? "a key id" : "a file") }
     if (sub === "list") return { kind: "registry", action: "list", from: take(args, ["--from"]).values["--from"] }
     if (sub === "key") return { kind: "registry", action: "key" }
-    throw new UsageError("registry commands: pack, install, list, verify, key, trust, untrust")
+    if (sub === "revoke") {
+      const { values, words } = take(args, ["--version", "--key-id", "--hash", "--reason", "--out"])
+      if (words.length > 1) throw new UsageError("registry revoke takes at most one package name")
+      if (!values["--reason"]) throw new UsageError("registry revoke needs --reason \"why\"")
+      return { kind: "registry", action: "revoke", name: words[0], version: values["--version"], keyId: values["--key-id"], hash: values["--hash"], reason: values["--reason"], out: values["--out"] }
+    }
+    if (sub === "check") {
+      const { values, switches, words } = take(args, ["--from"])
+      if (words.length) throw new UsageError("registry check takes no arguments, only --from DIR")
+      return { kind: "registry", action: "check", from: values["--from"], project: switches.has("--project"), remove: switches.has("--remove") }
+    }
+    throw new UsageError("registry commands: pack, install, list, verify, key, trust, untrust, revoke, check")
   }
 
   if (first === "tips") {

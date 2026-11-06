@@ -26,5 +26,6 @@
 | [0022](0022-change-dossier.md) | Signed change dossier and model comparison | Accepted |
 | [0023](0023-signed-registry.md) | Signed registry for skills and slash commands | Accepted |
 | [0024](0024-web-chat.md) | Web chat: the IDE chat panel as a web page | Accepted |
+| [0025](0025-registry-revocation.md) | Revocation list for the signed registry | Accepted |
 
 New ADRs: copy [`0000-template.md`](0000-template.md), next free number.
