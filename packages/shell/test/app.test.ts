@@ -475,6 +475,106 @@ test("bobi dossier --task: lists tasks, seals one task, refuses a wrong number, 
   }
 })
 
+/** Alice publishes `deploy` and `lint` in work/reg; Bob trusts her and has installed both. Eve is an unrelated publisher. */
+async function revocationSetup() {
+  const { writeFile, mkdir } = await import("node:fs/promises")
+  const dirs = {
+    alice: await mkdtemp(path.join(tmpdir(), "bobi-rev-alice-")),
+    bob: await mkdtemp(path.join(tmpdir(), "bobi-rev-bob-")),
+    eve: await mkdtemp(path.join(tmpdir(), "bobi-rev-eve-")),
+    work: await mkdtemp(path.join(tmpdir(), "bobi-rev-work-")),
+  }
+  const as = (home: string) => () => io({ env: { BOBI_HOME: home }, cwd: dirs.work })
+  const [a, b, e] = [as(dirs.alice), as(dirs.bob), as(dirs.eve)]
+  await writeFile(path.join(dirs.work, "deploy.md"), "Deploy to staging.\n")
+  await writeFile(path.join(dirs.work, "lint.md"), "Lint it.\n")
+  await mkdir(path.join(dirs.work, "reg"))
+  const key = a()
+  await runApp(["registry", "key"], key.io)
+  await writeFile(path.join(dirs.work, "alice.pem"), key.out[0]! + "\n")
+  for (const name of ["deploy", "lint"]) await runApp(["registry", "pack", `${name}.md`, "--version", "1.0.0", "--out", "reg"], a().io)
+  await runApp(["registry", "trust", "alice.pem"], b().io)
+  for (const name of ["deploy", "lint"]) await runApp(["registry", "install", name, "--from", "reg"], b().io)
+  const cleanup = async () => {
+    for (const d of Object.values(dirs)) await rm(d, { recursive: true, force: true })
+  }
+  return { a, b, e, ...dirs, cleanup }
+}
+
+test("bobi registry revoke and check: a revoked package is refused, reported and removable", async () => {
+  const { readFile, access } = await import("node:fs/promises")
+  const { a, b, work, bob, cleanup } = await revocationSetup()
+  try {
+    // verify shows the hash a revocation can pin
+    const verified = b()
+    await runApp(["registry", "verify", "reg/deploy-1.0.0.bobipkg.json"], verified.io)
+    expect(verified.out.join("\n")).toMatch(/manifest sha256:[0-9a-f]{64}/)
+
+    // Nothing revoked yet.
+    const clean = b()
+    expect(await runApp(["registry", "check", "--from", "reg"], clean.io)).toBe(0)
+    expect(clean.out.join("\n")).toContain("no installed package is revoked")
+    expect(clean.err.join("\n")).toContain("no revocations.bobirev.json")
+
+    // Alice revokes deploy; the list needs a reason.
+    await expect(runApp(["registry", "revoke", "deploy"], a().io)).rejects.toThrow(/--reason/)
+    const revoked = a()
+    expect(await runApp(["registry", "revoke", "deploy", "--reason", "contains a leaked token", "--out", "reg"], revoked.io)).toBe(0)
+    expect(revoked.out[0]).toContain("serial 1, 1 entries")
+
+    // Bob: install from the registry now fails, even with --force; lint is unaffected.
+    await expect(runApp(["registry", "install", "deploy", "--from", "reg", "--force"], b().io)).rejects.toThrow(/is revoked \(contains a leaked token\)/)
+    expect(await runApp(["registry", "install", "lint", "--from", "reg"], b().io)).toBe(0)
+
+    // check reports what is still installed (exit 1), then --remove deletes only that package.
+    const found = b()
+    expect(await runApp(["registry", "check", "--from", "reg"], found.io)).toBe(1)
+    expect(found.out.join("\n")).toContain("REVOKED command deploy 1.0.0")
+    expect(found.out.join("\n")).toContain("contains a leaked token")
+    expect(await runApp(["registry", "check", "--from", "reg", "--remove"], b().io)).toBe(0)
+    await expect(access(path.join(bob, "commands", "deploy.md"))).rejects.toThrow()
+    expect(await readFile(path.join(bob, "commands", "lint.md"), "utf8")).toBe("Lint it.\n")
+    const listed = b()
+    await runApp(["registry", "list"], listed.io)
+    expect(listed.out.join("\n")).toContain("lint")
+    expect(listed.out.join("\n")).not.toContain("deploy")
+  } finally {
+    await cleanup()
+  }
+})
+
+test("bobi registry revoke and check: a newer list extends, an older one is refused, an untrusted signer is refused", async () => {
+  const { copyFile, mkdir, readFile } = await import("node:fs/promises")
+  const { a, b, e, work, cleanup } = await revocationSetup()
+  const regList = path.join(work, "reg", "revocations.bobirev.json")
+  try {
+    await runApp(["registry", "revoke", "deploy", "--reason", "leak", "--out", "reg"], a().io)
+    await copyFile(regList, path.join(work, "serial1.json"))
+
+    // Alice extends her list: serial 2, both entries. Eve cannot extend it with her own key.
+    expect(await runApp(["registry", "revoke", "lint", "--version", "1.0.0", "--reason", "broken", "--out", "reg"], a().io)).toBe(0)
+    const list = JSON.parse(await readFile(regList, "utf8"))
+    expect(list.serial).toBe(2)
+    expect(list.entries.map((x: { name: string }) => x.name)).toEqual(["deploy", "lint"])
+    await expect(runApp(["registry", "revoke", "other", "--reason", "x", "--out", "reg"], e().io)).rejects.toThrow(/cannot be extended/)
+
+    // Bob takes serial 2 over, then somebody puts the old serial 1 file back: refused (rollback), nothing un-revoked.
+    expect(await runApp(["registry", "check", "--from", "reg", "--remove"], b().io)).toBe(0)
+    await copyFile(path.join(work, "serial1.json"), regList)
+    await expect(runApp(["registry", "install", "deploy", "--from", "reg"], b().io)).rejects.toThrow(/rollback/)
+    await expect(runApp(["registry", "check", "--from", "reg"], b().io)).rejects.toThrow(/rollback/)
+
+    // A list signed by a key Bob does not trust is refused, not ignored.
+    const stranger = path.join(work, "stranger")
+    await mkdir(stranger)
+    await runApp(["registry", "revoke", "x", "--reason", "y", "--out", stranger], e().io)
+    await copyFile(path.join(stranger, "revocations.bobirev.json"), regList)
+    await expect(runApp(["registry", "check", "--from", "reg"], b().io)).rejects.toThrow(/not a trusted publisher/)
+  } finally {
+    await cleanup()
+  }
+})
+
 test("bobi tips --since reports only what a change adds", async () => {
   const { writeFile } = await import("node:fs/promises")
   const project = await mkdtemp(path.join(tmpdir(), "bobi-tips-since-"))

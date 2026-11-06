@@ -147,7 +147,7 @@ Voraussetzungen und Details: `docs/DEVELOPMENT.md`. Nutzer-Handbuch: `docs/HANDB
 - Tests: `bun run test` (mit Abdeckung: `bun run test:coverage`; Sandbox: `bun run test:sandbox`; Red-Team: `bun run test:redteam`; Last: `bun run test:load`)
 - Lint/Typprüfung: `bun run typecheck` (Semgrep läuft in der CI)
 - Bobi IDE einrichten: `bun run ide:setup` (einmalig), starten: `bobi-ide [ordner]` bzw. `bun run ide`; IDE-Test: `bun run test:ide`
-- Bobi Shell starten: `bobi` (interaktiv), `bobi run [--mode <slug>] "<Auftrag>"` (headless), `bobi serve`, `bobi attach <url>`, `bobi modes`, `bobi trust`, `bobi audit`, `bobi usage`, `bobi tips [--since <ref>]`, `bobi diagram [code|cobol]`, `bobi dossier [verify]`, `bobi compare`, `bobi registry`
+- Bobi Shell starten: `bobi` (interaktiv), `bobi run [--mode <slug>] "<Auftrag>"` (headless), `bobi serve`, `bobi attach <url>`, `bobi modes`, `bobi trust`, `bobi audit`, `bobi usage`, `bobi tips [--since <ref>]`, `bobi diagram [code|cobol]`, `bobi dossier [verify]`, `bobi compare`, `bobi registry [revoke|check]`
 - Sandbox: `podman build -f sandbox/Containerfile -t bobi:dev .` und `sandbox/bobi-sandbox.sh up <projekt>`
 
 ## Ausgabe am Ende jeder Phase
