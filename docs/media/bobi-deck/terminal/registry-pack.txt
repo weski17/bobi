@@ -1,0 +1,3 @@
+$ bobi registry pack erklaere.md --version 1.0.0 --out reg
+reg/erklaere-1.0.0.bobipkg.json  (command erklaere 1.0.0, 1 files, publisher e23a74e696980b22)
+

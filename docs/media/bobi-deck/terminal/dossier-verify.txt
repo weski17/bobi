@@ -1,0 +1,3 @@
+$ bobi dossier verify task.json
+intact: 5 events, session ses_e4d6d9d3bffeG8oOaEx2lwEuQu, task 1, key f0545ff76ff1f811 (key not checked; pass --key to pin the signer)
+

@@ -1,0 +1,3 @@
+$ bobi registry trust alice.pem
+trusted publisher e23a74e696980b22
+
