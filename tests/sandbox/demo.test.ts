@@ -10,6 +10,7 @@ import path from "node:path"
 const ROOT = path.resolve(import.meta.dir, "..", "..")
 const IMAGE = process.env.BOBI_DEMO_IMAGE ?? "bobi-demo:local"
 const PORT = 7691
+const CHAT_PORT = 7692
 const NAME = `bobi-demo-test-${process.pid}`
 const password = `demo-${crypto.randomUUID()}`
 const GENERATE = process.env.BOBI_DEMO_GENERATE === "1"
@@ -18,7 +19,7 @@ const available =
   Bun.spawnSync(["docker", "compose", "version"], { stdout: "ignore", stderr: "ignore" }).exitCode === 0 &&
   Bun.spawnSync(["docker", "image", "inspect", IMAGE], { stdout: "ignore", stderr: "ignore" }).exitCode === 0
 
-const env = () => ({ ...(process.env as Record<string, string>), BOBI_DEMO_IMAGE: IMAGE, DEMO_PASSWORD: password, DEMO_PORT: String(PORT), DEMO_CPUS: String(Math.min(4, os.cpus().length)) })
+const env = () => ({ ...(process.env as Record<string, string>), BOBI_DEMO_IMAGE: IMAGE, DEMO_PASSWORD: password, DEMO_PORT: String(PORT), DEMO_CHAT_PORT: String(CHAT_PORT), DEMO_CPUS: String(Math.min(4, os.cpus().length)) })
 const compose = (...args: string[]) => {
   const r = Bun.spawnSync(["docker", "compose", "-p", NAME, "-f", "compose.demo.yaml", ...args], { cwd: ROOT, env: env(), stdout: "pipe", stderr: "pipe" })
   return { code: r.exitCode, out: r.stdout.toString() + r.stderr.toString() }
@@ -94,6 +95,32 @@ describe.skipIf(!available)("demo image", () => {
       expect(ok.headers.get("content-type")).toContain("text/html")
     })
 
+    test("the web chat needs the password, serves the page and reaches the Bobi server only through its allowlist", async () => {
+      const base = `http://127.0.0.1:${CHAT_PORT}`
+      const auth = { authorization: `Basic ${btoa(`demo:${password}`)}` }
+      expect((await fetch(`${base}/`)).status).toBe(401)
+      expect((await fetch(`${base}/api/agent`)).status).toBe(401)
+      const page = await fetch(`${base}/`, { headers: auth })
+      expect(page.status).toBe(200)
+      expect(await page.text()).toContain("Bobi Chat")
+      expect((await fetch(`${base}/main.js`, { headers: auth })).status).toBe(200)
+      const config = (await (await fetch(`${base}/config.json`, { headers: auth })).json()) as { directory: string }
+      expect(config.directory).toBe("/home/bun/ide/workspace")
+      // The chat's own calls work (the gate adds the server's credentials) ...
+      // The engine loads the modes a moment after the location boots; the chat waits for them the same way.
+      let agents = ""
+      for (let i = 0; i < 60 && !agents.includes("orchestrator"); i++) {
+        const r = await fetch(`${base}/api/agent?location[directory]=${encodeURIComponent(config.directory)}`, { headers: auth })
+        expect(r.status).toBe(200)
+        agents = await r.text()
+        if (!agents.includes("orchestrator")) await Bun.sleep(500)
+      }
+      expect(agents).toContain("orchestrator")
+      // ... everything else of the engine's API does not.
+      expect((await fetch(`${base}/api/session`, { headers: auth })).status).toBe(404)
+      expect((await fetch(`${base}/api/config`, { headers: auth })).status).toBe(404)
+    }, 60_000)
+
     test("a browser session shows the menu, the tips, code tips and the COBOL diagram", async () => {
       const screen = await terminal([
         { waitFor: "Auswahl:" },
@@ -115,6 +142,7 @@ describe.skipIf(!available)("demo image", () => {
       expect(exec("demo", "ollama", "list").out).toContain("qwen3:4b-instruct-2507-q4_K_M")
       const ports = Bun.spawnSync(["docker", "ps", "--filter", `name=${NAME}`, "--format", "{{.Names}} {{.Ports}}"], { stdout: "pipe" }).stdout.toString()
       expect(ports).toContain(`:${PORT}->7681`)
+      expect(ports).toContain(`:${CHAT_PORT}->7682`)
       expect(ports).not.toContain("11434")
       expect(ports).not.toContain("4096")
       const probe = 'try { const r = await fetch("https://example.com", { signal: AbortSignal.timeout(5000) }); console.log("REACHED", r.status) } catch { console.log("blocked") }'

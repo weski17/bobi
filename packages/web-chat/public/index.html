@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bobi Chat</title>
+<link rel="icon" href="/bobi.svg">
+<link rel="stylesheet" href="/chat.css">
+<style>
+  /* The chat styles come from the IDE panel (VS Code theme variables); here they get a dark palette of their own. */
+  :root {
+    --vscode-foreground: #d6deeb; --vscode-font-family: system-ui, sans-serif; --vscode-font-size: 14px;
+    --vscode-panel-border: #26324d; --vscode-input-background: #16213b; --vscode-input-foreground: #d6deeb; --vscode-input-border: #26324d;
+    --vscode-focusBorder: #4f8cff; --vscode-errorForeground: #ff7b72;
+    --vscode-button-background: #3b6fe0; --vscode-button-foreground: #fff;
+    --vscode-button-secondaryBackground: #26324d; --vscode-button-secondaryForeground: #d6deeb;
+    --vscode-dropdown-background: #16213b; --vscode-dropdown-foreground: #d6deeb; --vscode-dropdown-border: #26324d;
+  }
+  html, body { height: 100%; margin: 0; }
+  .diff { margin: 6px 0 0; padding: 6px; background: #0a0f1e; border-radius: 4px; overflow-x: auto; font: 12px/1.4 ui-monospace, monospace; max-height: 320px; }
+  .diff .add { color: #7ee787; } .diff .del { color: #ff7b72; } .diff .hunk { color: #79c0ff; }
+  .diff-file { margin-top: 6px; font-weight: 600; font-size: .9em; }
+  body { background: #0a0f1e; color: #d6deeb; font: 14px/1.5 system-ui, sans-serif; }
+  #app { max-width: 920px; margin: 0 auto; height: calc(100vh - 44px); }
+  header { display: flex; align-items: center; gap: 10px; padding: 10px 12px; font-weight: 600; }
+  header img { width: 24px; height: 24px; }
+  header small { font-weight: 400; opacity: .7; }
+</style>
+</head>
+<body>
+<header><img src="/bobi.svg" alt=""><span>Bobi</span><small>chat with a local model; changes are shown for approval</small></header>
+<div id="app">
+  <div id="bar"><select id="mode" title="Mode"></select><button id="new" class="secondary" title="New chat">New</button><button id="undo" class="secondary" title="Undo the last request's changes">Undo</button></div>
+  <div id="log"></div>
+  <div id="compose"><textarea id="input" placeholder="Ask Bobi … (Enter to send, Shift+Enter for a new line)"></textarea>
+  <div><button id="send">Send</button><button id="stop" class="secondary" hidden>Stop</button></div></div>
+</div>
+<script src="/main.js"></script>
+<script src="/chat.js"></script>
+</body>
+</html>
