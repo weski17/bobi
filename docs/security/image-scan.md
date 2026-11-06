@@ -20,6 +20,13 @@ when the engine submodule or the base image is updated. Bobi's own MCP SDK is al
 the demo has not been analysed. The demo has no internet access and no production data, which limits the damage, but
 that is a mitigation, not an analysis.
 
+## Findings that appear later
+
+The baseline lists what was known on 2026-11-06. New vulnerabilities are published all the time, so the gate will go
+red now and then without any change in Bobi. That is intended: someone looks at it. Example: CVE-2026-78661
+(`golang.org/x/net/html`, denial of service) appeared in the pinned Ollama binary on the first CI run of the gate; it
+is listed with the reason, and it goes away when the Ollama version in `sandbox/Containerfile` is updated.
+
 ## Rules
 
 1. A new finding fails the build. Fix it (update the dependency or base image) or, after looking at it, add an entry
