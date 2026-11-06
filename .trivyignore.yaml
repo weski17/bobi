@@ -1,0 +1,170 @@
+# Accepted findings of the demo image scan (`.github/workflows/image.yml`, Trivy, HIGH and CRITICAL with a fix).
+#
+# This is a baseline, not a verdict: on 2026-11-06 the scan reported these findings. They come from dependencies of
+# the pinned engine (`vendor/opencode`: its npm packages, its build tools esbuild and tsgo) and from the Debian base
+# image, none from Bobi's own code. Bobi does not change vendor code for this; they go away with the next engine or
+# base image update. Reachability has NOT been analysed, so nothing here claims "not exploitable".
+#
+# Rules: a NEW finding fails the image workflow. Every entry expires; after that date the finding fails again until
+# somebody re-checks it (update the engine/base image, or renew the entry with a reason). Do not add entries without
+# looking at the finding. Process: docs/security/image-scan.md.
+vulnerabilities:
+  - id: CVE-2025-61726
+    statement: baseline 2026-11-06, engine or base image dependency, not triaged
+    expired_at: 2027-02-06
+  - id: CVE-2025-61729
+    statement: baseline 2026-11-06, engine or base image dependency, not triaged
+    expired_at: 2027-02-06
+  - id: CVE-2025-68121
+    statement: baseline 2026-11-06, engine or base image dependency, not triaged
+    expired_at: 2027-02-06
+  - id: CVE-2026-102276
+    statement: baseline 2026-11-06, engine or base image dependency, not triaged
+    expired_at: 2027-02-06
+  - id: CVE-2026-102278
+    statement: baseline 2026-11-06, engine or base image dependency, not triaged
+    expired_at: 2027-02-06
+  - id: CVE-2026-104845
+    statement: baseline 2026-11-06, engine or base image dependency, not triaged
+    expired_at: 2027-02-06
+  - id: CVE-2026-104846
+    statement: baseline 2026-11-06, engine or base image dependency, not triaged
+    expired_at: 2027-02-06
+  - id: CVE-2026-104850
+    statement: baseline 2026-11-06, engine or base image dependency, not triaged
+    expired_at: 2027-02-06
+  - id: CVE-2026-109383
+    statement: baseline 2026-11-06, engine or base image dependency, not triaged
+    expired_at: 2027-02-06
+  - id: CVE-2026-109518
+    statement: baseline 2026-11-06, engine or base image dependency, not triaged
+    expired_at: 2027-02-06
+  - id: CVE-2026-109829
+    statement: baseline 2026-11-06, engine or base image dependency, not triaged
+    expired_at: 2027-02-06
+  - id: CVE-2026-109869
+    statement: baseline 2026-11-06, engine or base image dependency, not triaged
+    expired_at: 2027-02-06
+  - id: CVE-2026-111768
+    statement: baseline 2026-11-06, engine or base image dependency, not triaged
+    expired_at: 2027-02-06
+  - id: CVE-2026-111770
+    statement: baseline 2026-11-06, engine or base image dependency, not triaged
+    expired_at: 2027-02-06
+  - id: CVE-2026-111943
+    statement: baseline 2026-11-06, engine or base image dependency, not triaged
+    expired_at: 2027-02-06
+  - id: CVE-2026-112942
+    statement: baseline 2026-11-06, engine or base image dependency, not triaged
+    expired_at: 2027-02-06
+  - id: CVE-2026-116580
+    statement: baseline 2026-11-06, engine or base image dependency, not triaged
+    expired_at: 2027-02-06
+  - id: CVE-2026-116581
+    statement: baseline 2026-11-06, engine or base image dependency, not triaged
+    expired_at: 2027-02-06
+  - id: CVE-2026-116584
+    statement: baseline 2026-11-06, engine or base image dependency, not triaged
+    expired_at: 2027-02-06
+  - id: CVE-2026-19534
+    statement: baseline 2026-11-06, engine or base image dependency, not triaged
+    expired_at: 2027-02-06
+  - id: CVE-2026-25128
+    statement: baseline 2026-11-06, engine or base image dependency, not triaged
+    expired_at: 2027-02-06
+  - id: CVE-2026-25679
+    statement: baseline 2026-11-06, engine or base image dependency, not triaged
+    expired_at: 2027-02-06
+  - id: CVE-2026-25896
+    statement: baseline 2026-11-06, engine or base image dependency, not triaged
+    expired_at: 2027-02-06
+  - id: CVE-2026-26278
+    statement: baseline 2026-11-06, engine or base image dependency, not triaged
+    expired_at: 2027-02-06
+  - id: CVE-2026-27145
+    statement: baseline 2026-11-06, engine or base image dependency, not triaged
+    expired_at: 2027-02-06
+  - id: CVE-2026-32280
+    statement: baseline 2026-11-06, engine or base image dependency, not triaged
+    expired_at: 2027-02-06
+  - id: CVE-2026-32281
+    statement: baseline 2026-11-06, engine or base image dependency, not triaged
+    expired_at: 2027-02-06
+  - id: CVE-2026-32283
+    statement: baseline 2026-11-06, engine or base image dependency, not triaged
+    expired_at: 2027-02-06
+  - id: CVE-2026-33036
+    statement: baseline 2026-11-06, engine or base image dependency, not triaged
+    expired_at: 2027-02-06
+  - id: CVE-2026-33811
+    statement: baseline 2026-11-06, engine or base image dependency, not triaged
+    expired_at: 2027-02-06
+  - id: CVE-2026-33814
+    statement: baseline 2026-11-06, engine or base image dependency, not triaged
+    expired_at: 2027-02-06
+  - id: CVE-2026-33818
+    statement: baseline 2026-11-06, engine or base image dependency, not triaged
+    expired_at: 2027-02-06
+  - id: CVE-2026-39820
+    statement: baseline 2026-11-06, engine or base image dependency, not triaged
+    expired_at: 2027-02-06
+  - id: CVE-2026-39821
+    statement: baseline 2026-11-06, engine or base image dependency, not triaged
+    expired_at: 2027-02-06
+  - id: CVE-2026-39822
+    statement: baseline 2026-11-06, engine or base image dependency, not triaged
+    expired_at: 2027-02-06
+  - id: CVE-2026-39836
+    statement: baseline 2026-11-06, engine or base image dependency, not triaged
+    expired_at: 2027-02-06
+  - id: CVE-2026-42499
+    statement: baseline 2026-11-06, engine or base image dependency, not triaged
+    expired_at: 2027-02-06
+  - id: CVE-2026-42504
+    statement: baseline 2026-11-06, engine or base image dependency, not triaged
+    expired_at: 2027-02-06
+  - id: CVE-2026-56851
+    statement: baseline 2026-11-06, engine or base image dependency, not triaged
+    expired_at: 2027-02-06
+  - id: CVE-2026-56852
+    statement: baseline 2026-11-06, engine or base image dependency, not triaged
+    expired_at: 2027-02-06
+  - id: CVE-2026-56853
+    statement: baseline 2026-11-06, engine or base image dependency, not triaged
+    expired_at: 2027-02-06
+  - id: CVE-2026-56858
+    statement: baseline 2026-11-06, engine or base image dependency, not triaged
+    expired_at: 2027-02-06
+  - id: CVE-2026-56859
+    statement: baseline 2026-11-06, engine or base image dependency, not triaged
+    expired_at: 2027-02-06
+  - id: CVE-2026-56860
+    statement: baseline 2026-11-06, engine or base image dependency, not triaged
+    expired_at: 2027-02-06
+  - id: CVE-2026-56862
+    statement: baseline 2026-11-06, engine or base image dependency, not triaged
+    expired_at: 2027-02-06
+  - id: CVE-2026-59940
+    statement: baseline 2026-11-06, engine or base image dependency, not triaged
+    expired_at: 2027-02-06
+  - id: CVE-2026-78667
+    statement: baseline 2026-11-06, engine or base image dependency, not triaged
+    expired_at: 2027-02-06
+  - id: CVE-2026-78669
+    statement: baseline 2026-11-06, engine or base image dependency, not triaged
+    expired_at: 2027-02-06
+  - id: CVE-2026-84375
+    statement: baseline 2026-11-06, engine or base image dependency, not triaged
+    expired_at: 2027-02-06
+  - id: CVE-2026-87018
+    statement: baseline 2026-11-06, engine or base image dependency, not triaged
+    expired_at: 2027-02-06
+  - id: CVE-2026-93749
+    statement: baseline 2026-11-06, engine or base image dependency, not triaged
+    expired_at: 2027-02-06
+  - id: CVE-2026-97031
+    statement: baseline 2026-11-06, engine or base image dependency, not triaged
+    expired_at: 2027-02-06
+  - id: GHSA-f897-62hf-6gxq
+    statement: baseline 2026-11-06, engine or base image dependency, not triaged
+    expired_at: 2027-02-06
