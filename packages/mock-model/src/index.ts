@@ -5,7 +5,8 @@
 // titles) get the auxiliary turn and never consume the script. No network beyond localhost.
 
 export type ToolCall = { readonly name: string; readonly arguments: Record<string, unknown> }
-export type Turn = { readonly text?: string; readonly toolCalls?: readonly ToolCall[] }
+/** A turn answers with text and/or tool calls, or with an HTTP error (e.g. 400 when a prompt exceeds the model's context). */
+export type Turn = { readonly text?: string; readonly toolCalls?: readonly ToolCall[]; readonly error?: { readonly status: number; readonly message: string; readonly type?: string } }
 
 export type RecordedRequest = {
   readonly path: string
@@ -134,6 +135,7 @@ export function startMockModel(options: MockModelOptions = {}): MockModel {
         const turn = agentLoop
           ? (queue.shift() ?? (typeof fallback === "function" ? fallback(body) : fallback))
           : (options.auxiliary ?? { text: "Bobi session" })
+        if (turn.error) return Response.json({ error: { message: turn.error.message, type: turn.error.type ?? "invalid_request_error" } }, { status: turn.error.status })
         if (body.stream) {
           return new Response(stream(body.model, turn), {
             headers: { "content-type": "text/event-stream", "cache-control": "no-cache" },

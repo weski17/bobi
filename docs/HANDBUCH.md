@@ -754,6 +754,8 @@ Sandbox 7/7, Red-Team 8/8, Semgrep 0 Befunde, Lasttest 300 Aufträge ohne Fehler
 | Demo: Antworten kommen sehr langsam oder gar nicht | Mindestens 8 GB RAM und 4 Kerne einplanen (`DEMO_MEMORY`, `DEMO_CPUS`); beim ersten Start wird das Modell erst geladen (bis zu 2 Minuten). |
 | Demo: Browser meldet Verbindungsfehler | Port prüfen (`DEMO_PORT`), `DEMO_BIND=0.0.0.0` für Zugriff aus dem Netz, `docker compose -f compose.demo.yaml logs demo`. |
 | Git meldet „dubious ownership“ in der Sandbox | aktuelles `sandbox/bobi-sandbox.sh` verwenden (markiert nur Projekt und Checkpoints als sicher). |
+| Antwort bricht mit „exceeds the available context size“ ab (Ollama: Fehler 400) | Ollama begrenzt den Kontext standardmäßig auf 4096 Token; Bobis Anfrage mit Werkzeugen und Dateiinhalten ist größer. Ollama mit `OLLAMA_CONTEXT_LENGTH=16384 ollama serve` starten. |
+| Ein eigener MCP-Server liefert nach einer Code-Änderung noch den alten Stand | Ein MCP-Server startet einmal pro Projekt und behält seinen Code im Speicher. Den Bobi-Server (oder die IDE) neu starten. |
 | Engine-Logs | `~/.bobi/data/log/server.log` |
 
 ---
