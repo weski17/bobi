@@ -79,3 +79,23 @@ test("sessions.titles model (default): the model is asked for the title", async 
   for (let i = 0; i < 100 && h.mock.requests.filter((r) => (r.body.tools?.length ?? 0) === 0).length === 0; i++) await Bun.sleep(50)
   expect(h.mock.requests.filter((r) => (r.body.tools?.length ?? 0) === 0).length).toBeGreaterThan(0)
 }, 30_000)
+
+test("a model error (prompt larger than the model's context) ends the request with a failure instead of leaving it open", async () => {
+  h = await createHarness({})
+  const seen: string[] = []
+  const stop = new AbortController()
+  void (async () => {
+    try {
+      for await (const e of h!.opencode.event.subscribe({ signal: stop.signal } as never) as unknown as AsyncIterable<{ type: string }>) seen.push(e.type)
+    } catch {
+      // the stream ends with the harness
+    }
+  })()
+  // Ollama answers 400 when the request does not fit; the chat relies on the execution ending (busy off, error shown).
+  const sessionID = await h.promptIn("ask", "hi", { error: { status: 400, message: "request (4593 tokens) exceeds the available context size (4096 tokens)", type: "exceed_context_size_error" } })
+  await waitFor(async () => (seen.includes("session.execution.failed") ? true : undefined), 15_000)
+  stop.abort()
+  await h.opencode.sessions.wait({ sessionID })
+  expect(seen).toContain("session.step.failed")
+  expect(seen).not.toContain("session.execution.succeeded")
+}, 30_000)
