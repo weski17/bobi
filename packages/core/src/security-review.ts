@@ -44,38 +44,47 @@ export function securityReviewPrompt(base: string, files: readonly string[]): st
 
 const text = (v: unknown): string | undefined => (typeof v === "string" && v.trim() ? v.trim().slice(0, MAX_FIELD) : undefined)
 
+/** The JSON array in the last `findings` (or `json`) block, or undefined when there is none or it is broken. */
+function lastBlock(output: string): unknown[] | undefined {
+  const body = [...output.matchAll(/```(?:findings|json)[^\S\n]*\n([\s\S]*?)```/g)].at(-1)?.[1]
+  if (body === undefined) return undefined
+  try {
+    const data: unknown = JSON.parse(body)
+    return Array.isArray(data) ? data : undefined
+  } catch {
+    return undefined
+  }
+}
+
+/** One entry of the answer as a finding, or undefined if it is incomplete or names a file outside the change. */
+function toFinding(item: unknown, files: ReadonlySet<string>): SecurityFinding | undefined {
+  const f = item && typeof item === "object" ? (item as Record<string, unknown>) : {}
+  const file = text(f.file)?.replace(/^\.\//, "")
+  const severity = severityOf(f.severity)
+  const title = text(f.title)
+  if (!file || !files.has(file) || !severity || !title) return undefined
+  return { file, line: lineOf(f.line), severity, title, why: text(f.why) ?? "", fix: text(f.fix) ?? "" }
+}
+
+const severityOf = (v: unknown): Severity | undefined => {
+  const s = text(v)?.toLowerCase()
+  return SEVERITIES.find((x) => x === s)
+}
+const lineOf = (v: unknown): number | undefined => (typeof v === "number" && Number.isInteger(v) && v > 0 ? v : undefined)
+
+const bySeverity = (a: SecurityFinding, b: SecurityFinding) =>
+  SEVERITIES.indexOf(a.severity) - SEVERITIES.indexOf(b.severity) || a.file.localeCompare(b.file) || (a.line ?? 0) - (b.line ?? 0)
+
 /**
  * Reads the agent's answer. The last `findings` (or `json`) block counts; findings for files outside the change are
  * dropped, because the model may invent them. A missing or broken block yields `parsed: false`.
  */
 export function parseSecurityFindings(output: string, changed: readonly string[]): ParsedReview {
-  const blocks = [...output.matchAll(/```(?:findings|json)[^\S\n]*\n([\s\S]*?)```/g)]
-  const body = blocks.at(-1)?.[1]
-  if (body === undefined) return { findings: [], dropped: 0, parsed: false }
-  let data: unknown
-  try {
-    data = JSON.parse(body)
-  } catch {
-    return { findings: [], dropped: 0, parsed: false }
-  }
-  if (!Array.isArray(data)) return { findings: [], dropped: 0, parsed: false }
+  const data = lastBlock(output)
+  if (!data) return { findings: [], dropped: 0, parsed: false }
   const files = new Set(changed)
-  const findings: SecurityFinding[] = []
-  let dropped = 0
-  for (const item of data) {
-    const f = item && typeof item === "object" ? (item as Record<string, unknown>) : {}
-    const file = text(f.file)?.replace(/^\.\//, "")
-    const severity = text(f.severity)?.toLowerCase() as Severity | undefined
-    const title = text(f.title)
-    if (!file || !files.has(file) || !severity || !SEVERITIES.includes(severity) || !title) {
-      dropped++
-      continue
-    }
-    const line = typeof f.line === "number" && Number.isInteger(f.line) && f.line > 0 ? f.line : undefined
-    findings.push({ file, line, severity, title, why: text(f.why) ?? "", fix: text(f.fix) ?? "" })
-  }
-  findings.sort((a, b) => SEVERITIES.indexOf(a.severity) - SEVERITIES.indexOf(b.severity) || a.file.localeCompare(b.file) || (a.line ?? 0) - (b.line ?? 0))
-  return { findings, dropped, parsed: true }
+  const findings = data.map((item) => toFinding(item, files)).filter((f): f is SecurityFinding => f !== undefined)
+  return { findings: findings.sort(bySeverity), dropped: data.length - findings.length, parsed: true }
 }
 
 /**
@@ -86,8 +95,8 @@ export function plainMarkdown(value: string): string {
   return value
     .replace(/[\r\n]+/g, " ")
     .replace(/[\\`*_{}[\]()#+!|<>~]/g, (c) => `\\${c}`)
-    .replace(/@/g, "@​")
-    .replace(/:\/\//g, ":​//")
+    .replace(/@/g, "@\u200b")
+    .replace(/:\/\//g, ":\u200b//")
 }
 
 export type CommentInput = {
@@ -103,40 +112,42 @@ export type CommentInput = {
 }
 
 const ICON: Record<Severity, string> = { critical: "🟥", high: "🟧", medium: "🟨", low: "🟦" }
+const plural = (n: number, one: string, many: string) => (n === 1 ? one : many)
+
+/** The main part: why nothing is listed, or the counts and the table. */
+function body(input: CommentInput, safe: (s: string) => string): string[] {
+  const { review, files } = input
+  if (!files.length) return ["No changed files to review."]
+  if (!review.parsed) return ["The agent's answer could not be read (no valid `findings` block). Nothing is reported; check the run log."]
+  if (!review.findings.length) return [`No findings in ${files.length} changed ${plural(files.length, "file", "files")}.`]
+  const shown = review.findings.slice(0, MAX_FINDINGS)
+  const counts = SEVERITIES.map((s) => [s, review.findings.filter((f) => f.severity === s).length] as const).filter(([, n]) => n)
+  const rows = shown.map((f) => {
+    const where = `\`${f.file.replace(/`/g, "'")}${f.line ? `:${f.line}` : ""}\``
+    const finding = `**${safe(f.title)}**${f.why ? `<br>${safe(f.why)}` : ""}`
+    return `| ${ICON[f.severity]} | ${where} | ${finding} | ${safe(f.fix)} |`
+  })
+  const more = review.findings.length - shown.length
+  return [counts.map(([s, n]) => `${ICON[s]} ${n} ${s}`).join(" · "), "", "| | Where | Finding | Fix |", "|---|---|---|---|", ...rows, ...(more ? ["", `… and ${more} more (see the run log).`] : [])]
+}
+
+/** What was left out, and the footer that says this is advice. */
+function notes(input: CommentInput, safe: (s: string) => string): string[] {
+  const { dropped } = input.review
+  const skipped = input.skipped ?? 0
+  const out: string[] = []
+  if (dropped) out.push("", `${dropped} ${plural(dropped, "entry was", "entries were")} ignored (outside the change or incomplete).`)
+  if (skipped) out.push("", `${skipped} changed ${plural(skipped, "file was", "files were")} not reviewed (lockfiles, media, vendored code, or more than ${MAX_FILES} files).`)
+  const commit = input.commit?.replace(/[^0-9a-f]/gi, "").slice(0, 12)
+  const run = input.runUrl && /^https:\/\/github\.com\/[\w./-]+$/.test(input.runUrl) ? input.runUrl : undefined
+  const meta = [input.model && ` Model: ${safe(input.model)}.`, commit && ` Commit: \`${commit}\`.`, run && ` [Run log](${run}).`].filter(Boolean).join("")
+  out.push("", `<sub>This review is advice from a model and can be wrong. It never blocks the merge: the required check is \`security-gate\` (Semgrep, gitleaks, bun audit, Trivy).${meta}</sub>`)
+  return out
+}
 
 /** The pull request comment. It always starts with the marker, so the workflow can update it instead of adding more. */
 export function renderSecurityComment(input: CommentInput): string {
-  const { review, files, mask } = input
-  const safe = (s: string) => plainMarkdown(mask(s))
-  const lines = [SECURITY_MARKER, "### Bobi security agent (advisory)", ""]
-  if (!files.length) lines.push("No changed files to review.")
-  else if (!review.parsed) {
-    lines.push("The agent's answer could not be read (no valid `findings` block). Nothing is reported; check the run log.")
-  } else if (!review.findings.length) {
-    lines.push(`No findings in ${files.length} changed file${files.length === 1 ? "" : "s"}.`)
-  } else {
-    const shown = review.findings.slice(0, MAX_FINDINGS)
-    const counts = SEVERITIES.map((s) => [s, review.findings.filter((f) => f.severity === s).length] as const).filter(([, n]) => n)
-    lines.push(counts.map(([s, n]) => `${ICON[s]} ${n} ${s}`).join(" · "), "")
-    lines.push("| | Where | Finding | Fix |", "|---|---|---|---|")
-    for (const f of shown) {
-      const where = `\`${f.file.replace(/`/g, "'")}${f.line ? `:${f.line}` : ""}\``
-      const finding = `**${safe(f.title)}**${f.why ? `<br>${safe(f.why)}` : ""}`
-      lines.push(`| ${ICON[f.severity]} | ${where} | ${finding} | ${safe(f.fix)} |`)
-    }
-    if (review.findings.length > shown.length) lines.push("", `… and ${review.findings.length - shown.length} more (see the run log).`)
-  }
-  if (review.dropped) lines.push("", `${review.dropped} entr${review.dropped === 1 ? "y was" : "ies were"} ignored (outside the change or incomplete).`)
-  if (input.skipped) lines.push("", `${input.skipped} changed file${input.skipped === 1 ? " was" : "s were"} not reviewed (lockfiles, media, vendored code, or more than ${MAX_FILES} files).`)
-  lines.push(
-    "",
-    "<sub>This review is advice from a model and can be wrong. It never blocks the merge: the required check is `security-gate`" +
-      " (Semgrep, gitleaks, Trivy)." +
-      [input.model && ` Model: ${safe(input.model)}.`, input.commit && ` Commit: \`${input.commit.replace(/[^0-9a-f]/gi, "").slice(0, 12)}\`.`, input.runUrl && /^https:\/\/github\.com\/[\w./-]+$/.test(input.runUrl) && ` [Run log](${input.runUrl}).`]
-        .filter(Boolean)
-        .join("") +
-      "</sub>",
-  )
-  const out = lines.join("\n")
+  const safe = (s: string) => plainMarkdown(input.mask(s))
+  const out = [SECURITY_MARKER, "### Bobi security agent (advisory)", "", ...body(input, safe), ...notes(input, safe)].join("\n")
   return out.length <= MAX_COMMENT ? out : `${out.slice(0, MAX_COMMENT)}\n\n… (cut, the comment is too long)`
 }
