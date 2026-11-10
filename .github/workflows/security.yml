@@ -1,0 +1,161 @@
+name: security
+
+# Security gate for every pull request and every push (a merge is a push to main). ADR-0027, docs/security/security-gate.md.
+#
+#   semgrep, secrets, deps, config  deterministic scanners; a pull request fails only on what it ADDS (Semgrep compares
+#                                   with the merge base, gitleaks scans the new commits); a push scans its new commits.
+#   security-gate                   one result for all of them: the check a branch rule on main requires.
+#   security-agent                  Bobi in the read-only mode security-ci reviews the changed files and comments on the
+#                                   pull request. Advice only: it never fails and is not part of the gate. It needs a
+#                                   self-hosted runner that reaches your model (labels: self-hosted, bobi-model) and the
+#                                   repository variable BOBI_SECURITY_AGENT=true; without them it is skipped.
+on:
+  pull_request:
+  push:
+    branches: ["**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  semgrep:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    container:
+      image: semgrep/semgrep:1.178.0
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Semgrep (Bobi code only; in a pull request only new findings count)
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          baseline=""
+          if [ -n "$BASE" ]; then baseline="--baseline-commit $(git merge-base "$BASE" HEAD)"; fi
+          semgrep scan --config p/typescript --config p/secrets --error $baseline \
+            --exclude vendor --exclude .upstream packages mcp-servers tests scripts sandbox
+
+  secrets:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: gitleaks (secrets in the new commits)
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          if [ -n "$BASE" ]; then range="$(git merge-base "$BASE" HEAD)..HEAD"
+          elif [ -n "$BEFORE" ] && [ "$BEFORE" != "0000000000000000000000000000000000000000" ] && git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then range="$BEFORE..HEAD"
+          else range="HEAD~1..HEAD"; fi
+          echo "scanning $range"
+          docker run --rm -v "$PWD:/repo" -w /repo ghcr.io/gitleaks/gitleaks:v8.28.0 \
+            git --config /repo/.gitleaks.toml --redact --no-banner --exit-code 1 --log-opts="$range" .
+
+  deps:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.3
+      - name: Dependency audit (known vulnerabilities, high and above fail)
+        run: bun audit --audit-level=high
+
+  config:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Trivy (misconfigurations in Containerfiles, compose and workflows; lockfiles it can read)
+        run: |
+          docker run --rm -v "$PWD:/repo:ro" -w /repo aquasec/trivy:0.57.0 fs --timeout 15m \
+            --db-repository public.ecr.aws/aquasecurity/trivy-db:2 --scanners vuln,misconfig \
+            --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 --ignorefile /repo/.trivyignore.yaml \
+            --skip-dirs vendor --skip-dirs node_modules --skip-dirs .upstream .
+
+  security-gate:
+    if: always()
+    needs: [semgrep, secrets, deps, config]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: All scanners passed
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          echo "$RESULTS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
+          echo "$RESULTS" | jq -e 'all(.[]; .result == "success")' > /dev/null
+
+  security-agent:
+    # Only pull requests from this repository: a fork could hide instructions in its code, and the runner sits in your
+    # network. Bobi runs from the base branch (the code under review cannot change the reviewer) and does not trust
+    # the reviewed project, so its AGENTS.md, rules and modes are ignored.
+    if: >-
+      github.event_name == 'pull_request' && vars.BOBI_SECURITY_AGENT == 'true' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: [self-hosted, bobi-model]
+    timeout-minutes: 30
+    continue-on-error: true
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Bobi from the base branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: bobi-tool
+          persist-credentials: false
+      - name: The change under review
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: review
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.3
+      - name: Install Bobi
+        working-directory: bobi-tool
+        run: |
+          git submodule update --init --depth 1 vendor/opencode
+          (cd vendor/opencode && bun install --frozen-lockfile)
+          bun install --frozen-lockfile
+      - name: Review (read-only mode security-ci)
+        working-directory: review
+        env:
+          BOBI_MODEL_BASE_URL: ${{ vars.BOBI_MODEL_BASE_URL }}
+          BOBI_MODEL: ${{ vars.BOBI_SECURITY_MODEL || vars.BOBI_MODEL }}
+          BOBI_MODEL_API_KEY: ${{ secrets.BOBI_MODEL_API_KEY }}
+          BOBI_HOME: ${{ runner.temp }}/bobi-home
+          BOBI_USER: github-actions
+        run: bun ../bobi-tool/scripts/security-agent.ts --base "${{ github.event.pull_request.base.sha }}" --out "$RUNNER_TEMP/comment.md" --log "$RUNNER_TEMP/agent.log"
+      - name: Comment on the pull request (updates the agent's earlier comment)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          id=$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" --paginate \
+            --jq '[.[] | select(.user.login == "github-actions[bot]" and (.body | startswith("<!-- bobi-security-agent -->")))] | last | .id // empty')
+          if [ -n "$id" ]; then gh api -X PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$id" -F "body=@$RUNNER_TEMP/comment.md" > /dev/null
+          else gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" -F "body=@$RUNNER_TEMP/comment.md" > /dev/null; fi
+      - name: Keep the run log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-agent-log
+          path: ${{ runner.temp }}/agent.log
+          if-no-files-found: ignore
+          retention-days: 14

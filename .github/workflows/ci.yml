@@ -80,12 +80,3 @@ jobs:
         run: bun install --frozen-lockfile
       - name: Red team with promptfoo (compromised mock model)
         run: bun run test:redteam
-
-  semgrep:
-    runs-on: ubuntu-24.04
-    container:
-      image: semgrep/semgrep:1.178.0
-    steps:
-      - uses: actions/checkout@v4
-      - name: Semgrep (Bobi code only)
-        run: semgrep scan --config p/typescript --config p/secrets --error --exclude vendor --exclude .upstream packages mcp-servers tests scripts sandbox
