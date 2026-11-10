@@ -90,7 +90,7 @@ describe("loadModes", () => {
   afterEach(() => rmSync(dir, { recursive: true, force: true }))
 
   test("built-in modes load in a stable order", () => {
-    expect(loadModes({ globalDir: path.join(dir, "g"), project: path.join(dir, "p") }).map((m) => m.slug)).toEqual(["code", "plan", "ask", "advanced", "orchestrator", "security"])
+    expect(loadModes({ globalDir: path.join(dir, "g"), project: path.join(dir, "p") }).map((m) => m.slug)).toEqual(["code", "plan", "ask", "advanced", "orchestrator", "security", "security-ci"])
   })
 
   test("global then project files override by slug and add new modes", () => {
@@ -100,7 +100,7 @@ describe("loadModes", () => {
     writeFileSync(path.join(dir, "p", ".bobi", "custom_modes.yaml"), "customModes:\n  - slug: ask\n    name: P\n    roleDefinition: r\n")
     const modes = loadModes({ globalDir: path.join(dir, "g"), project: path.join(dir, "p") })
     expect(modes.find((m) => m.slug === "ask")!.name).toBe("P")
-    expect(modes.map((m) => m.slug)).toEqual(["code", "plan", "ask", "advanced", "orchestrator", "security", "extra"])
+    expect(modes.map((m) => m.slug)).toEqual(["code", "plan", "ask", "advanced", "orchestrator", "security", "security-ci", "extra"])
   })
 })
 
