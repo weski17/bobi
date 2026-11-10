@@ -46,7 +46,10 @@ The demo exists so that others can try Bobi; treat it as an exposed service:
 
 - Dependencies are pinned (`bun.lock`, exact versions, container base images by digest, downloaded binaries by
   SHA-256). Every new dependency is checked for its licence and recorded in [`LICENSES.md`](LICENSES.md).
-- CI runs `bun audit` (high and above fail the build), Semgrep (TypeScript and secrets rules) and the red-team suite.
+- Every pull request and push runs the security gate ([docs/security/security-gate.md](docs/security/security-gate.md)):
+  Semgrep (TypeScript and secrets rules), gitleaks (secrets in new commits), `bun audit` (high and above) and Trivy
+  (misconfigurations); a pull request fails on what it adds. An optional Bobi agent comments on the change, read-only
+  and advisory. CI also runs the red-team suite.
 - Upstream code (`vendor/`) is tracked by commit; changes to it are numbered patches in `patches/` with a reason.
 
 ## Known limits

@@ -15,6 +15,14 @@
 | Image scan fails on new findings (Trivy, HIGH/CRITICAL with a fix); the 54 findings known on 2026-11-06 are a dated baseline that expires 2027-02-06 | ✅ | `.github/workflows/image.yml`, `.trivyignore.yaml`, `docs/security/image-scan.md` |
 | Revocation list for the registry: signed, with serial (no rollback); install refuses revoked packages even with `--force`; `bobi registry check [--remove]` | ✅ | `packages/core/src/revocation.ts`, `packages/shell/src/registry.ts`, ADR-0025 |
 
+## After phase 8 (2026-11-10): security gate
+
+| Task | Status | Where |
+|---|---|---|
+| Security gate on every pull request and push: Semgrep, gitleaks, `bun audit`, Trivy fs; one required check `security-gate`; a pull request fails only on what it adds | 🟡 built, first CI run pending | `.github/workflows/security.yml`, `.gitleaks.toml`, ADR-0027 |
+| Advisory security agent: read-only built-in mode `security-ci`, one pull request comment (parsed, masked, escaped); self-hosted runner only | 🟡 tested with the mock model; not run with a real model | `packages/core/src/security-review.ts`, `scripts/security-agent.ts`, `docs/security/security-gate.md` |
+| Branch rule on `main` (pull requests, green `security-gate`) | ⬜ repository owner | command in `docs/security/security-gate.md` |
+
 ## After phase 7 (2026-10-20)
 
 | Task | Status | Where |
@@ -200,7 +208,7 @@ Tests: **193 pass, 0 fail** + 3 terminal-UI e2e · line coverage 99.8 % · typec
 | Checkpoints + undo in git projects | ✅ | `tests/integration/checkpoints.test.ts` |
 | Checkpoints in projects without git (hidden repository + `.git` pointer) | ✅ | `packages/server/src/checkpoints.ts` |
 | Sandbox: Podman container, unprivileged, internal network, egress allowlist proxy | ✅ | `sandbox/`, `packages/egress-proxy`, `tests/sandbox` |
-| CI: typecheck, tests, coverage gate, terminal-UI e2e, Semgrep | ✅ green on GitHub | `.github/workflows/ci.yml` |
+| CI: typecheck, tests, coverage gate, terminal-UI e2e, Semgrep (since 2026-11-10 in the security gate) | ✅ green on GitHub | `.github/workflows/ci.yml`, `security.yml` |
 | Repository on GitHub (private) | ✅ | https://github.com/weski17/bobi |
 | Approval prompt in the terminal UI tested by keyboard (reject / allow once) | ✅ | `tests/e2e` |
 | Demo guide | ✅ | docs/demos/phase-1.md |
