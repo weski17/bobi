@@ -35,7 +35,8 @@
   with jobs, or one program's PERFORM graph); both servers offer the same as a `diagram` tool.
 - **A2A (req. 20):** protocol version 0.3 (open specification), JSON-RPC binding. Inbound is off by default and can be
   enabled only in the global config or with `BOBI_A2A=1` – never by a project. Agent card at
-  `/.well-known/agent-card.json` (public), JSON-RPC at `/a2a` (server password, HTTP Basic): `message/send`,
+  `/.well-known/agent-card.json` (public), JSON-RPC at `/a2a` (own bearer token `BOBI_A2A_TOKEN`, valid only there;
+until 2026-11-19 the server password, which opened the whole engine API – security review H2): `message/send`,
   `tasks/get`, `tasks/cancel`; no streaming or push notifications. Tasks run in the hidden engine agent `a2a`: the
   built-in Ask mode (not overridable by project or global modes), no auto-approvals, only read/glob/grep/skill;
   `@bobi/core` turns every other permission evaluation and every "ask" into "deny", so nothing waits for an approval.

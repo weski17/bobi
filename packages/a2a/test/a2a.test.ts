@@ -35,7 +35,7 @@ const send = (a2a: InboundA2a, message: Message, blocking?: boolean) =>
 
 test("agent card follows the A2A shape", () => {
   const card = agentCard({ baseUrl: "http://bobi:4096/", version: "1.2.3" })
-  expect(card).toMatchObject({ protocolVersion: "0.3.0", url: "http://bobi:4096/a2a", preferredTransport: "JSONRPC", version: "1.2.3", security: [{ basic: [] }] })
+  expect(card).toMatchObject({ protocolVersion: "0.3.0", url: "http://bobi:4096/a2a", preferredTransport: "JSONRPC", version: "1.2.3", security: [{ bearer: [] }] })
   expect(card.capabilities.streaming).toBe(false)
   expect(card.skills[0]!.tags).toContain("read-only")
   expect(agentCard({ baseUrl: "http://x", version: "1", name: "N", description: "D" })).toMatchObject({ name: "N", description: "D" })

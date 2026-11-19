@@ -10,6 +10,8 @@ import { bobiPaths, startBobiServer, type BobiServer } from "../src/index.ts"
 
 const password = crypto.randomUUID()
 const auth = { authorization: `Basic ${btoa(`opencode:${password}`)}` }
+const token = `a2a-${crypto.randomUUID()}`
+const bearer = { authorization: `Bearer ${token}` }
 let mock: MockModel
 let home: string
 let dir: string
@@ -30,7 +32,7 @@ beforeAll(async () => {
     audit,
     browser: false,
     directory: dir,
-    env: { BOBI_HOME: home, HOME: home, BOBI_MODEL_API_KEY: "a2a-test" },
+    env: { BOBI_HOME: home, HOME: home, BOBI_MODEL_API_KEY: "a2a-test", BOBI_A2A_TOKEN: token },
   })
 })
 afterAll(async () => {
@@ -43,16 +45,34 @@ afterAll(async () => {
 const send = async (text: string, extra: Record<string, unknown> = {}) => {
   const response = await fetch(`${server.url}/a2a`, {
     method: "POST",
-    headers: { ...auth, "content-type": "application/json" },
+    headers: { ...bearer, "content-type": "application/json" },
     body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "message/send", params: { message: { kind: "message", role: "user", messageId: crypto.randomUUID(), parts: [{ kind: "text", text }], ...extra } } }),
   })
   return (await response.json()) as { result: { id: string; contextId: string; status: { state: string; message?: { parts: { text: string }[] } } } }
 }
 
-test("the agent card is public, the endpoint needs the server password", async () => {
+test("the agent card is public, the endpoint needs the A2A token", async () => {
   const card = await (await fetch(`${server.url}/.well-known/agent-card.json`)).json()
-  expect(card).toMatchObject({ name: "Bobi", url: `${server.url}/a2a`, securitySchemes: { basic: { type: "http", scheme: "basic" } } })
+  expect(card).toMatchObject({ name: "Bobi", url: `${server.url}/a2a`, securitySchemes: { bearer: { type: "http", scheme: "bearer" } } })
   expect((await fetch(`${server.url}/a2a`, { method: "POST", body: "{}" })).status).toBe(401)
+  expect((await fetch(`${server.url}/a2a`, { method: "POST", headers: { authorization: "Bearer wrong" }, body: "{}" })).status).toBe(401)
+})
+
+test("the server password does not open A2A, and the A2A token opens nothing else (review 2026-11-19, H2)", async () => {
+  expect((await fetch(`${server.url}/a2a`, { method: "POST", headers: auth, body: "{}" })).status).toBe(401)
+  for (const p of ["/api/session", "/bobi/tips", "/bobi/complete"]) {
+    const response = await fetch(`${server.url}${p}`, { method: "POST", headers: { ...bearer, "content-type": "application/json" }, body: "{}" })
+    expect(response.status).toBe(401)
+  }
+  expect((await fetch(`${server.url}/api/session`, { headers: bearer })).status).toBe(401)
+})
+
+test("A2A does not start without its own token", async () => {
+  const config = { ...structuredClone(DEFAULTS), model: { ...DEFAULTS.model, baseURL: mock.baseURL }, a2a: { enabled: true, agents: {} } }
+  const start = (env: Record<string, string>) => startBobiServer({ config, paths: bobiPaths({ BOBI_HOME: home }), password, browser: false, env: { BOBI_HOME: home, HOME: home, ...env } })
+  await expect(start({})).rejects.toThrow(/BOBI_A2A_TOKEN/)
+  await expect(start({ BOBI_A2A_TOKEN: "short" })).rejects.toThrow(/at least 24/)
+  await expect(start({ BOBI_A2A_TOKEN: password })).rejects.toThrow(/differ from the server password/)
 })
 
 test("a task is answered in the read-only a2a agent: only read tools, no auto-approvals", async () => {

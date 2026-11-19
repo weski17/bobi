@@ -401,13 +401,16 @@ export BOBI_ZOWE_USS="/u/dev1"                    # Standard: eigenes Home
 `BOBI_A2A=1`; ein Projekt kann das nicht):
 
 ```bash
-BOBI_A2A=1 BOBI_SERVER_PASSWORD=… bobi serve --port 4096
+BOBI_A2A=1 BOBI_A2A_TOKEN="$(openssl rand -base64 32)" BOBI_SERVER_PASSWORD=… bobi serve --port 4096
 curl http://127.0.0.1:4096/.well-known/agent-card.json      # Agentenkarte (öffentlich)
 ```
 
-JSON-RPC unter `/a2a` (Server-Passwort, HTTP Basic, Benutzer `opencode`): `message/send`, `tasks/get`,
+JSON-RPC unter `/a2a` mit einem **eigenen Token** (`Authorization: Bearer $BOBI_A2A_TOKEN`, mindestens 24 Zeichen,
+nicht das Server-Passwort): `message/send`, `tasks/get`,
 `tasks/cancel`. Fremde Agenten **dürfen nur lesen**: alles andere wird sofort abgelehnt, nichts wartet auf eine
-Freigabe.
+Freigabe. Das Token gilt nur für `/a2a`; das Server-Passwort öffnet `/a2a` nicht, und mit dem Token kommt man an keine
+andere Schnittstelle. Ohne `BOBI_A2A_TOKEN` startet Bobi mit eingeschaltetem A2A nicht. (Bis 19.11.2026 galt hier das
+Server-Passwort; damit hätte ein Agent eine Sitzung in einem anderen Modus öffnen und eigene Freigaben bestätigen können.)
 
 ---
 
@@ -717,6 +720,7 @@ bei Vertrauen) → `BOBI_CONFIG` → Umgebungsvariablen. Geheimnisse sind in Dat
 | `BOBI_USER`, `BOBI_TEAM` | Nutzer und Team im Audit |
 | `BOBI_SERVER_PASSWORD` | Passwort für `serve`/`attach` |
 | `BOBI_A2A` | `1`/`true`: eingehendes A2A |
+| `BOBI_A2A_TOKEN` | Token für eingehendes A2A (Pflicht, ≥ 24 Zeichen, nur für `/a2a` gültig) |
 | `BOBI_SESSION_TITLES` | `model` oder `local` (siehe `sessions.titles`) |
 | `OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_EXPORTER_OTLP_HEADERS` | OpenTelemetry |
 | `ZOWE_OPT_*`, `BOBI_ZOWE_PROFILE`, `BOBI_ZOWE_DATASETS`, `BOBI_ZOWE_USS` | Mainframe |
@@ -785,7 +789,7 @@ Sandbox 7/7, Red-Team 8/8, Semgrep 0 Befunde, Lasttest 300 Aufträge ohne Fehler
   werden nicht analysiert.
 - Der Mainframe-Zugriff ist gegen einen Mock getestet, noch nicht gegen ein echtes System. Abgeschickte JCL kann
   alles, was der Job-Nutzer darf – die Freigabe bleibt entscheidend.
-- Eingehendes A2A nutzt ein gemeinsames Server-Passwort (keine Identität pro aufrufendem Agenten).
+- Eingehendes A2A nutzt ein gemeinsames Token für alle aufrufenden Agenten (keine Identität pro Agent).
 - Bei vielen parallelen Sitzungen auf einem Server steigt Bobis Eigenanteil an der Antwortzeit (≈ 1,1 s bei 100).
 - Bobi IDE läuft aus den Quellen; ein verteilbares Paket muss die proprietären Copilot-Pakete von Code-OSS entfernen.
 - Die Video-Tour wird mit Piper und der frei lizenzierten Stimme „Thorsten“ vertont (Modell MIT, Daten CC0); der
