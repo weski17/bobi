@@ -14,6 +14,12 @@ phases 1–8 (see [`docs/STATUS.md`](docs/STATUS.md) and the [demo guides](docs/
   since 2026-11-07 the demo image failed its vulnerability scan because of `zlib1g` (CVE-2026-85091) and was not
   published.
 
+### Security
+
+- CVE-2026-97054 (Go standard library, HTTP/1 servers) in the engine's build tools esbuild and tsgo and in the
+  bundled Ollama binary is accepted until 2026-12-19, limited to those files: the build tools run no server, Ollama
+  listens on loopback inside the container only. Ollama needs an update built with Go 1.26.11 or later.
+
 ## [1.0.0] – 2026-11-19
 
 First stable release: all requirements 1–20 are implemented, plus provable AI work (phase 8) and a security gate for

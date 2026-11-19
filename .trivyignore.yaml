@@ -171,3 +171,16 @@ vulnerabilities:
   - id: CVE-2026-78661
     statement: published after the baseline (2026-11-06); golang.org/x/net/html in the pinned Ollama binary (opt/ollama/bin/ollama, v0.40.13), fixed upstream in x/net 0.62.0, goes away with an Ollama update; reachability not analysed
     expired_at: 2027-02-06
+  - id: CVE-2026-97054
+    paths:
+      - "opt/bobi/vendor/opencode/node_modules/.bun/@esbuild+linux-x64@*/node_modules/@esbuild/linux-x64/bin/esbuild"
+      - "opt/bobi/vendor/opencode/node_modules/.bun/@esbuild+linux-arm64@*/node_modules/@esbuild/linux-arm64/bin/esbuild"
+      - "opt/bobi/vendor/opencode/node_modules/.bun/@typescript+native-preview-linux-x64@*/node_modules/@typescript/native-preview-linux-x64/lib/tsgo"
+      - "opt/bobi/vendor/opencode/node_modules/.bun/@typescript+native-preview-linux-arm64@*/node_modules/@typescript/native-preview-linux-arm64/lib/tsgo"
+      - "opt/ollama/bin/ollama"
+    statement: >-
+      checked 2026-11-19; Go standard library (net/http, HTTP/1 servers, MaxBytesReader), fixed in Go 1.26.11. esbuild
+      and tsgo are build tools of the engine and never run an HTTP server in the image. Ollama does, but listens on
+      127.0.0.1 inside the demo container only, so only processes in the container reach it. Short expiry: update
+      Ollama to a release built with Go >= 1.26.11 (latest stable v0.40.16 on 2026-11-19, Go version not verified).
+    expired_at: 2026-12-19
