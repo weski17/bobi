@@ -19,7 +19,11 @@
   ],
   "capabilities": {
     "untrustedWorkspaces": {
-      "supported": true
+      "supported": "limited",
+      "description": "Bobi asks for its own project trust before it uses a project's configuration. The command that starts Bobi can only be set in user settings.",
+      "restrictedConfigurations": [
+        "bobi.command"
+      ]
     }
   },
   "contributes": {
@@ -74,11 +78,12 @@
       "properties": {
         "bobi.command": {
           "type": "array",
+          "scope": "machine",
           "items": {
             "type": "string"
           },
           "default": [],
-          "description": "Command that starts Bobi (default: `bobi` on PATH or ~/.local/bin/bobi)."
+          "description": "Command that starts Bobi (default: `bobi` on PATH or ~/.local/bin/bobi). User settings only: a value in a workspace's .vscode/settings.json is ignored."
         },
         "bobi.includeOpenTabs": {
           "type": "boolean",

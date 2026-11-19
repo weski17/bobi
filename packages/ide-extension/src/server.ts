@@ -18,6 +18,16 @@ export function bobiEnv(base: NodeJS.ProcessEnv = process.env): NodeJS.ProcessEn
 }
 
 /** The command that runs Bobi: setting, else `bobi` from ~/.local/bin (scripts/install.sh), else `bobi` on PATH. */
+/**
+ * The `bobi.command` setting, from the user's own settings only. A workspace (`.vscode/settings.json`) or folder value
+ * is ignored: a repository must never choose which program the IDE starts (security review 2026-11-19, K2). The
+ * manifest also declares the setting machine-scoped and restricted in untrusted workspaces.
+ */
+export function userCommand(inspected: { globalValue?: unknown } | undefined): string[] {
+  const value = inspected?.globalValue
+  return Array.isArray(value) && value.every((v) => typeof v === "string") ? [...value] : []
+}
+
 export function resolveCommand(configured: readonly string[] = [], home = os.homedir()): string[] {
   if (configured.length) return [...configured]
   const installed = path.join(home, ".local", "bin", "bobi")
