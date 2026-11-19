@@ -164,7 +164,6 @@ ENV OLLAMA_MODELS=/opt/ollama-models \
     BOBI_MODEL=${DEMO_MODEL} \
     BOBI_USER=besucher \
     BOBI_TEAM=demo \
-    BOBI_A2A=1 \
     NO_COLOR="" \
     TERM=xterm-256color
 
