@@ -14,7 +14,7 @@ import { expandTemplate, extensionDirs, readCommands, readSkills } from "./exten
 import { initPrompt } from "./init.ts"
 import { resolveMcpServers } from "./mcp.ts"
 import { createMasker, maskDeep, type Masker } from "./masking.ts"
-import { loadDefaultPolicy, rulesForAgent, type Rule } from "./permissions.ts"
+import { loadDefaultPolicy, rulesForAgent, writesFile, type Rule } from "./permissions.ts"
 import { collectRules, rulesPrompt } from "./rules.ts"
 import { filterGlob, filterGrep, renderGlob, renderGrep } from "./search-filter.ts"
 import { isUntrusted, SYSTEM_RULE, wrapUntrusted } from "./untrusted.ts"
@@ -359,6 +359,8 @@ export function createBobiCore(options: BobiCoreOptions): Plugin.Plugin & { read
       await ctx.permission.hook("evaluate", (event) => {
         const now = Date.now()
         if (event.agent) sessionMode.set(String(event.sessionID), String(event.agent))
+        // An explicit shell auto-approval (e.g. "git log *") never covers writing a file through a redirect.
+        if (event.action === "shell" && event.effect === "allow" && event.resources.some((r) => writesFile(String(r)))) event.effect = "ask"
         // Other agents may only read; an approval request would wait for a person who is not there.
         if (String(event.agent) === A2A_AGENT && (event.effect === "ask" || !A2A_TOOLS.has(event.action))) {
           event.effect = "deny"

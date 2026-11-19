@@ -16,7 +16,7 @@
   },
   // Explicit auto-approvals. Without them every write, shell command and network access asks.
   "autoApprove": [
-    // { "action": "shell", "resource": "git status *" },
+    // { "action": "shell", "resource": "npm test" },   (a redirect into a file, e.g. "> out.txt", still asks)
     // { "action": "edit", "resource": "docs/*", "modes": ["code"] }
   ],
   "telemetry": {

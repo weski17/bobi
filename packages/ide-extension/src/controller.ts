@@ -97,8 +97,8 @@ export class ChatController {
       void this.loadModes().then((modes) => modes.length && this.ui.post({ type: "ready", modes, mode: this.mode }))
       return
     }
-    if (!this.sessionID) return
     const child = data.sessionID !== undefined && this.children.has(String(data.sessionID))
+    if (!this.sessionID && !child) return
     if (data.sessionID && data.sessionID !== this.sessionID && !child) return
     // From subtasks only tool activity and approvals are shown; their text goes back to the orchestrator.
     if (child && !["session.tool.input.started", "session.tool.called", "permission.asked"].includes(event.type)) return
@@ -196,19 +196,30 @@ export class ChatController {
 
   /**
    * A commit message for the staged changes, written by Bobi in its own short session: the model reads the diff with
-   * `git diff --staged` (allowed without asking), so the diff passes Bobi's secret masking and audit like any tool output.
+   * `git diff --staged`, so the diff passes Bobi's secret masking and audit like any tool output. Shell commands always
+   * ask (even read-only git can run code from a crafted repository), so the session's approvals appear in the panel
+   * like those of a subtask.
    */
   async commitMessage(timeoutMs = 120_000): Promise<string> {
     const session = await this.client.createSession(this.directory, "code")
+    this.children.add(session.id)
+    try {
+      return await this.awaitCommitMessage(session.id, timeoutMs)
+    } finally {
+      this.children.delete(session.id)
+    }
+  }
+
+  private async awaitCommitMessage(sessionID: string, timeoutMs: number): Promise<string> {
     await this.client.prompt(
-      session.id,
+      sessionID,
       "Write a git commit message for the staged changes. Run `git diff --staged` (and `git log -n 10 --format=%s` for the " +
         "repository's style). Reply with the commit message only – subject line (max 72 characters, imperative), a blank " +
         "line, then a short body if needed. No quotes, no code fences, no other text. Do not run any other command.",
     )
     const deadline = Date.now() + timeoutMs
     while (Date.now() < deadline) {
-      const messages = (await this.client.messages(session.id)) as { type: string; content?: { type: string; text?: string }[]; outcome?: string }[]
+      const messages = (await this.client.messages(sessionID)) as { type: string; content?: { type: string; text?: string }[]; outcome?: string }[]
       if (messages.some((m) => m.type === "idle")) {
         const last = [...messages].reverse().find((m) => m.type === "assistant" && m.content?.some((c) => c.type === "text" && c.text?.trim()))
         const text = last?.content?.filter((c) => c.type === "text").map((c) => c.text ?? "").join("").trim() ?? ""

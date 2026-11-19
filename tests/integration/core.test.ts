@@ -46,6 +46,30 @@ test("shell commands ask for approval", async () => {
   expect(existsSync(marker)).toBe(false)
 }, 30_000)
 
+test("an auto-approved git command still asks before it writes a file", async () => {
+  // Security review 2026-11-19, K1: `git log > file` matched the old "git log *" allow rule.
+  h = await createHarness({ autoApprove: [{ action: "shell", resource: "git log *", modes: [] }] })
+  Bun.spawnSync(["git", "init", "-q"], { cwd: h.dir })
+  const out = path.join(h.dir, "planted.txt")
+  const sessionID = await h.prompt("show the log", { toolCalls: [{ name: "shell", arguments: { command: `git log > ${out}` } }] }, done)
+  const request = await pendingPermission(h, sessionID)
+  expect(request.action).toBe("shell")
+  expect(request.resources.join(" ")).toContain("git log >")
+  await h.opencode.permission.reply({ sessionID, requestID: request.id, decision: "reject" })
+  await h.opencode.sessions.wait({ sessionID })
+  expect(existsSync(out)).toBe(false)
+}, 30_000)
+
+test("read-only git commands ask by default", async () => {
+  h = await createHarness()
+  Bun.spawnSync(["git", "init", "-q"], { cwd: h.dir })
+  const sessionID = await h.prompt("status", { toolCalls: [{ name: "shell", arguments: { command: "git status --short" } }] }, done)
+  const request = await pendingPermission(h, sessionID)
+  expect(request.resources.join(" ")).toContain("git status")
+  await h.opencode.permission.reply({ sessionID, requestID: request.id, decision: "once" })
+  await h.opencode.sessions.wait({ sessionID })
+}, 30_000)
+
 test("explicit auto-approve rules skip the question", async () => {
   h = await createHarness({ autoApprove: [{ action: "edit", resource: "*", modes: [] }] })
   const file = path.join(h.dir, "auto.txt")

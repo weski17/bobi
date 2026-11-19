@@ -165,10 +165,17 @@ test("approvals from delegated subtasks reach the user; their text does not", as
   expect(posts.some((p) => p.type === "tool" && (p as { name: string }).name === "write")).toBe(true)
 }, 60_000)
 
-test("writes a commit message from the staged diff (read without approval)", async () => {
+test("writes a commit message from the staged diff; reading the diff asks in the panel", async () => {
   await writeFile(path.join(dir, "feature.ts"), "export const feature = true\n")
   Bun.spawnSync(["git", "add", "feature.ts"], { cwd: dir })
   mock.enqueue({ toolCalls: [{ name: "shell", arguments: { command: "git diff --staged" } }] }, { text: "```\nAdd feature flag\n\nEnables the new feature.\n```" })
-  expect(await controller.commitMessage()).toBe("Add feature flag\n\nEnables the new feature.")
+  const before = posts.filter((p) => p.type === "approval").length
+  const message = controller.commitMessage()
+  // Shell commands always ask, read-only git too (security review 2026-11-19, K1).
+  await until(() => posts.filter((p) => p.type === "approval").length > before)
+  const approval = posts.filter((p) => p.type === "approval").at(-1) as Extract<ToUi, { type: "approval" }>
+  expect(approval.resources.join(" ")).toContain("git diff --staged")
+  await controller.reply(approval.id, "once")
+  expect(await message).toBe("Add feature flag\n\nEnables the new feature.")
   expect(JSON.stringify(mock.requests.at(-1)!.body.messages)).toContain("feature.ts")
 }, 60_000)

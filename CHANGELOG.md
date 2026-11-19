@@ -6,6 +6,19 @@ phases 1–8 (see [`docs/STATUS.md`](docs/STATUS.md) and the [demo guides](docs/
 
 ## [Unreleased]
 
+### Security
+
+- No shell command runs without asking any more, read-only git included. `git log > file` wrote files without a
+  question, `git show HEAD:x > .git/config` planted a hook that the next `git status` ran, and a crafted git
+  directory in a repository ran code on `git status`. An explicit shell auto-approval never covers a redirect into a
+  file (security review 2026-11-19, K1).
+- Bobi IDE: a repository's `.vscode/settings.json` could choose the program the IDE starts (`bobi.command`). The
+  setting is now read from the user's settings only and restricted in untrusted workspaces (K2).
+
+### Changed
+
+- `/commit`, `/pr` and the IDE's commit message button ask before they read the diff.
+
 ## [1.0.1] – 2026-11-19
 
 ### Fixed

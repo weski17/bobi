@@ -63,7 +63,13 @@ exports.run = async function run() {
   const { execFileSync } = require("node:child_process")
   execFileSync("git", ["add", "app.ts"], { cwd: folder })
   await controller.idle()
-  await vscode.commands.executeCommand("bobi.generateCommitMessage")
+  // Shell commands always ask: the panel shows the approval for `git diff --staged`.
+  const pendingCommit = controller.pending.size
+  const generating = vscode.commands.executeCommand("bobi.generateCommitMessage")
+  const diffApproval = await wait(() => [...controller.pending.keys()].slice(pendingCommit)[0], "approval for git diff --staged")
+  assert.ok(controller.pending.get(diffApproval).resources.join(" ").includes("git diff --staged"), "the approval names the command")
+  await controller.reply(diffApproval, "once")
+  await generating
   const git = vscode.extensions.getExtension("vscode.git").exports.getAPI(1)
   await wait(() => git.repositories[0] && git.repositories[0].inputBox.value === "Double the answer", "commit message in the SCM input box")
 

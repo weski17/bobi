@@ -135,7 +135,7 @@ Eigenes Logo: `BOBI_BRANDING_DIR=<ordner mit icon.svg> bun run ide:setup`.
 | **Literate Coding** | Anweisung als Kommentar an die Code-Stelle schreiben (oder markieren), `⌘⌥⏎` / `Strg+Alt+Enter` – Ergebnis kommt als Diff. Auch im Kontextmenü. |
 | **Autovervollständigung** | Grauer Vorschlagstext beim Tippen, `Tab` übernimmt. Aktiv, sobald `autocomplete.model` gesetzt ist ([Kapitel 15](#15-konfigurationsreferenz)). |
 | **Code-Tipps** | Gelbe/blaue Hinweise mit Quelle „Bobi“; Glühbirne → *Bobi: Simplify …*. |
-| **Commit-Nachricht** | In der Quellcodeverwaltung auf ✦ klicken – Bobi liest den gestagten Diff und schreibt die Nachricht. |
+| **Commit-Nachricht** | In der Quellcodeverwaltung auf ✦ klicken – Bobi fragt im Panel, ob es `git diff --staged` lesen darf, und schreibt dann die Nachricht. |
 | **Freigaben** | Erscheinen im Panel, auch für Teilaufgaben des Orchestrators. |
 
 Einstellungen der IDE: `bobi.command`, `bobi.includeOpenTabs`, `bobi.autocomplete.enabled`, `bobi.tips.enabled`.
@@ -216,8 +216,11 @@ bobi trust --yes        # vertrauen
 ## 6. Freigaben und Checkpoints
 
 **Standard:** Jede schreibende Aktion, jeder Terminal-Befehl und jeder Netzzugriff fragt nach – *einmal erlauben*,
-*immer erlauben* oder *ablehnen*. Ohne Rückfrage laufen nur lesende Werkzeuge und rein lesende Git-Befehle
-(`git status`, `diff`, `log`, `show`, `branch --show-current`).
+*immer erlauben* oder *ablehnen*. Ohne Rückfrage laufen nur lesende Werkzeuge (Dateien lesen, suchen). **Jeder
+Terminal-Befehl fragt, auch `git status` oder `git diff`:** Schon „lesende“ Git-Befehle können über eine Umleitung
+(`git log > datei`) Dateien schreiben oder in einem präparierten Repository Code ausführen (Sicherheitsreview vom
+19.11.2026). Wer Git-Befehle trotzdem freigibt, tut das ausdrücklich per Auto-Freigabe; ein Befehl, der per
+Umleitung in eine Datei schreibt, fragt auch dann nach.
 
 **Auto-Freigaben** nur explizit in der Konfiguration – damit sie im Pull Request sichtbar sind:
 
@@ -253,7 +256,7 @@ Jede Teilaufgabe läuft mit den Rechten ihres Modus; Freigaben landen trotzdem b
 | Befehl | Zweck |
 |---|---|
 | `/init` | AGENTS.md erzeugen oder aktualisieren |
-| `/commit` | Commit-Nachricht aus dem gestagten Diff; fragt vor `git commit` |
+| `/commit` | Commit-Nachricht aus dem gestagten Diff; fragt vor dem Lesen des Diffs und vor `git commit` |
 | `/pr` | Pull Request; fragt vor `git push` und `gh pr create` |
 | `/security-review [pfad]` | wechselt in den Security-Modus und liefert Befunde mit Schweregrad und Fix |
 
