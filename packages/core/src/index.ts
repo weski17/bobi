@@ -26,3 +26,5 @@ export { findInRegistry, installedPackages, installPackage, listRegistry, packSo
 export { checkRevocation, findRevocation, manifestHash, parseRevocations, RevocationStore, REVOCATION_FILE, signRevocations, verifyRevocations } from "./revocation.ts"
 export type { Revocation, RevocationList } from "./revocation.ts"
 export type { InstalledRecord, Package, PackageCheck, PackageKind, PackageManifest } from "./registry.ts"
+export { MAX_FILES, MAX_FINDINGS, parseSecurityFindings, reviewableFiles, plainMarkdown, renderSecurityComment, SECURITY_MARKER, securityReviewPrompt, SEVERITIES } from "./security-review.ts"
+export type { CommentInput, ParsedReview, SecurityFinding, Severity } from "./security-review.ts"

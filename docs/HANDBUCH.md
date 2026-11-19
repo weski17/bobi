@@ -155,6 +155,7 @@ Modell gar nicht erst.
 | `advanced` | wie `code`, plus MCP | lesen, schreiben, Terminal, Browser, MCP, `a2a` |
 | `orchestrator` | große Aufgaben zerlegen und delegieren | lesen, Teilaufgaben |
 | `security` | Schwachstellen finden, Patches vorschlagen | lesen, Terminal, schreiben |
+| `security-ci` | Sicherheits-Review in der Pipeline, nur Bericht (für das Security-Gate, siehe Abschnitt 13) | nur lesen |
 
 ### Eigene Modi
 
@@ -532,6 +533,17 @@ gesperrte Pakete bleiben aktiv, bis du `check --remove` ausführst.
 | Sandbox | Server und Werkzeuge im Container, ohne Root, ohne Produktivdaten |
 | Netzwerk | nur über einen Egress-Proxy mit Allowlist |
 | Audit | jede Aktion über OpenTelemetry, an Langfuse oder jedes andere Backend |
+
+### Security-Gate in GitHub
+
+Jeder Pull Request und jeder Push (also auch jeder Merge nach `main`) läuft durch `.github/workflows/security.yml`: Semgrep,
+gitleaks (Geheimnisse), `bun audit` (Abhängigkeiten) und Trivy (Fehlkonfiguration). Ein Pull Request scheitert nur an dem,
+was er neu hinzufügt. Der Check `security-gate` fasst alles zusammen. Damit nichts Rotes nach `main` kommt, braucht `main`
+eine Sperrregel (nur Pull Requests, `security-gate` muss grün sein); der Befehl dafür steht in
+[docs/security/security-gate.md](security/security-gate.md).
+
+Optional kommentiert Bobi selbst den Pull Request: Modus `security-ci` (nur lesen), Befunde mit Schweregrad und Fix,
+nur auf einem Self-hosted Runner in eurem Netz. Das ist ein Rat, keine Entscheidung; der Kommentar blockiert nie.
 
 ### Sandbox starten
 

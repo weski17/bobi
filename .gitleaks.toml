@@ -1,0 +1,12 @@
+# gitleaks for .github/workflows/security.yml: the default rules, plus test files whose "secrets" are fake on purpose
+# (they test that Bobi masks secrets). Add a file here only after checking every match in it; never a whole folder.
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "fake credentials in tests of the secret masking and the A2A client"
+paths = [
+  '''^packages/core/test/masking\.test\.ts$''',
+  '''^packages/core/test/security-review\.test\.ts$''',
+  '''^packages/a2a/test/a2a\.test\.ts$''',
+]
