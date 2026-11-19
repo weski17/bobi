@@ -475,6 +475,10 @@ Modell; die Diffs stehen in `vergleich.json`. Die Modelle müssen am konfigurier
 
 - **Nur Datei-Änderungen** werden in den Worktrees automatisch freigegeben. Shell, Netzwerk usw. fragen wie immer – ein
   Lauf ohne Bildschirm kann nicht antworten, also sind sie verweigert (steht im Bericht). Den Testbefehl führt Bobi selbst aus.
+- **Der Testbefehl fragt vorher:** Er läuft auf den Dateien, die das Modell geschrieben hat (Tests, Skripte,
+  `package.json`), direkt auf deinem Rechner und außerhalb der Sandbox. Bobi zeigt deshalb pro Modell den Diff und
+  fragt, bevor der Test läuft. Ohne Terminal wird der Test übersprungen; `--trust-tests` führt ihn ohne Frage aus
+  (nur in einer Wegwerf-Umgebung verwenden).
 - Voraussetzung: Git-Projekt mit mindestens einem Commit; nicht eingecheckte Änderungen fließen nicht ein.
 - Ein Lauf pro Modell ist eine Momentaufnahme, kein Benchmark: mehrfach wiederholen, bevor du entscheidest.
 - Jeder Lauf steht im Audit-Log, ist also mit `bobi dossier` belegbar.
