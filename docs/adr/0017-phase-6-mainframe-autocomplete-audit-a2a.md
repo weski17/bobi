@@ -15,7 +15,8 @@
   submodule `vendor/carddemo`, tests and demos only.
 - **Mainframe access (req. 16):** own MCP server `mcp-servers/zowe` over the mainframe's REST file and job services –
   the API the Zowe CLI uses – instead of the Zowe Node SDK (EPL-2.0, large dependency tree). It reads Zowe team
-  configuration (`zowe.config.json`, `zowe.config.user.json`, project before `~/.zowe`) and the standard `ZOWE_OPT_*`
+  configuration (`zowe.config.json`, `zowe.config.user.json`, only from `~/.zowe` since 2026-11-19 – a project file could point the
+  connection and the password at any host, security review H3) and the standard `ZOWE_OPT_*`
   variables; the password comes from the environment only. Registered only when a connection is configured.
   **Production data:** datasets and USS paths are limited to an allowlist (`BOBI_ZOWE_DATASETS`, `BOBI_ZOWE_USS`;
   default: the user's own high-level qualifier and home directory); DSN references in submitted JCL are checked too.

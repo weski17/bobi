@@ -23,28 +23,51 @@ test("environment only: defaults to https:443, own datasets and home directory",
   expect(JSON.stringify({ ...c, password: undefined })).not.toContain(password)
 })
 
-test("team config: project wins over global, nested profiles inherit, base profile, user file overlay", () => {
+test("team config from ~/.zowe: nested profiles inherit, base profile, user file overlay", () => {
   const home = temp()
-  const project = temp()
-  mkdirSync(path.join(home, ".zowe"))
-  writeFileSync(path.join(home, ".zowe", "zowe.config.json"), JSON.stringify({ profiles: { base: { type: "base", properties: { host: "global.example", rejectUnauthorized: true } } }, defaults: { base: "base" } }))
+  const zowe = path.join(home, ".zowe")
+  mkdirSync(zowe)
   writeFileSync(
-    path.join(project, "zowe.config.json"),
-    `// project config\n${JSON.stringify({
-      profiles: { lpar1: { properties: { host: "lpar1.example" }, profiles: { zosmf: { type: "zosmf", properties: { port: 10443, basePath: "/api/" } } } } },
-      defaults: { zosmf: "lpar1.zosmf" },
+    path.join(zowe, "zowe.config.json"),
+    `// user config\n${JSON.stringify({
+      profiles: {
+        base: { type: "base", properties: { host: "global.example", rejectUnauthorized: true } },
+        lpar1: { properties: { host: "lpar1.example" }, profiles: { zosmf: { type: "zosmf", properties: { port: 10443, basePath: "/api/" } } } },
+      },
+      defaults: { base: "base", zosmf: "lpar1.zosmf" },
     })}`,
   )
-  writeFileSync(path.join(project, "zowe.config.user.json"), JSON.stringify({ profiles: { lpar2: { properties: { host: "lpar2.example", user: "fromfile", password: "ignored" } } } }))
+  writeFileSync(path.join(zowe, "zowe.config.user.json"), JSON.stringify({ profiles: { lpar2: { properties: { host: "lpar2.example", user: "fromfile", password: "ignored" } } } }))
   const warn = spyOn(console, "error").mockImplementation(() => {})
   try {
     const env = { HOME: home, ZOWE_OPT_PASSWORD: password, ZOWE_OPT_USER: "dev1" }
-    expect(loadConnection(project, env)).toMatchObject({ host: "lpar1.example", port: 10443, basePath: "/api" })
-    expect(loadConnection(project, { ...env, BOBI_ZOWE_PROFILE: "lpar2", ZOWE_OPT_USER: undefined })).toMatchObject({ host: "lpar2.example", user: "fromfile", password })
+    expect(loadConnection(temp(), env)).toMatchObject({ host: "lpar1.example", port: 10443, basePath: "/api" })
+    expect(loadConnection(temp(), { ...env, BOBI_ZOWE_PROFILE: "lpar2", ZOWE_OPT_USER: undefined })).toMatchObject({ host: "lpar2.example", user: "fromfile", password })
     expect(warn).toHaveBeenCalledWith(expect.stringContaining("ignoring a password"))
-    expect(() => loadConnection(project, { ...env, BOBI_ZOWE_PROFILE: "nope" })).toThrow('Zowe profile "nope" not found')
-    expect(zoweConfigFiles(project, env)).toHaveLength(3)
-    expect(zoweConfigured(project, env)).toBe(true)
+    expect(() => loadConnection(temp(), { ...env, BOBI_ZOWE_PROFILE: "nope" })).toThrow('Zowe profile "nope" not found')
+    expect(zoweConfigFiles(temp(), env)).toHaveLength(2)
+  } finally {
+    warn.mockRestore()
+  }
+})
+
+test("a project's zowe.config.json cannot choose where the password goes (review 2026-11-19, H3)", () => {
+  const home = temp()
+  mkdirSync(path.join(home, ".zowe"))
+  writeFileSync(path.join(home, ".zowe", "zowe.config.json"), JSON.stringify({ profiles: { mf: { properties: { host: "mf.intranet", port: 443 } } }, defaults: { zosmf: "mf" } }))
+  const project = temp()
+  writeFileSync(
+    path.join(project, "zowe.config.json"),
+    JSON.stringify({ profiles: { mf: { properties: { host: "attacker.example", protocol: "http", port: 80 } }, evil: { properties: { host: "attacker.example" } } }, defaults: { zosmf: "evil" } }),
+  )
+  const warn = spyOn(console, "error").mockImplementation(() => {})
+  try {
+    const c = loadConnection(project, { HOME: home, ZOWE_OPT_USER: "dev1", ZOWE_OPT_PASSWORD: password })
+    expect(c).toMatchObject({ host: "mf.intranet", protocol: "https", port: 443 })
+    expect(c.source).not.toContain(project)
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("ignoring the project's zowe.config.json"))
+    // A project file alone does not switch the Zowe server on.
+    expect(zoweConfigured(project, { HOME: temp() })).toBe(false)
   } finally {
     warn.mockRestore()
   }

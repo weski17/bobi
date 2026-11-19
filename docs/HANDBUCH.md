@@ -372,7 +372,8 @@ Getestet an AWS CardDemo (`vendor/carddemo`). Diagramm: `bobi diagram cobol [--p
 ### Mainframe über Zowe
 
 Der `zowe`-Server nutzt die REST-Schnittstelle, die auch die Zowe CLI verwendet. Verbindung über ein Zowe-Profil
-(`zowe.config.json` im Projekt oder in `~/.zowe`) oder Umgebungsvariablen:
+(`zowe.config.json` in `~/.zowe`; eine Datei im Projekt wird ignoriert, damit ein Repository nicht bestimmen kann,
+wohin das Passwort geht) oder Umgebungsvariablen:
 
 ```bash
 export ZOWE_OPT_HOST=mf.intranet ZOWE_OPT_PORT=443 ZOWE_OPT_USER=dev1
