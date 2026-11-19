@@ -129,23 +129,24 @@ describe("proxy", () => {
   })
 })
 
+/** Sends raw bytes to the proxy and collects the answer until it closes the connection or `waitMs` pass. */
+async function rawRequest(port: number, text: string, waitMs = 1500) {
+  let received = ""
+  let closed = false
+  const socket = await Bun.connect({ hostname: "127.0.0.1", port, socket: { data: (_s, d) => void (received += d.toString()), close: () => void (closed = true) } })
+  if (text) socket.write(text)
+  const until = Date.now() + waitMs
+  while (!closed && Date.now() < until) await Bun.sleep(25)
+  socket.end()
+  return { received, closed }
+}
+
 describe("proxy hardening (review 2026-11-19, M6)", () => {
   let origin: ReturnType<typeof Bun.serve>
   beforeAll(() => {
     origin = Bun.serve({ hostname: "127.0.0.1", port: 0, fetch: (r) => new Response(`host=${r.headers.get("host")}`) })
   })
   afterAll(() => origin.stop(true))
-
-  const raw = async (port: number, text: string, waitMs = 1500) => {
-    let received = ""
-    let closed = false
-    const socket = await Bun.connect({ hostname: "127.0.0.1", port, socket: { data: (_s, d) => void (received += d.toString()), close: () => void (closed = true) } })
-    if (text) socket.write(text)
-    const until = Date.now() + waitMs
-    while (!closed && Date.now() < until) await Bun.sleep(25)
-    socket.end()
-    return { received, closed }
-  }
 
   test("a wildcard rule never reaches a private address; an exact rule may", async () => {
     const proxy = startProxy({
@@ -165,7 +166,7 @@ describe("proxy hardening (review 2026-11-19, M6)", () => {
   test("the Host header is the checked target, not what the client sends", async () => {
     const proxy = startProxy({ rules: parseAllowlist(`127.0.0.1:${origin.port}`), log: () => {} })
     try {
-      const { received } = await raw(proxy.port, `GET http://127.0.0.1:${origin.port}/ HTTP/1.1\r\nHost: admin.internal\r\n\r\n`)
+      const { received } = await rawRequest(proxy.port, `GET http://127.0.0.1:${origin.port}/ HTTP/1.1\r\nHost: admin.internal\r\n\r\n`)
       expect(received).toContain(`host=127.0.0.1:${origin.port}`)
       expect(received).not.toContain("admin.internal")
     } finally {
@@ -173,10 +174,13 @@ describe("proxy hardening (review 2026-11-19, M6)", () => {
     }
   })
 
+})
+
+describe("proxy limits (review 2026-11-19, M6)", () => {
   test("host names with other characters are refused", async () => {
     const proxy = startProxy({ rules: parseAllowlist(`*.example.test:443`), resolve: async () => ["203.0.113.1"], log: () => {} })
     try {
-      const { received } = await raw(proxy.port, "CONNECT 127.0.0.1\u0000.example.test:443 HTTP/1.1\r\n\r\n")
+      const { received } = await rawRequest(proxy.port, "CONNECT 127.0.0.1\u0000.example.test:443 HTTP/1.1\r\n\r\n")
       expect(received).toContain("403")
     } finally {
       proxy.stop()
@@ -186,7 +190,7 @@ describe("proxy hardening (review 2026-11-19, M6)", () => {
   test("a client that never finishes its request head is disconnected", async () => {
     const proxy = startProxy({ rules: [], headerTimeoutSeconds: 1, log: () => {} })
     try {
-      const { closed } = await raw(proxy.port, "GET http://x/ HTTP/1.1\r\n", 3000)
+      const { closed } = await rawRequest(proxy.port, "GET http://x/ HTTP/1.1\r\n", 3000)
       expect(closed).toBe(true)
     } finally {
       proxy.stop()
@@ -197,7 +201,7 @@ describe("proxy hardening (review 2026-11-19, M6)", () => {
     const proxy = startProxy({ rules: [], maxConnections: 1, log: () => {} })
     try {
       const first = await Bun.connect({ hostname: "127.0.0.1", port: proxy.port, socket: { data: () => {} } })
-      const { received } = await raw(proxy.port, "")
+      const { received } = await rawRequest(proxy.port, "")
       expect(received).toContain("503")
       first.end()
     } finally {
