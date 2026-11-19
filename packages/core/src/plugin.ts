@@ -366,7 +366,8 @@ export function createBobiCore(options: BobiCoreOptions): Plugin.Plugin & { read
           return
         }
         let result = event.result
-        const searchBase = path.resolve(location, inputPath(event.input) ?? ".")
+        // The engine reports grep/glob paths relative to the location, not to the searched folder (review 2026-11-19, M2).
+        const searchBase = location
         if (event.tool === "glob" && Array.isArray(result.output)) {
           const { entries, removed } = filterGlob(result.output as { path: string }[], searchBase, ignored)
           if (removed) result = { ...result, output: entries as never, content: renderGlob(entries, removed) }

@@ -1,7 +1,7 @@
 // .bobiignore (requirement 7): gitignore syntax at the project root. Ignored files are refused by file tools,
 // removed from search results, and blocked as arguments of common file-reading shell commands.
 // Not a security boundary: arbitrary shell commands can still reach them – the sandbox is the boundary.
-import { readFileSync, statSync } from "node:fs"
+import { readFileSync, realpathSync, statSync } from "node:fs"
 import path from "node:path"
 import ignore, { type Ignore } from "ignore"
 
@@ -27,12 +27,21 @@ export class BobiIgnore {
     return this.cache.matcher
   }
 
-  /** True when `target` (absolute or relative to the project) is ignored. Paths outside the project are not governed. */
+  /**
+   * True when `target` (absolute or relative to the project) is ignored. Paths outside the project are not governed.
+   * A symbolic link counts as the file it points to: `notes.txt -> .env` is as blocked as `.env` (review 2026-11-19, M1).
+   */
   ignores(target: string): boolean {
     const matcher = this.matcher()
     if (!matcher) return false
     const absolute = path.resolve(this.project, target)
-    const relative = path.relative(this.project, absolute).replaceAll("\\", "/")
+    if (this.matches(matcher, this.project, absolute)) return true
+    const real = realPath(absolute)
+    return real !== undefined && this.matches(matcher, realPath(this.project) ?? this.project, real)
+  }
+
+  private matches(matcher: Ignore, root: string, absolute: string): boolean {
+    const relative = path.relative(root, absolute).replaceAll("\\", "/")
     if (!relative || relative.startsWith("..") || path.isAbsolute(relative)) return false
     if (relative === IGNORE_FILE) return false
     return matcher.ignores(relative) || matcher.ignores(`${relative}/`)
@@ -40,6 +49,14 @@ export class BobiIgnore {
 
   message(target: string): string {
     return `Access to ${path.relative(this.project, path.resolve(this.project, target)) || target} is blocked by ${IGNORE_FILE}. Continue without this file, or ask the user to change ${IGNORE_FILE}.`
+  }
+}
+
+function realPath(file: string): string | undefined {
+  try {
+    return realpathSync(file)
+  } catch {
+    return undefined
   }
 }
 

@@ -1,6 +1,6 @@
 // Phase 2: modes, custom modes, rules, AGENTS.md, /init, .bobiignore – against the real engine and the mock model.
 import { afterEach, describe, expect, test } from "bun:test"
-import { existsSync } from "node:fs"
+import { existsSync, symlinkSync } from "node:fs"
 import { mkdir, readFile, writeFile } from "node:fs/promises"
 import path from "node:path"
 import { BOBI_IDENTITY, ENGINE_IDENTITY, SYSTEM_RULE } from "@bobi/core"
@@ -203,6 +203,28 @@ describe(".bobiignore", () => {
     expect(tool).toContain("needle-in-public")
     expect(tool).not.toContain("needle-in-secret")
     expect(tool).toContain("hidden by .bobiignore")
+  }, 30_000)
+
+  test("search in a sub-folder and symlinks do not reveal ignored files (review 2026-11-19, M1/M2)", async () => {
+    h = await createHarness()
+    await mkdir(path.join(h.dir, "config"))
+    await writeFile(path.join(h.dir, ".bobiignore"), "config/credentials.json\n.env\n")
+    await writeFile(path.join(h.dir, "config", "credentials.json"), "needle-in-credentials")
+    await writeFile(path.join(h.dir, "config", "app.json"), "needle-in-app")
+    await writeFile(path.join(h.dir, ".env"), "needle-in-env")
+    symlinkSync(".env", path.join(h.dir, "notes.txt"))
+    const sessionID = await h.prompt(
+      "look",
+      { toolCalls: [{ name: "grep", arguments: { pattern: "needle", path: path.join(h.dir, "config") } }] },
+      { toolCalls: [{ name: "read", arguments: { path: path.join(h.dir, "notes.txt") } }] },
+      done,
+    )
+    await h.opencode.sessions.wait({ sessionID })
+    const tool = toolText(h)
+    expect(tool).toContain("needle-in-app")
+    expect(tool).not.toContain("needle-in-credentials")
+    expect(tool).not.toContain("needle-in-env")
+    expect(tool).toContain("blocked by .bobiignore")
   }, 30_000)
 
   test("changes to .bobi/ and .bobiignore always ask, even with auto-approve", async () => {
