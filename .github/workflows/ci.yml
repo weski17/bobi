@@ -57,7 +57,10 @@ jobs:
       - name: Install Bobi
         run: bun install --frozen-lockfile
       - name: No new code-tip warnings in the changed files
-        run: bun packages/shell/src/cli.ts tips --since "origin/${{ github.base_ref }}" --fail-on warning
+        # The branch name goes through the environment, never into the script text (no injection through a branch name).
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: bun packages/shell/src/cli.ts tips --since "origin/$BASE_REF" --fail-on warning
 
   redteam:
     runs-on: ubuntu-24.04

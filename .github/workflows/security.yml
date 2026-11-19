@@ -101,9 +101,13 @@ jobs:
     # Only pull requests from this repository: a fork could hide instructions in its code, and the runner sits in your
     # network. Bobi runs from the base branch (the code under review cannot change the reviewer) and does not trust
     # the reviewed project, so its AGENTS.md, rules and modes are ignored.
+    # Not for Dependabot either: its pull requests change the actions this job runs, before anyone has looked at them.
+    # This condition does not stop a branch that edits this file; see docs/security/security-gate.md ("Limits") for
+    # how the runner itself must be isolated.
     if: >-
       github.event_name == 'pull_request' && vars.BOBI_SECURITY_AGENT == 'true' &&
-      github.event.pull_request.head.repo.full_name == github.repository
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.actor != 'dependabot[bot]' && github.event.pull_request.user.login != 'dependabot[bot]'
     runs-on: [self-hosted, bobi-model]
     timeout-minutes: 30
     continue-on-error: true

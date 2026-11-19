@@ -19,3 +19,5 @@
 - [ ] Architecture change: ADR in [`docs/adr/`](../docs/adr/) (or: none)
 - [ ] User-visible change: [`CHANGELOG.md`](../CHANGELOG.md) and docs updated
 - [ ] No secrets, customer code or production data in code, tests, logs or screenshots
+- [ ] Changes under `.github/` (workflows, CODEOWNERS, Dependabot): reviewed line by line by a person, because a pull
+      request's own workflow files decide its checks (see `docs/security/security-gate.md`, "Limits")
