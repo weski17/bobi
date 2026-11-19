@@ -63,15 +63,18 @@ export async function startBobiServer(options: BobiServerOptions): Promise<BobiS
   // A2A: discovery card (public) and JSON-RPC endpoint, only when enabled. The endpoint takes its own bearer token
   // (BOBI_A2A_TOKEN), never the server password: the password opens the whole engine API, where a caller could start a
   // session in another mode and approve its own requests (security review 2026-11-19, H2).
-  const a2aToken = options.config.a2a.enabled ? requireA2aToken(env.BOBI_A2A_TOKEN, options.password) : undefined
   let url = ""
-  const a2a = options.config.a2a.enabled
-    ? new InboundA2a({
-        engine: httpEngine({ url: () => url, password: options.password, directory: options.directory ?? process.cwd() }),
-        agent: A2A_AGENT,
-        mask: plugin.mask,
-      })
+  const inbound = options.config.a2a.enabled
+    ? {
+        token: requireA2aToken(env.BOBI_A2A_TOKEN, options.password),
+        a2a: new InboundA2a({
+          engine: httpEngine({ url: () => url, password: options.password, directory: options.directory ?? process.cwd() }),
+          agent: A2A_AGENT,
+          mask: plugin.mask,
+        }),
+      }
     : undefined
+  const a2a = inbound?.a2a
   const server = await startNodeServer({
     engine: {
       // Clients built from source report version "local"; matching it avoids a version-mismatch warning.
@@ -96,7 +99,7 @@ export async function startBobiServer(options: BobiServerOptions): Promise<BobiS
       handle: async (request) => {
         const { pathname, origin } = new URL(request.url)
         if (pathname === CARD_PATH) return Response.json(agentCard({ baseUrl: origin, version: options.engineVersion ?? "local" }))
-        if (pathname === RPC_PATH) return handleA2a(request, a2a!, a2aToken!)
+        if (pathname === RPC_PATH) return handleA2a(request, inbound!.a2a, inbound!.token)
         if (pathname === TIPS_PATH) return handleTips(request, projectConfig)
         return handleCompletion(request, { projectConfig, env, mask: plugin.mask })
       },
