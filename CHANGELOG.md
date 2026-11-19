@@ -6,6 +6,12 @@ phases 1–8 (see [`docs/STATUS.md`](docs/STATUS.md) and the [demo guides](docs/
 
 ## [Unreleased]
 
+### Fixed
+
+- Container images install the Debian security updates published after the pinned base image (`apt-get upgrade`);
+  since 2026-11-07 the demo image failed its vulnerability scan because of `zlib1g` (CVE-2026-85091) and was not
+  published.
+
 ## [1.0.0] – 2026-11-19
 
 First stable release: all requirements 1–20 are implemented, plus provable AI work (phase 8) and a security gate for

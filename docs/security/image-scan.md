@@ -27,6 +27,10 @@ red now and then without any change in Bobi. That is intended: someone looks at 
 (`golang.org/x/net/html`, denial of service) appeared in the pinned Ollama binary on the first CI run of the gate; it
 is listed with the reason, and it goes away when the Ollama version in `sandbox/Containerfile` is updated.
 
+Debian packages are different: the base image is pinned by digest, but the build runs `apt-get upgrade`, so Debian
+security fixes published after the pin are installed at build time. Example: CVE-2026-85091 (`zlib1g`, heap buffer
+overflow) failed the image build from 2026-11-07 until that step was added; it is fixed, not listed.
+
 ## Rules
 
 1. A new finding fails the build. Fix it (update the dependency or base image) or, after looking at it, add an entry
