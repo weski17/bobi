@@ -119,18 +119,25 @@ export function jclProblems(jcl: string): string[] {
     const line = raw.slice(0, 72).toUpperCase()
     const m = /^\/\/(\S*)\s+(\S+)(?:\s+(.*))?$/.exec(line)
     if (!m) continue
-    const [, , op, operands = ""] = m
-    if (op === "JCLLIB") problems.add("JCLLIB (procedures from other libraries are not checked)")
-    if (op === "INCLUDE") problems.add("INCLUDE (included JCL is not checked)")
-    if (op === "EXEC") {
-      const pgm = /(?:^|,)PGM=([A-Z0-9#$@]+)/.exec(operands)
-      if (!pgm) problems.add("EXEC of a procedure (its DD statements are not checked)")
-      else if (COMMAND_PROGRAMS.has(pgm[1]!)) problems.add(`EXEC PGM=${pgm[1]} (its instream commands are not checked)`)
-    }
-    if (/INTRDR/.test(operands)) problems.add("internal reader (INTRDR would submit JCL that is not checked)")
-    if (/(?:^|,)PATH=/.test(operands)) problems.add("PATH= (USS files in JCL are not checked)")
+    for (const p of statementProblems(m[2]!, m[3] ?? "")) problems.add(p)
   }
   return [...problems]
+}
+
+function statementProblems(op: string, operands: string): string[] {
+  const out: string[] = []
+  if (op === "JCLLIB") out.push("JCLLIB (procedures from other libraries are not checked)")
+  if (op === "INCLUDE") out.push("INCLUDE (included JCL is not checked)")
+  if (op === "EXEC") out.push(...execProblems(operands))
+  if (/INTRDR/.test(operands)) out.push("internal reader (INTRDR would submit JCL that is not checked)")
+  if (/(?:^|,)PATH=/.test(operands)) out.push("PATH= (USS files in JCL are not checked)")
+  return out
+}
+
+function execProblems(operands: string): string[] {
+  const pgm = /(?:^|,)PGM=([A-Z0-9#$@]+)/.exec(operands)?.[1]
+  if (!pgm) return ["EXEC of a procedure (its DD statements are not checked)"]
+  return COMMAND_PROGRAMS.has(pgm) ? [`EXEC PGM=${pgm} (its instream commands are not checked)`] : []
 }
 
 /** Refuses JCL whose datasets cannot be checked, then checks every DSN= against the allowlist. */

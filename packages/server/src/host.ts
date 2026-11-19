@@ -96,11 +96,7 @@ export async function startBobiServer(options: BobiServerOptions): Promise<BobiS
       handle: async (request) => {
         const { pathname, origin } = new URL(request.url)
         if (pathname === CARD_PATH) return Response.json(agentCard({ baseUrl: origin, version: options.engineVersion ?? "local" }))
-        if (pathname === RPC_PATH) {
-          if (!bearerMatches(request.headers.get("authorization"), a2aToken!))
-            return new Response("A2A token required", { status: 401, headers: { "www-authenticate": 'Bearer realm="bobi-a2a"' } })
-          return a2a!.handle(request)
-        }
+        if (pathname === RPC_PATH) return handleA2a(request, a2a!, a2aToken!)
         if (pathname === TIPS_PATH) return handleTips(request, projectConfig)
         return handleCompletion(request, { projectConfig, env, mask: plugin.mask })
       },
@@ -111,6 +107,13 @@ export async function startBobiServer(options: BobiServerOptions): Promise<BobiS
   })
   url = server.url
   return server
+}
+
+/** The A2A endpoint: only with its own token. */
+function handleA2a(request: Request, a2a: InboundA2a, token: string): Promise<Response> | Response {
+  if (!bearerMatches(request.headers.get("authorization"), token))
+    return new Response("A2A token required", { status: 401, headers: { "www-authenticate": 'Bearer realm="bobi-a2a"' } })
+  return a2a.handle(request)
 }
 
 /** Minimum length of the inbound A2A token. */
