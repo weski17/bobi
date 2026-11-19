@@ -383,7 +383,10 @@ export BOBI_ZOWE_USS="/u/dev1"                    # Standard: eigenes Home
 ```
 
 - Datasets und USS-Pfade außerhalb der Allowlist werden abgewiesen – bevor eine Anfrage den Mainframe erreicht.
-- In abgeschickter JCL werden alle `DSN=` gegen die Allowlist geprüft.
+- In abgeschickter JCL werden alle `DSN=` gegen die Allowlist geprüft. Jobs, deren Datensätze Bobi nicht sehen kann,
+  lehnt Bobi ab: Aufruf einer Prozedur, `INCLUDE`/`JCLLIB`, interner Reader (`INTRDR`), `PATH=` und Programme mit
+  eingebetteten Befehlen (`IDCAMS`, `IKJEFT01`, `BPXBATCH`, `ADRDSSU`, …). Solche Jobs schickst du selbst ab. Die
+  eigentliche Grenze bleiben die Rechte des Mainframe-Benutzers (RACF): Die Prüfung ist eine zweite Linie, keine Garantie.
 - Schreiben (`write_dataset`) und Job-Submit fragen **immer**.
 - Zertifikate werden immer geprüft; eine Firmen-CA kommt per `NODE_EXTRA_CA_CERTS` dazu.
 - In der Sandbox den Mainframe-Host in `BOBI_EGRESS_ALLOW` aufnehmen.
