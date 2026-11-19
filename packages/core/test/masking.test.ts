@@ -47,7 +47,10 @@ describe("masking", () => {
     expect(mask(`const apiKey = "abcd1234efgh"`)).toBe(`const apiKey = "${MASK}"`)
   })
 
-  test("masks the formats the review found unmasked (review 2026-11-19, M4)", () => {
+})
+
+describe("masking: formats found in the security review (2026-11-19, M4)", () => {
+  test("masks the formats the review found unmasked", () => {
     // Fake values built at runtime, never real secrets.
     const secret = ["wJalrXUtnFEMI", "K7MDENG", "bPxRfiCYEXAMPLEKEY"].join("/")
     expect(mask(`aws_secret_access_key = ${secret}`)).toBe(`aws_secret_access_key = ${MASK}`)
