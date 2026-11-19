@@ -93,3 +93,17 @@ test("expand: nested COPY, REPLACING, OF library, EXEC SQL INCLUDE, cycles and m
   expect(field).toMatchObject({ file: "B.cpy", line: 2 })
   expect(expand("       COPY A.", "x.cbl", { resolve: () => "A.cpy", read: () => "       01 X PIC X.", maxDepth: 0 }).tokens).toEqual([])
 })
+
+test("copybooks that include each other many times stop at a token budget (review 2026-11-19, M9)", () => {
+  // B0 copies B1 eight times, B1 copies B2 eight times … : 8^5 copies of the last one without a budget.
+  const books: Record<string, string> = {}
+  for (let level = 0; level < 5; level++) books[`B${level}`] = `       01 F${level} PIC X.\n${"           COPY B" + (level + 1) + ".\n"}`.repeat(1).concat(`           COPY B${level + 1}.\n`.repeat(7))
+  books.B5 = "       01 LEAF PIC X.\n"
+  const options = { resolve: (name: string) => (books[name] ? name : undefined), read: (name: string) => books[name]!, maxTokens: 50_000 }
+  const program = "       IDENTIFICATION DIVISION.\n       PROGRAM-ID. P.\n       DATA DIVISION.\n       WORKING-STORAGE SECTION.\n           COPY B0.\n"
+  const began = performance.now()
+  expect(() => expand(program, "P.cbl", options)).toThrow(/larger than 50000 tokens/)
+  expect(performance.now() - began).toBeLessThan(2_000)
+  // A normal nesting stays well inside the budget.
+  expect(expand("       COPY B5.\n", "Q.cbl", options).tokens.length).toBeGreaterThan(0)
+})

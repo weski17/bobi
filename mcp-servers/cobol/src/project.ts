@@ -75,7 +75,7 @@ export class CobolProject {
       if (JCL_EXTENSIONS.has(ext(f))) this.steps.push(...parseJcl(readFileSync(f, "utf8"), this.rel(f)))
       if (!PROGRAM_EXTENSIONS.has(ext(f))) continue
       try {
-        const { tokens, copies } = expand(readFileSync(f, "utf8"), f, { resolve: (n, from) => this.resolveCopybook(n, from), read: (file) => readFileSync(file, "utf8") })
+        const { tokens, copies } = expand(readFileSync(f, "utf8"), f, { resolve: (n, from) => this.resolveCopybook(n, from), read: (file) => readLimited(file) })
         const relTokens = tokens.map((t) => ({ ...t, file: this.rel(t.file) }))
         const relCopies = copies.map((c) => ({ ...c, file: this.rel(c.file), ...(c.resolved ? { resolved: this.rel(c.resolved) } : {}) }))
         const program = parseProgram(relTokens, this.rel(f), relCopies)
@@ -86,6 +86,12 @@ export class CobolProject {
       }
     }
   }
+}
+
+/** A copybook, with the same size limit as programs. */
+function readLimited(file: string): string {
+  if (statSync(file).size > MAX_FILE_BYTES) throw new Error(`${file} is larger than 2 MB`)
+  return readFileSync(file, "utf8")
 }
 
 /** JCL: //name JOB, //step EXEC PGM=x | PROC=x | x, //dd DD DSN=x (with continuation lines). */
