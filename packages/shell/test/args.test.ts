@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test"
-import { HELP, parseArgs, UsageError } from "../src/args.ts"
+import { HELP, parseArgs, UsageError, VERSION } from "../src/args.ts"
+import rootPackage from "../../../package.json"
+import idePackage from "../../ide-extension/package.json"
 
 describe("parseArgs", () => {
   test("no arguments start the TUI", () => {
@@ -11,6 +13,11 @@ describe("parseArgs", () => {
     for (const a of ["--help", "-h", "help"]) expect(parseArgs([a])).toEqual({ kind: "help" })
     for (const a of ["--version", "-v"]) expect(parseArgs([a])).toEqual({ kind: "version" })
     expect(HELP).toContain("bobi serve")
+  })
+
+  test("the CLI version matches the release version in package.json", () => {
+    expect(VERSION).toBe(rootPackage.version)
+    expect(idePackage.version).toBe(rootPackage.version)
   })
 
   test("run forwards only allowed flags", () => {

@@ -2,6 +2,7 @@
   "name": "bobi",
   "private": true,
   "type": "module",
+  "version": "1.0.0",
   "license": "MIT",
   "packageManager": "bun@1.4.3",
   "workspaces": [
