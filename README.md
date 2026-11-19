@@ -16,7 +16,7 @@
   <a href="https://github.com/weski17/bobi/actions/workflows/image.yml"><img src="https://github.com/weski17/bobi/actions/workflows/image.yml/badge.svg" alt="Image"></a>
   <a href="https://github.com/weski17/bobi/releases/latest"><img src="https://img.shields.io/badge/release-v1.0.0-3b6fe0" alt="Release v1.0.0"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-5eead4" alt="MIT license"></a>
-  <img src="https://img.shields.io/badge/tests-471%20passing-4ade80" alt="471 tests passing">
+  <img src="https://img.shields.io/badge/tests-483%20passing-4ade80" alt="483 tests passing">
   <img src="https://img.shields.io/badge/red%20team-8%2F8%20contained-a78bfa" alt="Red team 8/8 contained">
   <img src="https://img.shields.io/badge/cloud-none-f87171" alt="No cloud">
 </p>
@@ -159,7 +159,7 @@ plugin: secure policy, modes, rules, trust, masking, audit. Details: [architectu
 
 ## Quality
 
-471 automated tests (99 % line coverage), terminal-UI, IDE and sandbox tests, a promptfoo red team (8/8 attacks
+483 automated tests (99 % line coverage), terminal-UI, IDE and sandbox tests, a promptfoo red team (8/8 attacks
 contained) and load tests (100 parallel sessions, 0 errors) – all against a mock model, so they run without a real
 model or network. `bun run test` · [testing guide](docs/HANDBUCH.md#16-qualität-und-tests).
 
