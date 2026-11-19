@@ -77,9 +77,10 @@ left the project (terminal, network, MCP, mainframe) and all rejected or denied 
 ## 7. A2A
 
 ```bash
+export BOBI_A2A_TOKEN="$(openssl rand -base64 32)"
 BOBI_A2A=1 BOBI_SERVER_PASSWORD=<16+ chars> bobi serve --port 4096
 curl -s http://127.0.0.1:4096/.well-known/agent-card.json
-curl -s -u "opencode:$BOBI_SERVER_PASSWORD" http://127.0.0.1:4096/a2a -H 'content-type: application/json' -d '{
+curl -s -H "Authorization: Bearer $BOBI_A2A_TOKEN" http://127.0.0.1:4096/a2a -H 'content-type: application/json' -d '{
   "jsonrpc":"2.0","id":1,"method":"message/send",
   "params":{"message":{"kind":"message","role":"user","messageId":"m1","parts":[{"kind":"text","text":"What does app.ts do?"}]}}}'
 ```

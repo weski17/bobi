@@ -14,10 +14,23 @@ phases 1–8 (see [`docs/STATUS.md`](docs/STATUS.md) and the [demo guides](docs/
   file (security review 2026-11-19, K1).
 - Bobi IDE: a repository's `.vscode/settings.json` could choose the program the IDE starts (`bobi.command`). The
   setting is now read from the user's settings only and restricted in untrusted workspaces (K2).
+- One "always allow" on an ordinary edit no longer opens `.bobi/`, `.bobiignore`, mainframe writes or A2A calls;
+  protected resources always ask, compared without letter case (H1).
+- Inbound A2A takes its own token (`BOBI_A2A_TOKEN`, required, valid only for `/a2a`) instead of the server password,
+  which opened the whole engine API (H2). The A2A token and the Zowe password are masked like the server password.
+- The Zowe connection ignores a project's `zowe.config.json`, which could send the mainframe password to any host
+  (H3).
+- `bobi compare --test` asks before it runs the test command on code a model wrote; `--trust-tests` skips the
+  question (H4).
+- `submit_job` refuses JCL whose datasets cannot be checked: procedures, `INCLUDE`, `JCLLIB`, internal reader,
+  `PATH=`, utilities with instream commands (H5).
+- The advisory security agent skips Dependabot pull requests; the required checks are bound to GitHub Actions; the
+  limits of the gate and how to isolate the self-hosted runner are documented (H6, H7).
 
 ### Changed
 
 - `/commit`, `/pr` and the IDE's commit message button ask before they read the diff.
+- Inbound A2A needs `BOBI_A2A_TOKEN`; Bobi does not start with A2A on and no token.
 
 ## [1.0.1] – 2026-11-19
 

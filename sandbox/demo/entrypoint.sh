@@ -30,7 +30,10 @@ for _ in $(seq 1 60); do curl -fsS http://127.0.0.1:11434/api/version > /dev/nul
 ( curl -fsS http://127.0.0.1:11434/api/generate -d "{\"model\":\"$BOBI_MODEL\",\"prompt\":\"\",\"keep_alive\":-1}" > /dev/null 2>&1 || true ) &
 
 echo "Bobi demo: starting the Bobi server …"
-bun /opt/bobi/packages/shell/src/cli.ts serve --hostname 127.0.0.1 --port 4096 > /tmp/bobi-server.log 2>&1 &
+# A2A needs its own token (the demo only shows the public agent card). It is given to the server alone, not exported,
+# so visitor shells do not inherit it.
+BOBI_A2A=1 BOBI_A2A_TOKEN="$(head -c 32 /dev/urandom | base64 | tr -d '/+=\n')" \
+  bun /opt/bobi/packages/shell/src/cli.ts serve --hostname 127.0.0.1 --port 4096 > /tmp/bobi-server.log 2>&1 &
 pids+=($!)
 for _ in $(seq 1 60); do curl -fsS -o /dev/null -u "opencode:$BOBI_SERVER_PASSWORD" http://127.0.0.1:4096/api/session 2> /dev/null && break; sleep 1; done
 

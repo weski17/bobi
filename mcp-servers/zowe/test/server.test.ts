@@ -4,7 +4,7 @@ import { tmpdir } from "node:os"
 import path from "node:path"
 import { Client, InMemoryTransport } from "@modelcontextprotocol/client"
 import { StdioClientTransport } from "@modelcontextprotocol/client/stdio"
-import { CLI, createServer, jclDatasets, MainframeClient, startMockMainframe, TOOLS, type MockMainframe } from "../src/index.ts"
+import { CLI, createServer, jclDatasets, jclProblems, MainframeClient, startMockMainframe, TOOLS, type MockMainframe } from "../src/index.ts"
 
 const password = crypto.randomUUID()
 const home = mkdtempSync(path.join(tmpdir(), "bobi-zowe-home-"))
@@ -139,6 +139,22 @@ test("the client sends basic auth and the CSRF header; large responses are trunc
 
 test("jclDatasets skips comments, temporary datasets and backward references", () => {
   expect(jclDatasets("//* DSN=IN.COMMENT\n//A DD DSN=&&T\n//B DD DSN=*.STEP1.OUT\n//C DD DSNAME='dev1.lib(mem)',DISP=SHR\n DSN=NOT.JCL\n")).toEqual(["DEV1.LIB"])
+})
+
+test("jclProblems refuses jobs whose datasets cannot be checked (review 2026-11-19, H5)", () => {
+  const job = (...lines: string[]) => ["//DEV1J JOB (ACCT),'T',CLASS=A", ...lines].join("\n")
+  expect(jclProblems(job("//S1 EXEC PGM=IEFBR14", "//DD1 DD DSN=DEV1.X,DISP=SHR"))).toEqual([])
+  expect(jclProblems(job("//S1 EXEC PGM=IDCAMS", "//SYSIN DD *", "  DELETE PROD.PAY.MASTER", "/*"))).toEqual([expect.stringContaining("IDCAMS")])
+  expect(jclProblems(job("//S1 EXEC PGM=IKJEFT01"))[0]).toContain("IKJEFT01")
+  expect(jclProblems(job("//S1 EXEC PGM=BPXBATCH,PARM='SH rm -rf /prod'"))[0]).toContain("BPXBATCH")
+  expect(jclProblems(job("//S1 EXEC MYPROC,HLQ=PROD"))[0]).toContain("procedure")
+  expect(jclProblems(job("//S1 EXEC PROC=MYPROC"))[0]).toContain("procedure")
+  expect(jclProblems(job("//LIBS JCLLIB ORDER=PROD.PROCLIB"))[0]).toContain("JCLLIB")
+  expect(jclProblems(job("// INCLUDE MEMBER=PRODJCL"))[0]).toContain("INCLUDE")
+  expect(jclProblems(job("//S1 EXEC PGM=IEBGENER", "//SYSUT2 DD SYSOUT=(A,INTRDR)"))[0]).toContain("INTRDR")
+  expect(jclProblems(job("//S1 EXEC PGM=IEFBR14", "//F DD PATH='/prod/x'"))[0]).toContain("PATH=")
+  // Comments and text after column 72 do not count.
+  expect(jclProblems(job("//* EXEC PGM=IDCAMS", "//S1 EXEC PGM=IEFBR14" + " ".repeat(60) + "INTRDR"))).toEqual([])
 })
 
 test("stdio CLI lists the tools", async () => {

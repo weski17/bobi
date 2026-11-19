@@ -14,7 +14,7 @@ import { expandTemplate, extensionDirs, readCommands, readSkills } from "./exten
 import { initPrompt } from "./init.ts"
 import { resolveMcpServers } from "./mcp.ts"
 import { createMasker, maskDeep, type Masker } from "./masking.ts"
-import { loadDefaultPolicy, rulesForAgent, writesFile, type Rule } from "./permissions.ts"
+import { loadDefaultPolicy, rulesForAgent, wildcard, writesFile, type Rule } from "./permissions.ts"
 import { collectRules, rulesPrompt } from "./rules.ts"
 import { filterGlob, filterGrep, renderGlob, renderGrep } from "./search-filter.ts"
 import { isUntrusted, SYSTEM_RULE, wrapUntrusted } from "./untrusted.ts"
@@ -37,6 +37,39 @@ export const PROTECTED_RULES: Rule[] = [
   // Asking another agent sends project information out (A2A); always confirmed.
   { action: "a2a", resource: "*", effect: "ask" },
 ]
+
+/**
+ * True when a resource falls under a protected rule. Paths are compared without case: on the default macOS and Windows
+ * file systems `.BOBI/x` is `.bobi/x`.
+ */
+export function isProtected(action: string, resource: string): boolean {
+  const r = resource.replaceAll("\\", "/").toLowerCase()
+  return PROTECTED_RULES.some((rule) => wildcard(action, rule.action) && wildcard(r, rule.resource.toLowerCase()))
+}
+
+type Decision = { action: string; resources: readonly unknown[]; agent?: unknown; effect: "allow" | "ask" | "deny"; message?: string }
+
+/**
+ * An "allow" that must still ask:
+ * - protected resources: "always allow" saves broad rules (an edit saves "*") that the engine checks after Bobi's rules,
+ *   so one click would otherwise open them (review 2026-11-19, H1);
+ * - a shell command that writes a file through a redirect: an explicit shell auto-approval (e.g. "git log *") never
+ *   covers that (K1).
+ */
+function stillAsks(d: Decision): boolean {
+  if (d.effect !== "allow") return false
+  return d.resources.some((r) => isProtected(d.action, String(r)) || (d.action === "shell" && writesFile(String(r))))
+}
+
+/** Bobi's last word on every permission decision of the engine. */
+export function enforcePolicy(d: Decision): void {
+  if (stillAsks(d)) d.effect = "ask"
+  // Other agents may only read; an approval request would wait for a person who is not there.
+  if (String(d.agent) === A2A_AGENT && (d.effect === "ask" || !A2A_TOOLS.has(d.action))) {
+    d.effect = "deny"
+    d.message = "Not available to requests from other agents (read-only)."
+  }
+}
 
 /**
  * Agent for requests from other agents (A2A, requirement 20): the built-in Ask mode, never overridable by a
@@ -359,13 +392,7 @@ export function createBobiCore(options: BobiCoreOptions): Plugin.Plugin & { read
       await ctx.permission.hook("evaluate", (event) => {
         const now = Date.now()
         if (event.agent) sessionMode.set(String(event.sessionID), String(event.agent))
-        // An explicit shell auto-approval (e.g. "git log *") never covers writing a file through a redirect.
-        if (event.action === "shell" && event.effect === "allow" && event.resources.some((r) => writesFile(String(r)))) event.effect = "ask"
-        // Other agents may only read; an approval request would wait for a person who is not there.
-        if (String(event.agent) === A2A_AGENT && (event.effect === "ask" || !A2A_TOOLS.has(event.action))) {
-          event.effect = "deny"
-          event.message = "Not available to requests from other agents (read-only)."
-        }
+        enforcePolicy(event)
         audit.record({
           name: "bobi.permission",
           start: now,

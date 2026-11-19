@@ -18,7 +18,8 @@ A merge is a push to `main`, so every merge is scanned again with the merged res
 ## Making it block
 
 A workflow runs after a push; it cannot stop it. Blocking is a branch rule on `main`: changes only by pull request, and
-`security-gate` must be green. The repository owner sets it once (GitHub → Settings → Rules → Rulesets, or):
+the gate and the tests must be green. The checks are bound to GitHub Actions (`integration_id` 15368), so a status
+posted by anything else does not count. The repository owner sets it once (GitHub → Settings → Rules → Rulesets, or):
 
 ```bash
 gh api -X POST repos/<owner>/<repo>/rulesets --input - <<'JSON'
@@ -33,13 +34,39 @@ gh api -X POST repos/<owner>/<repo>/rulesets --input - <<'JSON'
     { "type": "pull_request", "parameters": { "required_approving_review_count": 0, "dismiss_stale_reviews_on_push": true,
       "require_code_owner_review": false, "require_last_push_approval": false, "required_review_thread_resolution": false } },
     { "type": "required_status_checks", "parameters": { "strict_required_status_checks_policy": false,
-      "required_status_checks": [{ "context": "security-gate" }] } }
+      "required_status_checks": [
+        { "context": "security-gate", "integration_id": 15368 },
+        { "context": "test", "integration_id": 15368 },
+        { "context": "redteam", "integration_id": 15368 },
+        { "context": "tips", "integration_id": 15368 }
+      ] } }
   ]
 }
 JSON
 ```
 
 Pushes to other branches are scanned and reported, not blocked.
+
+## Limits (security review 2026-11-19, H6 and H7)
+
+For a pull request, GitHub runs the workflow files **of the pull request**. Two consequences that no workflow can
+prevent from inside the repository:
+
+1. **A pull request that edits `.github/workflows/` can make its own checks pass** (e.g. a `security-gate` job that
+   only runs `true`). The branch rule above makes this visible, not impossible. Rule: a pull request that changes
+   `.github/` is reviewed line by line by a person before it is merged (the pull request template asks for it), and
+   `CODEOWNERS` requests that review. Once there is a second maintainer, set `"require_code_owner_review": true` and
+   `"required_approving_review_count": 1`; with a single maintainer GitHub cannot approve one's own pull request.
+2. **Every branch can address the self-hosted runner** (`runs-on: [self-hosted, bobi-model]`), not only
+   `security.yml`. The job condition keeps forks and Dependabot out, but a branch pushed with a stolen token can add
+   its own workflow. Before you register the runner:
+   - run it **ephemeral** (`./config.sh --ephemeral`, one job per runner) in a throw-away VM or container that is
+     rebuilt for every job, so nothing persists between jobs;
+   - give that machine **network access to the model endpoint only** (and GitHub), no other LAN, no file shares, no
+     credentials other than `BOBI_MODEL_API_KEY`;
+   - use a model key that can only call the model (no admin rights on the gateway);
+   - if the repository moves into an organisation: put the runner in a runner group that is limited to this repository
+     and to the workflow `.github/workflows/security.yml@refs/heads/main` ("selected workflows").
 
 ## When the gate is red
 

@@ -2,7 +2,9 @@
 // then the same test command on each result. Shows which model solved the task on *your* code, how many changes and
 // tokens it took and how long it ran. Edits are approved automatically inside the worktrees only (explicit, documented);
 // shell commands, network and everything else keep asking, which a headless run cannot answer – so a model cannot run
-// commands during a comparison, only edit files. The test command is run by Bobi itself, not by the model.
+// commands during a comparison, only edit files. The test command is run by Bobi itself, not by the model – but on the
+// files the model wrote (tests, scripts, package.json), outside any sandbox. It therefore runs only after the user
+// confirmed it for that model's changes, or with --trust-tests (security review 2026-11-19, H4).
 import type { AuditRecord } from "@bobi/core"
 
 export type CompareOptions = {
@@ -11,6 +13,8 @@ export type CompareOptions = {
   readonly mode: string
   readonly test?: string
 }
+
+export type TestResult = { exit: number; seconds: number; tail: string; skipped?: true }
 
 export type RunResult = {
   readonly model: string
@@ -24,7 +28,7 @@ export type RunResult = {
   readonly toolErrors: number
   readonly rejected: number
   readonly tokens: { input: number; output: number }
-  readonly test?: { exit: number; seconds: number; tail: string }
+  readonly test?: TestResult
   readonly diff: string
 }
 
@@ -36,6 +40,8 @@ export type CompareDeps = {
   /** Everything the agent changed in `dir` against HEAD, including new files. */
   changes(dir: string): { diff: string; files: number; added: number; removed: number }
   runTest(dir: string, command: string): { exit: number; seconds: number; tail: string }
+  /** Asks before the test command runs on what `model` changed; false skips the test for that model. */
+  confirmTest(model: string, changes: { diff: string; files: number; added: number; removed: number }): Promise<boolean>
   /** Audit records written between the two times (ms). */
   records(from: number, to: number): AuditRecord[]
   cleanup(dir: string): void
@@ -63,6 +69,8 @@ export function summarizeRecords(records: readonly AuditRecord[]) {
   return { toolCalls, toolErrors, rejected, tokens: { input, output } }
 }
 
+const SKIPPED: TestResult = { exit: -1, seconds: 0, tail: "", skipped: true }
+
 export async function compareModels(options: CompareOptions, deps: CompareDeps): Promise<RunResult[]> {
   const results: RunResult[] = []
   for (const [index, model] of options.models.entries()) {
@@ -80,7 +88,7 @@ export async function compareModels(options: CompareOptions, deps: CompareDeps):
         seconds: Math.round((ended - began) / 100) / 10,
         ...changes,
         ...summary,
-        ...(options.test ? { test: deps.runTest(dir, options.test) } : {}),
+        ...(options.test ? { test: (await deps.confirmTest(model, changes)) ? deps.runTest(dir, options.test) : SKIPPED } : {}),
       })
     } finally {
       deps.cleanup(dir)
@@ -103,11 +111,13 @@ export function renderComparison(options: CompareOptions, results: readonly RunR
   ]
   for (const r of results)
     lines.push(
-      `| ${cell(r.model)} | ${r.completed ? "completed" : "failed"} | ${r.test ? (r.test.exit === 0 ? "passed" : `failed (exit ${r.test.exit})`) : "–"} | ${r.seconds}s | ${r.files} | +${r.added}/-${r.removed} | ${r.toolCalls} (${r.toolErrors}) | ${r.tokens.input}/${r.tokens.output} |`,
+      `| ${cell(r.model)} | ${r.completed ? "completed" : "failed"} | ${r.test ? (r.test.skipped ? "not run (not confirmed)" : r.test.exit === 0 ? "passed" : `failed (exit ${r.test.exit})`) : "–"} | ${r.seconds}s | ${r.files} | +${r.added}/-${r.removed} | ${r.toolCalls} (${r.toolErrors}) | ${r.tokens.input}/${r.tokens.output} |`,
     )
   const passed = results.filter((r) => r.test?.exit === 0)
   lines.push("")
   if (options.test) {
+    const skipped = results.filter((r) => r.test?.skipped)
+    if (skipped.length) lines.push(`Test not run (not confirmed): ${skipped.map((r) => r.model).join(", ")}. Use --trust-tests to run it without asking.`)
     if (passed.length === 0) lines.push("No model passed the test command.")
     else {
       const best = [...passed].sort((a, b) => a.added + a.removed - (b.added + b.removed) || a.seconds - b.seconds)[0]!
@@ -117,6 +127,6 @@ export function renderComparison(options: CompareOptions, results: readonly RunR
   const rejected = results.filter((r) => r.rejected > 0)
   if (rejected.length) lines.push(`Not allowed (shell, network, …) and therefore refused: ${rejected.map((r) => `${r.model} ${r.rejected}×`).join(", ")}.`)
   lines.push("", "One run per model is an anecdote, not a benchmark: run the comparison several times before drawing conclusions.")
-  for (const r of results) if (r.test && r.test.exit !== 0) lines.push("", `### ${r.model}: test output (end)`, "", "```", r.test.tail.trim(), "```")
+  for (const r of results) if (r.test && !r.test.skipped && r.test.exit !== 0) lines.push("", `### ${r.model}: test output (end)`, "", "```", r.test.tail.trim(), "```")
   return `${lines.join("\n")}\n`
 }

@@ -1,6 +1,7 @@
 // The Bobi server: the OpenCode engine embedded in-process with @bobi/core registered as a host plugin
 // (ADR-0013). A failing host plugin fails startup, so there is no path without Bobi's safeguards.
 import { loadConfig, SDK_OFFLINE_OPTIONS, toOpenCodeConfig, TrustStore, type BobiConfig } from "@bobi/config"
+import { timingSafeEqual, createHash } from "node:crypto"
 import { agentCard, CARD_PATH, httpEngine, InboundA2a, RPC_PATH } from "@bobi/a2a"
 import { A2A_AGENT, createBobiCore, type AuditSink } from "@bobi/core"
 import { CLI as CODE_GRAPH_CLI } from "@bobi/mcp-code-graph"
@@ -59,15 +60,21 @@ export async function startBobiServer(options: BobiServerOptions): Promise<BobiS
     ...(options.audit ? { audit: options.audit } : {}),
     ...(options.browser === false ? { browser: false as const } : {}),
   })
-  // A2A: discovery card (public) and JSON-RPC endpoint (server password), only when enabled.
+  // A2A: discovery card (public) and JSON-RPC endpoint, only when enabled. The endpoint takes its own bearer token
+  // (BOBI_A2A_TOKEN), never the server password: the password opens the whole engine API, where a caller could start a
+  // session in another mode and approve its own requests (security review 2026-11-19, H2).
   let url = ""
-  const a2a = options.config.a2a.enabled
-    ? new InboundA2a({
-        engine: httpEngine({ url: () => url, password: options.password, directory: options.directory ?? process.cwd() }),
-        agent: A2A_AGENT,
-        mask: plugin.mask,
-      })
+  const inbound = options.config.a2a.enabled
+    ? {
+        token: requireA2aToken(env.BOBI_A2A_TOKEN, options.password),
+        a2a: new InboundA2a({
+          engine: httpEngine({ url: () => url, password: options.password, directory: options.directory ?? process.cwd() }),
+          agent: A2A_AGENT,
+          mask: plugin.mask,
+        }),
+      }
     : undefined
+  const a2a = inbound?.a2a
   const server = await startNodeServer({
     engine: {
       // Clients built from source report version "local"; matching it avoids a version-mismatch warning.
@@ -86,13 +93,13 @@ export async function startBobiServer(options: BobiServerOptions): Promise<BobiS
       match: (pathname) => {
         if (pathname === COMPLETE_PATH || pathname === TIPS_PATH) return "private"
         if (a2a && pathname === CARD_PATH) return "public"
-        if (a2a && pathname === RPC_PATH) return "private"
+        if (a2a && pathname === RPC_PATH) return "own"
         return undefined
       },
       handle: async (request) => {
         const { pathname, origin } = new URL(request.url)
         if (pathname === CARD_PATH) return Response.json(agentCard({ baseUrl: origin, version: options.engineVersion ?? "local" }))
-        if (pathname === RPC_PATH) return a2a!.handle(request)
+        if (pathname === RPC_PATH) return handleA2a(request, inbound!.a2a, inbound!.token)
         if (pathname === TIPS_PATH) return handleTips(request, projectConfig)
         return handleCompletion(request, { projectConfig, env, mask: plugin.mask })
       },
@@ -103,4 +110,30 @@ export async function startBobiServer(options: BobiServerOptions): Promise<BobiS
   })
   url = server.url
   return server
+}
+
+/** The A2A endpoint: only with its own token. */
+function handleA2a(request: Request, a2a: InboundA2a, token: string): Promise<Response> | Response {
+  if (!bearerMatches(request.headers.get("authorization"), token))
+    return new Response("A2A token required", { status: 401, headers: { "www-authenticate": 'Bearer realm="bobi-a2a"' } })
+  return a2a.handle(request)
+}
+
+/** Minimum length of the inbound A2A token. */
+export const A2A_TOKEN_MIN = 24
+
+/** The inbound A2A token: required when A2A is on, long enough, and never the server password. */
+export function requireA2aToken(token: string | undefined, serverPassword: string): string {
+  if (!token) throw new Error(`a2a.enabled needs BOBI_A2A_TOKEN (at least ${A2A_TOKEN_MIN} characters), a token only for other agents`)
+  if (token.length < A2A_TOKEN_MIN) throw new Error(`BOBI_A2A_TOKEN must have at least ${A2A_TOKEN_MIN} characters`)
+  if (token === serverPassword) throw new Error("BOBI_A2A_TOKEN must differ from the server password")
+  return token
+}
+
+/** Constant-time check of an `Authorization: Bearer <token>` header. */
+export function bearerMatches(header: string | null, token: string): boolean {
+  const match = /^Bearer (.+)$/.exec(header ?? "")
+  if (!match) return false
+  const digest = (v: string) => createHash("sha256").update(v).digest()
+  return timingSafeEqual(digest(match[1]!), digest(token))
 }

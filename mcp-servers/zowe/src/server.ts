@@ -63,7 +63,7 @@ export const TOOLS: Tool[] = [
   {
     name: "submit_job",
     description:
-      "Submit JCL (inline text, or a dataset/member that holds it). All DSN= references must be allowed datasets. Runs on the mainframe; always confirmed by the user.",
+      "Submit JCL (inline text, or a dataset/member that holds it). All DSN= references must be allowed datasets. Jobs that call procedures, use INCLUDE/JCLLIB, the internal reader, PATH= or utilities with instream commands (IDCAMS, IKJEFT01, BPXBATCH, …) are refused because their datasets cannot be checked. Runs on the mainframe; always confirmed by the user.",
     inputSchema: { type: "object", properties: { jcl: { type: "string" }, dataset, member } },
   },
 ] satisfies Tool[]
@@ -101,6 +101,50 @@ export function jclDatasets(jcl: string): string[] {
     }
   }
   return [...out]
+}
+
+/** Programs whose instream commands (SYSIN, SYSTSIN, STDPARM …) name datasets or run commands the DSN check cannot see. */
+const COMMAND_PROGRAMS = new Set(["IDCAMS", "IKJEFT01", "IKJEFT1A", "IKJEFT1B", "BPXBATCH", "BPXBATSL", "BPXBATA2", "BPXBATA8", "ADRDSSU", "IRXJCL", "IEBUPDTE"])
+
+/**
+ * Reasons why Bobi cannot check what a job touches. The DSN= check only sees DD statements in the submitted text; a job
+ * that calls a procedure, pulls in other JCL, writes to the internal reader, uses USS paths or runs a utility with
+ * instream commands could reach any dataset. Such jobs are refused (security review 2026-11-19, H5). The real limit
+ * is the mainframe user's own rights (RACF); this check is a second line, not a guarantee.
+ */
+export function jclProblems(jcl: string): string[] {
+  const problems = new Set<string>()
+  for (const raw of jcl.split(/\r?\n/)) {
+    if (!raw.startsWith("//") || raw.startsWith("//*")) continue
+    const line = raw.slice(0, 72).toUpperCase()
+    const m = /^\/\/(\S*)\s+(\S+)(?:\s+(.*))?$/.exec(line)
+    if (!m) continue
+    for (const p of statementProblems(m[2]!, m[3] ?? "")) problems.add(p)
+  }
+  return [...problems]
+}
+
+function statementProblems(op: string, operands: string): string[] {
+  const out: string[] = []
+  if (op === "JCLLIB") out.push("JCLLIB (procedures from other libraries are not checked)")
+  if (op === "INCLUDE") out.push("INCLUDE (included JCL is not checked)")
+  if (op === "EXEC") out.push(...execProblems(operands))
+  if (/INTRDR/.test(operands)) out.push("internal reader (INTRDR would submit JCL that is not checked)")
+  if (/(?:^|,)PATH=/.test(operands)) out.push("PATH= (USS files in JCL are not checked)")
+  return out
+}
+
+function execProblems(operands: string): string[] {
+  const pgm = /(?:^|,)PGM=([A-Z0-9#$@]+)/.exec(operands)?.[1]
+  if (!pgm) return ["EXEC of a procedure (its DD statements are not checked)"]
+  return COMMAND_PROGRAMS.has(pgm) ? [`EXEC PGM=${pgm} (its instream commands are not checked)`] : []
+}
+
+/** Refuses JCL whose datasets cannot be checked, then checks every DSN= against the allowlist. */
+function checkJcl(c: Connection, jcl: string) {
+  const problems = jclProblems(jcl)
+  if (problems.length) throw new ConnectionError(`Bobi does not submit this job because it cannot check what it touches: ${problems.join("; ")}. Submit it yourself if it is intended.`)
+  for (const referenced of jclDatasets(jcl)) requireDataset(c, referenced)
 }
 
 export async function runTool(client: MainframeClient, name: string, args: Args): Promise<unknown> {
@@ -163,10 +207,10 @@ export async function runTool(client: MainframeClient, name: string, args: Args)
         const ds = requireDataset(c, source)
         const m = memberOf(args)
         // The JCL in the dataset is checked like inline JCL before it is submitted.
-        for (const referenced of jclDatasets((await client.readDataset(ds, m)).text)) requireDataset(c, referenced)
+        checkJcl(c, (await client.readDataset(ds, m)).text)
         return { submitted: await client.submitDataset(ds, m) }
       }
-      for (const referenced of jclDatasets(jcl!)) requireDataset(c, referenced)
+      checkJcl(c, jcl!)
       return { submitted: await client.submitJcl(jcl!) }
     }
     default:

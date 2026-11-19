@@ -109,6 +109,7 @@ describe("parseArgs", () => {
     expect(() => parseArgs(["compare", "--models", "a,b"])).toThrow(/needs a task/)
     expect(() => parseArgs(["compare", "--models"])).toThrow(/needs a value/)
     expect(() => parseArgs(["compare", "--x", "t"])).toThrow(/unknown option for compare/)
+    expect(parseArgs(["compare", "--models", "a,b", "--test", "bun test", "--trust-tests", "task"])).toMatchObject({ test: "bun test", trustTests: true, task: "task" })
   })
 
   test("registry", () => {

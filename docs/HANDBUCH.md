@@ -372,7 +372,8 @@ Getestet an AWS CardDemo (`vendor/carddemo`). Diagramm: `bobi diagram cobol [--p
 ### Mainframe über Zowe
 
 Der `zowe`-Server nutzt die REST-Schnittstelle, die auch die Zowe CLI verwendet. Verbindung über ein Zowe-Profil
-(`zowe.config.json` im Projekt oder in `~/.zowe`) oder Umgebungsvariablen:
+(`zowe.config.json` in `~/.zowe`; eine Datei im Projekt wird ignoriert, damit ein Repository nicht bestimmen kann,
+wohin das Passwort geht) oder Umgebungsvariablen:
 
 ```bash
 export ZOWE_OPT_HOST=mf.intranet ZOWE_OPT_PORT=443 ZOWE_OPT_USER=dev1
@@ -382,7 +383,10 @@ export BOBI_ZOWE_USS="/u/dev1"                    # Standard: eigenes Home
 ```
 
 - Datasets und USS-Pfade außerhalb der Allowlist werden abgewiesen – bevor eine Anfrage den Mainframe erreicht.
-- In abgeschickter JCL werden alle `DSN=` gegen die Allowlist geprüft.
+- In abgeschickter JCL werden alle `DSN=` gegen die Allowlist geprüft. Jobs, deren Datensätze Bobi nicht sehen kann,
+  lehnt Bobi ab: Aufruf einer Prozedur, `INCLUDE`/`JCLLIB`, interner Reader (`INTRDR`), `PATH=` und Programme mit
+  eingebetteten Befehlen (`IDCAMS`, `IKJEFT01`, `BPXBATCH`, `ADRDSSU`, …). Solche Jobs schickst du selbst ab. Die
+  eigentliche Grenze bleiben die Rechte des Mainframe-Benutzers (RACF): Die Prüfung ist eine zweite Linie, keine Garantie.
 - Schreiben (`write_dataset`) und Job-Submit fragen **immer**.
 - Zertifikate werden immer geprüft; eine Firmen-CA kommt per `NODE_EXTRA_CA_CERTS` dazu.
 - In der Sandbox den Mainframe-Host in `BOBI_EGRESS_ALLOW` aufnehmen.
@@ -401,13 +405,16 @@ export BOBI_ZOWE_USS="/u/dev1"                    # Standard: eigenes Home
 `BOBI_A2A=1`; ein Projekt kann das nicht):
 
 ```bash
-BOBI_A2A=1 BOBI_SERVER_PASSWORD=… bobi serve --port 4096
+BOBI_A2A=1 BOBI_A2A_TOKEN="$(openssl rand -base64 32)" BOBI_SERVER_PASSWORD=… bobi serve --port 4096
 curl http://127.0.0.1:4096/.well-known/agent-card.json      # Agentenkarte (öffentlich)
 ```
 
-JSON-RPC unter `/a2a` (Server-Passwort, HTTP Basic, Benutzer `opencode`): `message/send`, `tasks/get`,
+JSON-RPC unter `/a2a` mit einem **eigenen Token** (`Authorization: Bearer $BOBI_A2A_TOKEN`, mindestens 24 Zeichen,
+nicht das Server-Passwort): `message/send`, `tasks/get`,
 `tasks/cancel`. Fremde Agenten **dürfen nur lesen**: alles andere wird sofort abgelehnt, nichts wartet auf eine
-Freigabe.
+Freigabe. Das Token gilt nur für `/a2a`; das Server-Passwort öffnet `/a2a` nicht, und mit dem Token kommt man an keine
+andere Schnittstelle. Ohne `BOBI_A2A_TOKEN` startet Bobi mit eingeschaltetem A2A nicht. (Bis 19.11.2026 galt hier das
+Server-Passwort; damit hätte ein Agent eine Sitzung in einem anderen Modus öffnen und eigene Freigaben bestätigen können.)
 
 ---
 
@@ -471,6 +478,10 @@ Modell; die Diffs stehen in `vergleich.json`. Die Modelle müssen am konfigurier
 
 - **Nur Datei-Änderungen** werden in den Worktrees automatisch freigegeben. Shell, Netzwerk usw. fragen wie immer – ein
   Lauf ohne Bildschirm kann nicht antworten, also sind sie verweigert (steht im Bericht). Den Testbefehl führt Bobi selbst aus.
+- **Der Testbefehl fragt vorher:** Er läuft auf den Dateien, die das Modell geschrieben hat (Tests, Skripte,
+  `package.json`), direkt auf deinem Rechner und außerhalb der Sandbox. Bobi zeigt deshalb pro Modell den Diff und
+  fragt, bevor der Test läuft. Ohne Terminal wird der Test übersprungen; `--trust-tests` führt ihn ohne Frage aus
+  (nur in einer Wegwerf-Umgebung verwenden).
 - Voraussetzung: Git-Projekt mit mindestens einem Commit; nicht eingecheckte Änderungen fließen nicht ein.
 - Ein Lauf pro Modell ist eine Momentaufnahme, kein Benchmark: mehrfach wiederholen, bevor du entscheidest.
 - Jeder Lauf steht im Audit-Log, ist also mit `bobi dossier` belegbar.
@@ -717,6 +728,7 @@ bei Vertrauen) → `BOBI_CONFIG` → Umgebungsvariablen. Geheimnisse sind in Dat
 | `BOBI_USER`, `BOBI_TEAM` | Nutzer und Team im Audit |
 | `BOBI_SERVER_PASSWORD` | Passwort für `serve`/`attach` |
 | `BOBI_A2A` | `1`/`true`: eingehendes A2A |
+| `BOBI_A2A_TOKEN` | Token für eingehendes A2A (Pflicht, ≥ 24 Zeichen, nur für `/a2a` gültig) |
 | `BOBI_SESSION_TITLES` | `model` oder `local` (siehe `sessions.titles`) |
 | `OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_EXPORTER_OTLP_HEADERS` | OpenTelemetry |
 | `ZOWE_OPT_*`, `BOBI_ZOWE_PROFILE`, `BOBI_ZOWE_DATASETS`, `BOBI_ZOWE_USS` | Mainframe |
@@ -785,7 +797,7 @@ Sandbox 7/7, Red-Team 8/8, Semgrep 0 Befunde, Lasttest 300 Aufträge ohne Fehler
   werden nicht analysiert.
 - Der Mainframe-Zugriff ist gegen einen Mock getestet, noch nicht gegen ein echtes System. Abgeschickte JCL kann
   alles, was der Job-Nutzer darf – die Freigabe bleibt entscheidend.
-- Eingehendes A2A nutzt ein gemeinsames Server-Passwort (keine Identität pro aufrufendem Agenten).
+- Eingehendes A2A nutzt ein gemeinsames Token für alle aufrufenden Agenten (keine Identität pro Agent).
 - Bei vielen parallelen Sitzungen auf einem Server steigt Bobis Eigenanteil an der Antwortzeit (≈ 1,1 s bei 100).
 - Bobi IDE läuft aus den Quellen; ein verteilbares Paket muss die proprietären Copilot-Pakete von Code-OSS entfernen.
 - Die Video-Tour wird mit Piper und der frei lizenzierten Stimme „Thorsten“ vertont (Modell MIT, Daten CC0); der

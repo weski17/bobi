@@ -1,4 +1,4 @@
-export { A2A_AGENT, createBobiCore, defaultSink, localTitle, PLUGIN_ID, promptText, PROTECTED_RULES, toolDetail } from "./plugin.ts"
+export { A2A_AGENT, createBobiCore, defaultSink, isProtected, localTitle, PLUGIN_ID, promptText, PROTECTED_RULES, toolDetail } from "./plugin.ts"
 export type { BobiCoreOptions } from "./plugin.ts"
 export { FileSink, MemorySink, MultiSink, OtlpSink, parseOtlpHeaders } from "./audit.ts"
 export type { AuditRecord, AuditSink, OtlpSinkOptions } from "./audit.ts"

@@ -13,7 +13,7 @@ export type Command =
   | { kind: "usage"; from?: string; to?: string; team?: string; format: "md" | "json" }
   | { kind: "dossier"; action: "list" | "seal"; session?: string; task?: number | "last"; out?: string; format: "md" | "json"; diff: boolean; test?: string }
   | { kind: "dossier"; action: "verify"; file: string; key?: string }
-  | { kind: "compare"; models: string[]; mode: string; task: string; test?: string; out?: string }
+  | { kind: "compare"; models: string[]; mode: string; task: string; test?: string; out?: string; trustTests?: boolean }
   | { kind: "registry"; action: "pack"; source: string; version: string; description?: string; out?: string }
   | { kind: "registry"; action: "install"; target: string; from?: string; project: boolean; force: boolean }
   | { kind: "registry"; action: "verify" | "trust" | "untrust"; target: string }
@@ -60,7 +60,7 @@ Usage:
                                    uncommitted changes, --test runs a command and adds its result
   bobi dossier verify <FILE.json> [--key public.pem]
                                    Check a dossier: chain, signature and (with --key) who signed it
-  bobi compare --models <a,b[,c]> [--mode <slug>] [--test "<command>"] [--out FILE.json] <task...>
+  bobi compare --models <a,b[,c]> [--mode <slug>] [--test "<command>" [--trust-tests]] [--out FILE.json] <task...>
                                    Same task with several models, each in its own git worktree of HEAD (edits are
                                    approved automatically there, nothing else); then the test command on each result
   bobi registry pack <skill-dir|command.md> --version 1.0.0 [--description T] [--out DIR]
@@ -204,6 +204,7 @@ export function parseArgs(argv: readonly string[]): Command {
       } else if (arg === "--mode") (out.mode = value!), i++
       else if (arg === "--test") (out.test = value!), i++
       else if (arg === "--out") (out.out = value!), i++
+      else if (arg === "--trust-tests") out.trustTests = true
       else if (arg.startsWith("-")) throw new UsageError(`unknown option for compare: ${arg}`)
       else words.push(arg)
     }

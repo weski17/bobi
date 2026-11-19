@@ -20,8 +20,11 @@ import type { BobiPaths } from "./paths.ts"
 
 /** Bobi's own HTTP routes next to the engine API (autocomplete, A2A). */
 export type BobiRoutes = {
-  /** "public" routes need no password (e.g. a discovery document); "private" ones use the server password. */
-  match(pathname: string): "public" | "private" | undefined
+  /**
+   * "public" routes need no password (e.g. a discovery document); "private" ones use the server password; "own" routes
+   * check their own credential (A2A: a token that is valid nowhere else).
+   */
+  match(pathname: string): "public" | "private" | "own" | undefined
   handle(request: Request): Promise<Response>
 }
 

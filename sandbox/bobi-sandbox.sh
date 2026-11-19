@@ -61,7 +61,7 @@ up() {
     -e http_proxy=http://bobi-egress:3128 -e https_proxy=http://bobi-egress:3128 \
     -e NO_PROXY=localhost,127.0.0.1 -e no_proxy=localhost,127.0.0.1 \
     -e BOBI_SERVER_PASSWORD -e BOBI_MODEL_BASE_URL="$model_url" -e BOBI_MODEL -e BOBI_MODEL_API_KEY \
-    -e BOBI_USER="${BOBI_USER:-$USER}" -e OTEL_EXPORTER_OTLP_ENDPOINT -e BOBI_A2A \
+    -e BOBI_USER="${BOBI_USER:-$USER}" -e OTEL_EXPORTER_OTLP_ENDPOINT -e BOBI_A2A -e BOBI_A2A_TOKEN \
     -e GIT_CONFIG_COUNT=2 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0="$project" \
     -e GIT_CONFIG_KEY_1=safe.directory -e GIT_CONFIG_VALUE_1="$shadow" \
     -e ZOWE_OPT_HOST -e ZOWE_OPT_PORT -e ZOWE_OPT_PROTOCOL -e ZOWE_OPT_USER -e ZOWE_OPT_PASSWORD \

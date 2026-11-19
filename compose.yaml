@@ -45,6 +45,7 @@ services:
       BOBI_USER: ${BOBI_USER:-${USER:-unknown}}
       BOBI_TEAM: ${BOBI_TEAM:-}
       BOBI_A2A: ${BOBI_A2A:-}
+      BOBI_A2A_TOKEN: ${BOBI_A2A_TOKEN:-}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
       # Everything outside the internal network goes through the allowlist proxy.
       HTTP_PROXY: http://egress:3128

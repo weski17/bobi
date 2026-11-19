@@ -335,7 +335,7 @@ test("bobi compare runs each model in its own worktree of HEAD and leaves the pr
       },
     })
     const test = `grep -q right answer.txt`
-    expect(await runApp(["compare", "--models", "big,small", "--test", test, "--out", out, "fix", "the", "answer"], t.io)).toBe(0)
+    expect(await runApp(["compare", "--models", "big,small", "--test", test, "--trust-tests", "--out", out, "fix", "the", "answer"], t.io)).toBe(0)
     expect(t.out[0]).toContain("| big | completed | passed |")
     expect(t.out[0]).toContain("| small | completed | failed (exit 1) |")
     expect(t.out[0]).toContain("Passed the tests: big.")
