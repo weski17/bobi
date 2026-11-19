@@ -218,9 +218,7 @@ export type Expanded = { readonly tokens: Token[]; readonly copies: CopyReferenc
  * `EXEC SQL INCLUDE name END-EXEC` is expanded the same way, except for SQLCA/SQLDA.
  */
 export function expand(source: string, file: string, given: ExpandOptions, depth = 0, stack: readonly string[] = []): Expanded {
-  // Depth and cycles alone do not bound the size: copybooks that COPY each other several times grow exponentially.
-  const options = given.budget ? given : { ...given, budget: { left: given.maxTokens ?? MAX_EXPANDED_TOKENS } }
-  const budget = options.budget!
+  const options = withBudget(given)
   const tokens = tokenize(normalize(source, file))
   const out: Token[] = []
   const copies: CopyReference[] = []
@@ -267,18 +265,31 @@ export function expand(source: string, file: string, given: ExpandOptions, depth
     const resolved = options.resolve(name, file)
     copies.push({ name, file: at.file, line: at.line, ...(resolved ? { resolved } : {}) })
     if (!resolved || stack.includes(resolved) || depth >= (options.maxDepth ?? 10)) return
-    let text: string
-    try {
-      text = options.read(resolved)
-    } catch {
-      return
-    }
+    const text = readOrUndefined(options, resolved)
+    if (text === undefined) return
     const lines = applyReplacing(normalize(text, resolved), replacements)
     const nested = expandLines(lines, resolved, options, depth + 1, [...stack, file])
-    budget.left -= nested.tokens.length
-    if (budget.left < 0) throw new Error(`COPY expansion is larger than ${options.maxTokens ?? MAX_EXPANDED_TOKENS} tokens (copybooks that include each other many times)`)
+    spend(options, nested.tokens.length)
     out.push(...nested.tokens)
     copies.push(...nested.copies)
+  }
+}
+
+/** Depth and cycles alone do not bound the size: copybooks that COPY each other several times grow exponentially. */
+function withBudget(options: ExpandOptions): ExpandOptions {
+  return options.budget ? options : { ...options, budget: { left: options.maxTokens ?? MAX_EXPANDED_TOKENS } }
+}
+
+function spend(options: ExpandOptions, tokens: number) {
+  options.budget!.left -= tokens
+  if (options.budget!.left < 0) throw new Error(`COPY expansion is larger than ${options.maxTokens ?? MAX_EXPANDED_TOKENS} tokens (copybooks that include each other many times)`)
+}
+
+function readOrUndefined(options: ExpandOptions, file: string): string | undefined {
+  try {
+    return options.read(file)
+  } catch {
+    return undefined
   }
 }
 
