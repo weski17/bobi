@@ -15,6 +15,17 @@
 | Image scan fails on new findings (Trivy, HIGH/CRITICAL with a fix); the 54 findings known on 2026-11-06 are a dated baseline that expires 2027-02-06 | ✅ | `.github/workflows/image.yml`, `.trivyignore.yaml`, `docs/security/image-scan.md` |
 | Revocation list for the registry: signed, with serial (no rollback); install refuses revoked packages even with `--force`; `bobi registry check [--remove]` | ✅ | `packages/core/src/revocation.ts`, `packages/shell/src/registry.ts`, ADR-0025 |
 
+## Release 1.1.0 (2026-11-19): security review
+
+| Task | Status | Where |
+|---|---|---|
+| Security review: scanners (Semgrep 11 rule sets, gitleaks over the whole history, `bun audit`, Trivy file system and both images) and a manual review in four parts | ✅ | review report (confidential, outside the repository) |
+| Critical findings K1 (git without approval), K2 (IDE start command from the repository) | ✅ fixed | #36 |
+| High findings H1–H5 (protected paths after "always", A2A token, Zowe host, compare test, JCL) | ✅ fixed | #37 |
+| H6/H7 (self-hosted runner, gate bypass by a pull request's own workflows) | 🟡 partly: Dependabot excluded, limits documented | `docs/security/security-gate.md` |
+| Branch rule on `main` | ⬜ repository owner | `docs/security/security-gate.md` |
+| 13 medium and 11 low findings | ⬜ open | review report |
+
 ## Release 1.0.0 (2026-11-19): versions and contributor files
 
 | Task | Status | Where |

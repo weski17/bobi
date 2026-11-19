@@ -6,6 +6,20 @@ phases 1–8 (see [`docs/STATUS.md`](docs/STATUS.md) and the [demo guides](docs/
 
 ## [Unreleased]
 
+## [1.1.0] – 2026-11-19
+
+Security release: fixes the critical and high findings of the security review of 2026-11-19.
+
+**Upgrade notes (changed behaviour):**
+- Every shell command asks, including `git status`/`diff`/`log`/`show`; `/commit`, `/pr` and the IDE commit button
+  ask before they read the diff.
+- Inbound A2A needs `BOBI_A2A_TOKEN` (at least 24 characters); callers send `Authorization: Bearer …` instead of the
+  server password. Bobi does not start with A2A on and no token.
+- Zowe profiles in a project folder are ignored; keep them in `~/.zowe`.
+- `bobi compare --test` asks before running the test; scripts need `--trust-tests`.
+- `submit_job` refuses JCL that calls procedures, uses `INCLUDE`/`JCLLIB`, the internal reader, `PATH=` or utilities
+  with instream commands.
+
 ### Security
 
 - No shell command runs without asking any more, read-only git included. `git log > file` wrote files without a
@@ -180,7 +194,8 @@ Phase 1: the core.
 - Sandbox: unprivileged Podman container, internal network, egress allowlist proxy.
 - CI with typecheck, tests, coverage gate and terminal-UI end-to-end tests.
 
-[Unreleased]: https://github.com/weski17/bobi/compare/v1.0.1...HEAD
+[Unreleased]: https://github.com/weski17/bobi/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/weski17/bobi/compare/v1.0.1...v1.1.0
 [1.0.1]: https://github.com/weski17/bobi/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/weski17/bobi/compare/v0.8.0...v1.0.0
 [0.8.0]: https://github.com/weski17/bobi/compare/v0.7.0...v0.8.0
