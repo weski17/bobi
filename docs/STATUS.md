@@ -111,7 +111,7 @@ Tests: **369 pass, 0 fail** (line coverage 98.4 %) + IDE integration test (incl.
 | Security mode + `/security-review` | ✅ | `packages/modes/builtin-modes.yaml`, `defaults/commands` |
 | Skills (`SKILL.md`) global and per project (trusted) | ✅ | `packages/core/src/extensions.ts` |
 | Own slash commands (`.bobi/commands/*.md`, mode + `$ARGUMENTS`) | ✅ | same |
-| Git: `/commit`, `/pr`; read-only git without asking; IDE commit message button | ✅ | `defaults/commands`, `permissions.jsonc` |
+| Git: `/commit`, `/pr`; IDE commit message button (since 2026-11-19 every git command asks) | ✅ | `defaults/commands`, `permissions.jsonc` |
 | Literate coding in the IDE (Cmd+Alt+Enter) with diff review | ✅ | `packages/ide-extension` |
 | Shell: `bobi modes`, `bobi run --mode` | ✅ | `packages/shell` |
 | Engine's own skills (vendor docs/issue reporting) disabled | ✅ | `DISABLED_PLUGINS` |

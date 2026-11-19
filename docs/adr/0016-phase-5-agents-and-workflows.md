@@ -13,8 +13,10 @@
   `*.md` with frontmatter (`description`, `mode`) and `$ARGUMENTS` in built-in `defaults/commands/`,
   `$BOBI_HOME/commands/`, `.bobi/commands/`. Project files only with trust and part of the trust fingerprint.
   The engine's built-in skills are disabled (one makes the model fetch the vendor's online docs).
-- **Git (req. 15):** built-in `/commit` and `/pr`. The default policy allows read-only `git status|diff|log|show` and
-  `git branch --show-current`; `--output` still asks; everything that writes asks. The IDE's Source Control button
+- **Git (req. 15):** built-in `/commit` and `/pr`. Every git command asks. (Until 2026-11-19 the default policy allowed
+  read-only `git status|diff|log|show` without asking; the security review of that day showed that a redirect such as
+  `git log > file` writes files and a crafted git directory runs code through `core.fsmonitor`, so the rules were
+  removed. An explicit shell auto-approval never covers a redirect into a file.) The IDE's Source Control button
   writes a commit message through a short Bobi session (diff read via the shell tool → masked and audited), not via a
   direct model call.
 - **Security agent (req. 13):** built-in mode `security` (read, execute, edit) with a reviewer role; `/security-review`.
