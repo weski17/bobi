@@ -23,7 +23,7 @@
 | Critical findings K1 (git without approval), K2 (IDE start command from the repository) | ✅ fixed | #36 |
 | High findings H1–H5 (protected paths after "always", A2A token, Zowe host, compare test, JCL) | ✅ fixed | #37 |
 | H6/H7 (self-hosted runner, gate bypass by a pull request's own workflows) | 🟡 partly: Dependabot excluded, limits documented | `docs/security/security-gate.md` |
-| Branch rule on `main` | ⬜ repository owner | `docs/security/security-gate.md` |
+| Branch rule on `main` | ✅ active since 2026-11-20 (ruleset 27686498, no bypass) | `docs/security/security-gate.md` |
 | 13 medium and 11 low findings | ⬜ open | review report |
 
 ## Release 1.0.0 (2026-11-19): versions and contributor files
@@ -41,7 +41,7 @@
 |---|---|---|
 | Security gate on every pull request and push: Semgrep, gitleaks, `bun audit`, Trivy fs; one required check `security-gate`; a pull request fails only on what it adds | 🟡 built, first CI run pending | `.github/workflows/security.yml`, `.gitleaks.toml`, ADR-0027 |
 | Advisory security agent: read-only built-in mode `security-ci`, one pull request comment (parsed, masked, escaped); self-hosted runner only | 🟡 tested with the mock model; not run with a real model | `packages/core/src/security-review.ts`, `scripts/security-agent.ts`, `docs/security/security-gate.md` |
-| Branch rule on `main` (pull requests, green `security-gate`) | ⬜ repository owner | command in `docs/security/security-gate.md` |
+| Branch rule on `main` (pull requests; green `security-gate`, `test`, `redteam`, `tips`) | ✅ active since 2026-11-20 | `docs/security/security-gate.md` |
 
 ## After phase 7 (2026-10-20)
 
