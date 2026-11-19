@@ -71,3 +71,10 @@ or blob digest. License texts are in the image under `/opt/demo/licenses/`.
 | Code-OSS (`microsoft/vscode`) | 1.141.2 (submodule `vendor/code-oss`) | MIT | Bobi IDE base; branding overlay `scripts/ide/brand.ts`, patches `patches/code-oss/` |
 | @types/vscode | 1.100.0 | MIT | Extension API types (dev) |
 | diff | 8.0.4 | BSD-3-Clause | Extension tests: produce patches like the engine (dev) |
+
+## Project documents and services (not shipped)
+
+| Component | Version | License | Use |
+|---|---|---|---|
+| Contributor Covenant | 2.1 | CC BY 4.0 (attribution in the document) | Text of [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md), contact method filled in |
+| Dependabot (GitHub service) | – | GitHub terms (no code in the repository) | Monthly update pull requests for GitHub Actions (`.github/dependabot.yml`) |

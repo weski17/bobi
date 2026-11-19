@@ -1,0 +1,41 @@
+name: Feature request
+description: Suggest an improvement or a new capability.
+title: "feat: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+      description: Describe the situation in your daily work, not the solution yet.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Core (agent loop, approvals, checkpoints)
+        - Modes, rules, skills, slash commands
+        - Bobi IDE
+        - Bobi Shell
+        - MCP / code graph / COBOL / Zowe
+        - Security, sandbox, audit
+        - Documentation
+        - Other
+    validations:
+      required: true
+  - type: checkboxes
+    id: constraints
+    attributes:
+      label: Bobi's ground rules
+      description: Bobi runs on-premise and never sends code out of the network. Requests must fit that.
+      options:
+        - label: This works without a cloud service and keeps code and data inside the network.
+          required: true
+        - label: It does not depend on another product's code, names or assets (Bobi is built clean-room).
+          required: true
