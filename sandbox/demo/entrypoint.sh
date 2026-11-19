@@ -15,6 +15,11 @@ export BOBI_MODEL_API_KEY="${BOBI_MODEL_API_KEY:-ollama}"
 export BOBI_SERVER_PASSWORD
 BOBI_SERVER_PASSWORD="$(head -c 24 /dev/urandom | base64 | tr -d '/+=\n')"
 mkdir -p "$BOBI_HOME"
+# BOBI_HOME is a volume that outlives restarts and is shared by all visitors. Everything in it that steers Bobi
+# (global rules, modes, skills, commands, registry, trust decisions) is removed at every start, so nothing a visitor
+# planted reaches later visitors; audit and usage data stay (security review 2026-11-19, M7).
+find "$BOBI_HOME" -mindepth 1 -maxdepth 1 \( -name rules -o -name 'rules-*' -o -name custom_modes.yaml -o -name skills \
+  -o -name commands -o -name registry -o -name trust -o -name AGENTS.md \) -exec rm -rf {} +
 cp /opt/demo/config.jsonc "$BOBI_HOME/config.jsonc"
 
 pids=()
