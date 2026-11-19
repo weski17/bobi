@@ -3,7 +3,7 @@
 // and home directory); writing and job submission are additionally confirmed by the user in Bobi (always ask).
 import { Server, type Tool } from "@modelcontextprotocol/server"
 import { MainframeClient, RestError, type RestOptions } from "./client.ts"
-import { allowedDataset, checkMember, ConnectionError, loadConnection, requireDataset, requireUssPath, type Connection } from "./connection.ts"
+import { allowedDataset, allowedJobOwner, checkMember, ConnectionError, loadConnection, requireDataset, requireJobOwner, requireUssPath, type Connection } from "./connection.ts"
 
 export const SERVER_NAME = "zowe"
 export const VERSION = "0.1.0"
@@ -47,7 +47,7 @@ export const TOOLS: Tool[] = [
   },
   {
     name: "list_jobs",
-    description: "List batch jobs (default: the user's own jobs).",
+    description: "List batch jobs (default: the user's own jobs; other owners only if an administrator allows them).",
     inputSchema: { type: "object", properties: { owner: { type: "string" }, prefix: { type: "string" }, status: { type: "string", enum: ["ACTIVE", "OUTPUT", "INPUT"] } } },
   },
   {
@@ -181,14 +181,22 @@ export async function runTool(client: MainframeClient, name: string, args: Args)
       const { text, truncated } = await client.readUss(file)
       return { path: file, ...(truncated ? { truncated: true } : {}), content: text }
     }
-    case "list_jobs":
-      return { jobs: await client.listJobs({ owner: (opt(args, "owner") ?? c.user).toUpperCase(), prefix: opt(args, "prefix")?.toUpperCase(), status: opt(args, "status") }) }
+    case "list_jobs": {
+      const owner = (opt(args, "owner") ?? c.user).toUpperCase()
+      if (owner !== "*") requireJobOwner(c, owner)
+      else if (!c.jobOwners.includes("*")) throw new ConnectionError(`Jobs of all users are not available (allowed: ${c.jobOwners.join(", ")}).`)
+      const jobs = await client.listJobs({ owner, prefix: opt(args, "prefix")?.toUpperCase(), status: opt(args, "status") })
+      return { jobs: jobs.filter((j) => allowedJobOwner(c, j.owner)) }
+    }
     case "job_status": {
       const { jobname, jobid } = jobArgs(args)
-      return await client.jobStatus(jobname, jobid)
+      const job = await client.jobStatus(jobname, jobid)
+      requireJobOwner(c, job.owner)
+      return job
     }
     case "job_output": {
       const { jobname, jobid } = jobArgs(args)
+      requireJobOwner(c, (await client.jobStatus(jobname, jobid)).owner)
       const files = await client.spoolFiles(jobname, jobid)
       const ddname = opt(args, "ddname")?.toUpperCase()
       const stepname = opt(args, "stepname")?.toUpperCase()

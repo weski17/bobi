@@ -1,6 +1,6 @@
 export { MainframeClient, RestError } from "./client.ts"
 export type { Dataset, Job, RestOptions, SpoolFile } from "./client.ts"
-export { allowedDataset, checkDataset, checkMember, ConnectionError, datasetMatches, loadConnection, requireDataset, requireUssPath, zoweConfigFiles, zoweConfigured } from "./connection.ts"
+export { allowedDataset, allowedJobOwner, checkDataset, checkMember, ConnectionError, datasetMatches, loadConnection, requireDataset, requireUssPath, zoweConfigFiles, zoweConfigured } from "./connection.ts"
 export type { Connection } from "./connection.ts"
 export { createServer, jclDatasets, jclProblems, runTool, SERVER_NAME, TOOLS, VERSION, WRITE_TOOLS } from "./server.ts"
 import path from "node:path"

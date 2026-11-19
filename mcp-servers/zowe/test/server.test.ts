@@ -128,7 +128,7 @@ test("the client sends basic auth and the CSRF header; large responses are trunc
     seen.push(new Request(input, init))
     return new Response("x".repeat(20))
   }) as typeof fetch
-  const c = new MainframeClient({ protocol: "https", host: "mf", port: 443, basePath: "/gw", user: "u", password, datasets: [], uss: [], source: "test" }, { fetch: fake, maxBytes: 10 })
+  const c = new MainframeClient({ protocol: "https", host: "mf", port: 443, basePath: "/gw", user: "u", password, datasets: [], uss: [], jobOwners: [], source: "test" }, { fetch: fake, maxBytes: 10 })
   expect(await c.readDataset("A.B")).toEqual({ text: "x".repeat(10), truncated: true })
   expect(seen[0]!.url).toBe("https://mf/gw/zosmf/restfiles/ds/A.B")
   expect(seen[0]!.headers.get("x-csrf-zosmf-header")).toBe("true")
@@ -166,3 +166,21 @@ test("stdio CLI lists the tools", async () => {
     await stdio.close()
   }
 }, 30_000)
+
+test("jobs and spool output of other users are hidden unless an administrator allows them (review 2026-11-19, M10)", async () => {
+  mainframe.jobs.push({ jobname: "PRODPAY", jobid: "JOB09999", owner: "PRODUSR", status: "OUTPUT", retcode: "CC 0000", jcl: "//PRODPAY JOB 1\n" })
+  expect((await call("list_jobs", { owner: "PRODUSR" })).text).toContain("Jobs of PRODUSR are not available")
+  expect((await call("list_jobs", { owner: "*" })).text).toContain("Jobs of all users are not available")
+  expect((await call("job_status", { jobname: "PRODPAY", jobid: "JOB09999" })).text).toContain("not available")
+  expect((await call("job_output", { jobname: "PRODPAY", jobid: "JOB09999" })).text).toContain("not available")
+  // An administrator can allow more owners.
+  const [clientSide, serverSide] = InMemoryTransport.createLinkedPair()
+  await createServer(home, { env: { ...env, BOBI_ZOWE_JOB_OWNERS: "dev1,produsr" } }).connect(serverSide)
+  const admin = new Client({ name: "t", version: "1" })
+  await admin.connect(clientSide)
+  try {
+    expect((await call("job_status", { jobname: "PRODPAY", jobid: "JOB09999" }, admin)).data).toMatchObject({ owner: "PRODUSR" })
+  } finally {
+    await admin.close()
+  }
+})
