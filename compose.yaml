@@ -14,7 +14,7 @@
 name: bobi
 
 x-hardening: &hardening
-  image: ${BOBI_IMAGE:-bobi:1.0.0}
+  image: ${BOBI_IMAGE:-bobi:1.0.1}
   cap_drop: [ALL]
   security_opt: [no-new-privileges:true]
   restart: unless-stopped

@@ -608,8 +608,8 @@ docker pull ghcr.io/weski17/bobi:latest
 BOBI_IMAGE=ghcr.io/weski17/bobi:latest docker compose up -d   # ohne lokalen Build
 ```
 
-Ohne Registry weitergeben: `docker save bobi:1.0.0 | gzip > bobi-1.0.0.tar.gz`, auf dem Zielrechner
-`docker load < bobi-1.0.0.tar.gz`.
+Ohne Registry weitergeben: `docker save bobi:1.0.1 | gzip > bobi-1.0.1.tar.gz`, auf dem Zielrechner
+`docker load < bobi-1.0.1.tar.gz`.
 
 Zum Bauen braucht Docker das Plugin `buildx` (`brew install docker-buildx` und
 `ln -sfn /opt/homebrew/opt/docker-buildx/bin/docker-buildx ~/.docker/cli-plugins/docker-buildx`); mit Podman geht es direkt.
