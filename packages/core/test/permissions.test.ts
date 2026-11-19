@@ -130,3 +130,15 @@ describe("loadDefaultPolicy", () => {
     }
   })
 })
+
+describe("isProtected", () => {
+  test("Bobi's own configuration and mainframe changes are protected, also in other letter case", async () => {
+    const { isProtected } = await import("../src/plugin.ts")
+    for (const r of ["/p/.bobi/config.jsonc", ".bobi/custom_modes.yaml", "/p/.BOBI/custom_modes.yaml", "/p/.Bobi/rules/a.md", "/p/.bobiignore", "/p/.BobiIgnore", "C:\\p\\.bobi\\x"])
+      expect(isProtected("edit", r)).toBe(true)
+    expect(isProtected("zowe_submit_job", "*")).toBe(true)
+    expect(isProtected("a2a", "agent")).toBe(true)
+    for (const r of ["/p/src/a.ts", "/p/bobi.md", "/p/docs/.bobix"]) expect(isProtected("edit", r)).toBe(false)
+    expect(isProtected("read", "/p/.bobi/config.jsonc")).toBe(false)
+  })
+})

@@ -4,7 +4,7 @@ import { existsSync } from "node:fs"
 import { mkdir, readFile, writeFile } from "node:fs/promises"
 import path from "node:path"
 import { BOBI_IDENTITY, ENGINE_IDENTITY, SYSTEM_RULE } from "@bobi/core"
-import { createHarness, pendingPermission, type Harness } from "./harness.ts"
+import { createHarness, pendingPermission, waitFor, type Harness } from "./harness.ts"
 
 let h: Harness | undefined
 afterEach(async () => {
@@ -213,6 +213,23 @@ describe(".bobiignore", () => {
     await h.opencode.permission.reply({ sessionID, requestID: request.id, decision: "reject" })
     await h.opencode.sessions.wait({ sessionID })
     expect(existsSync(path.join(h.dir, ".bobi", "config.jsonc"))).toBe(false)
+  }, 30_000)
+})
+
+describe("protected paths after \"always allow\"", () => {
+  test("one \"always\" on an ordinary edit does not open .bobi/ (review 2026-11-19, H1)", async () => {
+    h = await createHarness()
+    const protectedFile = path.join(h.dir, ".bobi", "config.jsonc")
+    const sessionID = await h.prompt("edit two files", write(path.join(h.dir, "a.txt"), "a"), write(protectedFile, "{}"), done)
+    const first = await pendingPermission(h, sessionID)
+    expect(first.resources.join(" ")).toContain("a.txt")
+    await h.opencode.permission.reply({ sessionID, requestID: first.id, decision: "always" })
+    const second = await waitFor(async () => (await h!.opencode.permission.list({ sessionID })).find((r) => r.id !== first.id))
+    expect(second.resources.join(" ")).toContain(".bobi")
+    await h.opencode.permission.reply({ sessionID, requestID: second.id, decision: "reject" })
+    await h.opencode.sessions.wait({ sessionID })
+    expect(existsSync(path.join(h.dir, "a.txt"))).toBe(true)
+    expect(existsSync(protectedFile)).toBe(false)
   }, 30_000)
 })
 

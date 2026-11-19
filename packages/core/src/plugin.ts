@@ -14,7 +14,7 @@ import { expandTemplate, extensionDirs, readCommands, readSkills } from "./exten
 import { initPrompt } from "./init.ts"
 import { resolveMcpServers } from "./mcp.ts"
 import { createMasker, maskDeep, type Masker } from "./masking.ts"
-import { loadDefaultPolicy, rulesForAgent, writesFile, type Rule } from "./permissions.ts"
+import { loadDefaultPolicy, rulesForAgent, wildcard, writesFile, type Rule } from "./permissions.ts"
 import { collectRules, rulesPrompt } from "./rules.ts"
 import { filterGlob, filterGrep, renderGlob, renderGrep } from "./search-filter.ts"
 import { isUntrusted, SYSTEM_RULE, wrapUntrusted } from "./untrusted.ts"
@@ -37,6 +37,15 @@ export const PROTECTED_RULES: Rule[] = [
   // Asking another agent sends project information out (A2A); always confirmed.
   { action: "a2a", resource: "*", effect: "ask" },
 ]
+
+/**
+ * True when a resource falls under a protected rule. Paths are compared without case: on the default macOS and Windows
+ * file systems `.BOBI/x` is `.bobi/x`.
+ */
+export function isProtected(action: string, resource: string): boolean {
+  const r = resource.replaceAll("\\", "/").toLowerCase()
+  return PROTECTED_RULES.some((rule) => wildcard(action, rule.action) && wildcard(r, rule.resource.toLowerCase()))
+}
 
 /**
  * Agent for requests from other agents (A2A, requirement 20): the built-in Ask mode, never overridable by a
@@ -359,6 +368,10 @@ export function createBobiCore(options: BobiCoreOptions): Plugin.Plugin & { read
       await ctx.permission.hook("evaluate", (event) => {
         const now = Date.now()
         if (event.agent) sessionMode.set(String(event.sessionID), String(event.agent))
+        // "Always allow" saves broad rules (an edit saves "*") that the engine checks after Bobi's rules, so a single
+        // click would otherwise turn the protected paths into "allow". Protected resources always ask (review
+        // 2026-11-19, H1).
+        if (event.effect === "allow" && event.resources.some((r) => isProtected(event.action, String(r)))) event.effect = "ask"
         // An explicit shell auto-approval (e.g. "git log *") never covers writing a file through a redirect.
         if (event.action === "shell" && event.effect === "allow" && event.resources.some((r) => writesFile(String(r)))) event.effect = "ask"
         // Other agents may only read; an approval request would wait for a person who is not there.
