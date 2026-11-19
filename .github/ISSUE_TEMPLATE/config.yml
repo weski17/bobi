@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/weski17/bobi/security/advisories/new
+    about: Please do not open a public issue for vulnerabilities. Report them privately here.
+  - name: Ask a question
+    url: https://github.com/weski17/bobi/discussions
+    about: Questions, ideas and show-and-tell go to Discussions.
+  - name: Read the handbook
+    url: https://github.com/weski17/bobi/blob/main/docs/HANDBUCH.md
+    about: Every feature with examples, configuration and troubleshooting (German).

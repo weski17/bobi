@@ -15,6 +15,15 @@
 | Image scan fails on new findings (Trivy, HIGH/CRITICAL with a fix); the 54 findings known on 2026-11-06 are a dated baseline that expires 2027-02-06 | ✅ | `.github/workflows/image.yml`, `.trivyignore.yaml`, `docs/security/image-scan.md` |
 | Revocation list for the registry: signed, with serial (no rollback); install refuses revoked packages even with `--force`; `bobi registry check [--remove]` | ✅ | `packages/core/src/revocation.ts`, `packages/shell/src/registry.ts`, ADR-0025 |
 
+## Release 1.0.0 (2026-11-19): versions and contributor files
+
+| Task | Status | Where |
+|---|---|---|
+| Version 1.0.0 (`bobi --version`, IDE extension, local image tag); a test keeps them equal to `package.json` | ✅ | `package.json`, `packages/shell/src/args.ts` |
+| Changelog per version; tags `v0.1.0`–`v0.8.0` mark the ends of phases 1–8 | ✅ | `CHANGELOG.md` |
+| Release workflow: a tag `vX.Y.Z` publishes the GitHub release with the changelog section as notes | ✅ (first run with `v1.0.0`) | `.github/workflows/release.yml` |
+| Contributor guide, code of conduct, issue and pull request templates, code owners, Dependabot for Actions, `.editorconfig` | ✅ | `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `.github/` |
+
 ## After phase 8 (2026-11-10): security gate
 
 | Task | Status | Where |

@@ -11,7 +11,9 @@ Please **do not open a public issue** for a vulnerability. Use GitHub's private 
 vulnerability* in this repository. Describe what you found, how to reproduce it and what an attacker gains. Do not
 include real secrets or production data. You will get an answer to your report; fixes are published on `main`.
 
-Supported version: the current `main` branch (Bobi is a research project; there are no maintained release branches).
+Supported versions: the latest release (see [Releases](https://github.com/weski17/bobi/releases) and
+[`CHANGELOG.md`](CHANGELOG.md)) and the current `main` branch. Fixes go to `main` and ship with the next release;
+there are no maintained release branches (Bobi is a research project).
 
 ## What Bobi protects (and how)
 

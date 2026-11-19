@@ -1,0 +1,14 @@
+# Keeps the GitHub Actions used by the workflows current. Package updates (bun) stay manual on purpose: every new
+# dependency version needs a license check in LICENSES.md (see CONTRIBUTING.md).
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: ci
+    labels: ["dependencies", "ci"]
+    groups:
+      actions:
+        patterns: ["*"]

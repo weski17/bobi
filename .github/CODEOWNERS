@@ -1,0 +1,7 @@
+# Maintainers review every change. Security-relevant paths are listed separately so that later owners can be added
+# per area without touching the default.
+*                         @weski17
+/packages/core/           @weski17
+/sandbox/                 @weski17
+/.github/                 @weski17
+/packages/modes/          @weski17
