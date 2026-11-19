@@ -2,7 +2,7 @@
   "name": "bobi-chat",
   "displayName": "Bobi",
   "description": "Chat with Bobi, your on-prem AI development partner",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "publisher": "bobi",
   "license": "MIT",
   "private": true,

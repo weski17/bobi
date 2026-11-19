@@ -6,6 +6,20 @@ phases 1–8 (see [`docs/STATUS.md`](docs/STATUS.md) and the [demo guides](docs/
 
 ## [Unreleased]
 
+## [1.0.1] – 2026-11-19
+
+### Fixed
+
+- Container images install the Debian security updates published after the pinned base image (`apt-get upgrade`);
+  since 2026-11-07 the demo image failed its vulnerability scan because of `zlib1g` (CVE-2026-85091) and was not
+  published.
+
+### Security
+
+- CVE-2026-97054 (Go standard library, HTTP/1 servers) in the engine's build tools esbuild and tsgo and in the
+  bundled Ollama binary is accepted until 2026-12-19, limited to those files: the build tools run no server, Ollama
+  listens on loopback inside the container only. Ollama needs an update built with Go 1.26.11 or later.
+
 ## [1.0.0] – 2026-11-19
 
 First stable release: all requirements 1–20 are implemented, plus provable AI work (phase 8) and a security gate for
@@ -140,7 +154,8 @@ Phase 1: the core.
 - Sandbox: unprivileged Podman container, internal network, egress allowlist proxy.
 - CI with typecheck, tests, coverage gate and terminal-UI end-to-end tests.
 
-[Unreleased]: https://github.com/weski17/bobi/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/weski17/bobi/compare/v1.0.1...HEAD
+[1.0.1]: https://github.com/weski17/bobi/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/weski17/bobi/compare/v0.8.0...v1.0.0
 [0.8.0]: https://github.com/weski17/bobi/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/weski17/bobi/compare/v0.6.0...v0.7.0
