@@ -47,6 +47,35 @@ describe("masking", () => {
     expect(mask(`const apiKey = "abcd1234efgh"`)).toBe(`const apiKey = "${MASK}"`)
   })
 
+  test("masks the formats the review found unmasked (review 2026-11-19, M4)", () => {
+    // Fake values built at runtime, never real secrets.
+    const secret = ["wJalrXUtnFEMI", "K7MDENG", "bPxRfiCYEXAMPLEKEY"].join("/")
+    expect(mask(`aws_secret_access_key = ${secret}`)).toBe(`aws_secret_access_key = ${MASK}`)
+    expect(mask("DATABASE_URL=postgres://admin:pw-123@db.intranet:5432/app")).toBe(`DATABASE_URL=postgres://admin:${MASK}@db.intranet:5432/app`)
+    expect(mask("git clone https://dev:tok123456@git.intranet/x.git")).toBe(`git clone https://dev:${MASK}@git.intranet/x.git`)
+    expect(mask("machine git.intranet login dev password s3cr3t-pw")).toBe(`machine git.intranet login dev password ${MASK}`)
+    expect(mask("machine h\n  login dev\n  password s3cr3t-pw\n")).toBe(`machine h\n  login dev\n  password ${MASK}\n`)
+    expect(mask(`{"auths":{"registry":{"auth":"ZGV2OnBhc3N3b3Jk"}}}`)).toBe(`{"auths":{"registry":{"auth":"${MASK}"}}}`)
+    expect(mask("    client-key-data: LS0tLS1CRUdJTiBQUklWQVRF")).toBe(`    client-key-data: ${MASK}`)
+    expect(mask(`password="correct horse battery staple"`)).toBe(`password="${MASK}"`)
+    expect(mask("api_key = a1b2c3d4e5f6g7h8i9j0")).toBe(`api_key = ${MASK}`)
+  })
+
+  test("code and prose stay readable", () => {
+    expect(mask("password = userInput")).toBe("password = userInput")
+    expect(mask("const token = session.token")).toBe("const token = session.token")
+    expect(mask("author: Jane Doe")).toBe("author: Jane Doe")
+    expect(mask("Reset your password in the settings.")).toBe("Reset your password in the settings.")
+    expect(mask("see https://example.com/a:b@c")).toBe("see https://example.com/a:b@c")
+  })
+
+  test("long runs of word characters do not make masking slow", () => {
+    const text = `${"a".repeat(40_000)} ${"b_password".repeat(2_000)}`
+    const began = performance.now()
+    mask(text)
+    expect(performance.now() - began).toBeLessThan(300)
+  })
+
   test("maskDeep walks objects and arrays", () => {
     expect(maskDeep({ a: ["DB_PASSWORD=hunter22", 1], b: { c: "super-secret-api-key-value" }, d: null }, mask)).toEqual({
       a: [`DB_PASSWORD=${MASK}`, 1],
