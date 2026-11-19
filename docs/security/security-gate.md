@@ -19,7 +19,8 @@ A merge is a push to `main`, so every merge is scanned again with the merged res
 
 A workflow runs after a push; it cannot stop it. Blocking is a branch rule on `main`: changes only by pull request, and
 the gate and the tests must be green. The checks are bound to GitHub Actions (`integration_id` 15368), so a status
-posted by anything else does not count. The repository owner sets it once (GitHub → Settings → Rules → Rulesets, or):
+posted by anything else does not count. **Active on this repository since 2026-11-20** (ruleset 27686498, no bypass,
+not even for administrators). To set it up in another repository (GitHub → Settings → Rules → Rulesets, or):
 
 ```bash
 gh api -X POST repos/<owner>/<repo>/rulesets --input - <<'JSON'
