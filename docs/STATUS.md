@@ -15,6 +15,13 @@
 | Image scan fails on new findings (Trivy, HIGH/CRITICAL with a fix); the 54 findings known on 2026-11-06 are a dated baseline that expires 2027-02-06 | ✅ | `.github/workflows/image.yml`, `.trivyignore.yaml`, `docs/security/image-scan.md` |
 | Revocation list for the registry: signed, with serial (no rollback); install refuses revoked packages even with `--force`; `bobi registry check [--remove]` | ✅ | `packages/core/src/revocation.ts`, `packages/shell/src/registry.ts`, ADR-0025 |
 
+## Release 1.2.0 (2026-11-20): medium findings of the security review
+
+| Task | Status | Where |
+|---|---|---|
+| Medium findings M1–M13 (`.bobiignore`, masking, project trust, browser, egress proxy, demo, web chat, COBOL limits, Zowe jobs, CI pinning, deploy/release on main, server image scan) | ✅ fixed (M13 partly) | #40, `CHANGELOG.md` |
+| 11 low findings | ⬜ open | review report |
+
 ## Release 1.1.0 (2026-11-19): security review
 
 | Task | Status | Where |
