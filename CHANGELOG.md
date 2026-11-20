@@ -6,6 +6,20 @@ phases 1–8 (see [`docs/STATUS.md`](docs/STATUS.md) and the [demo guides](docs/
 
 ## [Unreleased]
 
+## [1.2.0] – 2026-11-20
+
+Security release: fixes the medium findings of the security review of 2026-11-19.
+
+**Upgrade notes (changed behaviour):**
+- Project trust is asked once more, because the fingerprint now covers nested `AGENTS.md` files and is framed
+  differently. A project with more than 500 Bobi rule files counts as untrusted; symbolic links in project rules are
+  ignored.
+- Other users' Zowe jobs and spool output need `BOBI_ZOWE_JOB_OWNERS`.
+- The browser tool refuses pages that redirect to a private address that was not approved.
+- The egress proxy refuses private addresses behind wildcard allowlist rules and limits header time (10 s), idle
+  tunnels (300 s) and open connections (256).
+- Deploy secrets belong into the GitHub environment `production`, which only accepts `main`.
+
 ### Security
 
 Medium findings of the security review of 2026-11-19:
@@ -217,7 +231,8 @@ Phase 1: the core.
 - Sandbox: unprivileged Podman container, internal network, egress allowlist proxy.
 - CI with typecheck, tests, coverage gate and terminal-UI end-to-end tests.
 
-[Unreleased]: https://github.com/weski17/bobi/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/weski17/bobi/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/weski17/bobi/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/weski17/bobi/compare/v1.0.1...v1.1.0
 [1.0.1]: https://github.com/weski17/bobi/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/weski17/bobi/compare/v0.8.0...v1.0.0
