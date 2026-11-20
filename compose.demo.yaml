@@ -48,7 +48,7 @@ services:
       - bobi-demo-ide:/home/bun/ide
       # - ./tls:/run/tls:ro
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS -o /dev/null -u \"demo:$$DEMO_PASSWORD\" http://127.0.0.1:7681/ && curl -fsS -o /dev/null http://127.0.0.1:11434/api/version"]
+      test: ["CMD-SHELL", "printf 'user = \"demo:%s\"\\n' \"$$DEMO_PASSWORD\" | curl -fsS -o /dev/null -K - http://127.0.0.1:7681/ && curl -fsS -o /dev/null http://127.0.0.1:11434/api/version"]
       interval: 30s
       timeout: 10s
       start_period: 60s

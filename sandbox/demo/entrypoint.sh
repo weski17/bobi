@@ -40,7 +40,8 @@ echo "Bobi demo: starting the Bobi server …"
 BOBI_A2A=1 BOBI_A2A_TOKEN="$(head -c 32 /dev/urandom | base64 | tr -d '/+=\n')" \
   bun /opt/bobi/packages/shell/src/cli.ts serve --hostname 127.0.0.1 --port 4096 > /tmp/bobi-server.log 2>&1 &
 pids+=($!)
-for _ in $(seq 1 60); do curl -fsS -o /dev/null -u "opencode:$BOBI_SERVER_PASSWORD" http://127.0.0.1:4096/api/session 2> /dev/null && break; sleep 1; done
+# The credential goes to curl on stdin, not on its command line (visible to every process in the container).
+for _ in $(seq 1 60); do printf 'user = "opencode:%s"\n' "$BOBI_SERVER_PASSWORD" | curl -fsS -o /dev/null -K - http://127.0.0.1:4096/api/session 2> /dev/null && break; sleep 1; done
 
 ttyd_args=(ttyd -d 3 -W -O -p 7681 -m 8 -c "demo:${DEMO_PASSWORD}" -t titleFixed="Bobi Demo" -t fontSize=15 -t 'theme={"background":"#0a0f1e"}')
 if [ -f /run/tls/tls.crt ] && [ -f /run/tls/tls.key ]; then
