@@ -11,6 +11,7 @@ import { type AuditSink, FileSink, MemorySink, MultiSink, OtlpSink, parseOtlpHea
 import { BobiIgnore, blockedShellPath, IGNORE_FILE, patchPaths } from "./bobiignore.ts"
 import { brandSystemPrompt } from "./identity.ts"
 import { expandTemplate, extensionDirs, readCommands, readSkills } from "./extensions.ts"
+import { revokedNames } from "./registry.ts"
 import { initPrompt } from "./init.ts"
 import { resolveMcpServers } from "./mcp.ts"
 import { createMasker, maskDeep, type Masker } from "./masking.ts"
@@ -491,12 +492,14 @@ export function createBobiCore(options: BobiCoreOptions): Plugin.Plugin & { read
 
       // 6. Skills and slash commands (built-in /commit, /pr, /security-review; global; project if trusted).
       const dirs = extensionDirs(globalDir, project, trusted)
-      const skills = readSkills(dirs.skills)
+      // Revoked registry packages are not loaded, also before `bobi registry check --remove` ran.
+      const revoked = revokedNames([globalDir, ...(trusted ? [path.join(project, ".bobi")] : [])], path.join(globalDir, "registry"))
+      const skills = readSkills(dirs.skills).filter((s) => !revoked.skill.has(s.name))
       await ctx.skill.transform((editor) => {
         for (const skill of skills)
           editor.add({ id: skill.name, name: skill.name, description: skill.description, path: skill.path, content: skill.content } as Parameters<typeof editor.add>[0])
       })
-      const commands = readCommands(dirs.commands)
+      const commands = readCommands(dirs.commands).filter((c) => !revoked.command.has(c.name))
       // /init with Bobi's own prompt (replaces the engine's).
       await ctx.command.transform((editor) => {
         for (const command of commands)

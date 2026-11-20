@@ -20,7 +20,7 @@
 | Task | Status | Where |
 |---|---|---|
 | Medium findings M1–M13 (`.bobiignore`, masking, project trust, browser, egress proxy, demo, web chat, COBOL limits, Zowe jobs, CI pinning, deploy/release on main, server image scan) | ✅ fixed (M13 partly) | #40, `CHANGELOG.md` |
-| 11 low findings | ⬜ open | review report |
+| 11 low findings | ✅ fixed (3 of them with earlier findings) | `CHANGELOG.md` (Unreleased) |
 
 ## Release 1.1.0 (2026-11-19): security review
 

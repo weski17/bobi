@@ -30,6 +30,11 @@ services:
     working_dir: ${BOBI_PROJECT:?set BOBI_PROJECT to the absolute path of your project}
     pids_limit: 512
     mem_limit: 4g
+    # Read-only root file system like the demo: Bobi writes only to the mounted project, its home volume and /tmp
+    # (security review 2026-11-19).
+    read_only: true
+    tmpfs:
+      - /tmp:size=1g,mode=1777
     volumes:
       # The project at the same path as on the host, so checkpoint pointers and paths in answers match.
       - ${BOBI_PROJECT}:${BOBI_PROJECT}

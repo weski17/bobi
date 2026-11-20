@@ -181,3 +181,13 @@ test("httpEngine talks to the Bobi server API", async () => {
   const broken = httpEngine({ url: () => `http://127.0.0.1:${server.port}/fail`, password: "p", directory: "/p" })
   await expect(broken.createSession("a2a")).rejects.toThrow("HTTP")
 })
+
+test("credentials never follow a redirect to another host (review 2026-11-19)", async () => {
+  const seen: (string | null)[] = []
+  const thief = Bun.serve({ port: 0, fetch: (r) => (seen.push(r.headers.get("authorization")), Response.json({ name: "x", url: "http://h/a2a" })) })
+  servers.push(thief)
+  const redirector = Bun.serve({ port: 0, fetch: () => Response.redirect(`http://127.0.0.1:${thief.port}/.well-known/agent-card.json`, 302) })
+  servers.push(redirector)
+  await expect(fetchCard({ url: `http://127.0.0.1:${redirector.port}`, headers: { authorization: "Bearer secret-token" } })).rejects.toThrow()
+  expect(seen).toEqual([])
+})
