@@ -209,3 +209,35 @@ describe("proxy limits (review 2026-11-19, M6)", () => {
     }
   })
 })
+
+describe("proxy resolution and idle tunnels (review 2026-11-19, M6)", () => {
+  let origin: ReturnType<typeof Bun.serve>
+  beforeAll(() => {
+    origin = Bun.serve({ hostname: "127.0.0.1", port: 0, fetch: () => new Response("ok") })
+  })
+  afterAll(() => origin.stop(true))
+
+  test("an exact rule is resolved with the system resolver; an unknown name is refused", async () => {
+    const proxy = startProxy({ rules: parseAllowlist(`localhost:${origin.port}, nothing-here.invalid:443`), log: () => {} })
+    try {
+      const { received } = await rawRequest(proxy.port, `GET http://localhost:${origin.port}/ HTTP/1.1\r\nHost: localhost\r\n\r\n`)
+      expect(received).toContain("200")
+      expect((await rawRequest(proxy.port, "CONNECT nothing-here.invalid:443 HTTP/1.1\r\n\r\n")).received).toContain("403")
+    } finally {
+      proxy.stop()
+    }
+  })
+
+  test("an idle tunnel is closed after the idle timeout", async () => {
+    const quiet = Bun.listen({ hostname: "127.0.0.1", port: 0, socket: { data: () => {} } })
+    const proxy = startProxy({ rules: parseAllowlist(`127.0.0.1:${quiet.port}`), idleTimeoutSeconds: 1, log: () => {} })
+    try {
+      const { received, closed } = await rawRequest(proxy.port, `CONNECT 127.0.0.1:${quiet.port} HTTP/1.1\r\n\r\n`, 4000)
+      expect(received).toContain("200 Connection Established")
+      expect(closed).toBe(true)
+    } finally {
+      proxy.stop()
+      quiet.stop(true)
+    }
+  })
+})

@@ -31,13 +31,13 @@ const systemResolve = async (host: string) => (await lookup(host, { all: true })
  * record below the allowed domain could otherwise point it at internal systems. An exact rule may name an internal
  * host on purpose (e.g. the model gateway). Security review 2026-11-19, M6.
  */
-async function resolveTarget(target: Target, rule: Rule, resolve: (host: string) => Promise<string[]>): Promise<string | undefined> {
+async function resolveTarget(target: Target, rule: Rule, resolve: (host: string) => Promise<string[]>): Promise<string[] | undefined> {
   const host = target.host.replace(/^\[|\]$/g, "")
-  if (isIP(host)) return rule.wildcard && isPrivateAddress(host) ? undefined : host
+  if (isIP(host)) return rule.wildcard && isPrivateAddress(host) ? undefined : [host]
   const addresses = await resolve(host).catch(() => [] as string[])
   if (addresses.length === 0) return undefined
   if (rule.wildcard && addresses.some(isPrivateAddress)) return undefined
-  return addresses[0]
+  return addresses
 }
 
 type State = { buffer: Buffer; upstream?: Socket<undefined>; pending: Buffer[]; done: boolean }
@@ -56,18 +56,33 @@ export function startProxy(options: ProxyOptions): RunningProxy {
   const idle = options.idleTimeoutSeconds ?? 300
   let open = 0
 
-  const tunnel = async (client: Socket<State>, address: string, port: number, first: Buffer | undefined) => {
+  // Tries the checked addresses in order (e.g. ::1, then 127.0.0.1 for "localhost").
+  const connect = async (addresses: readonly string[], port: number, client: Socket<State>) => {
+    for (const [i, address] of addresses.entries()) {
+      try {
+        return await openUpstream(address, port, client)
+      } catch (error) {
+        if (i === addresses.length - 1) throw error
+      }
+    }
+    throw new Error("no address")
+  }
+
+  const openUpstream = (address: string, port: number, client: Socket<State>) =>
+    Bun.connect({
+      hostname: address,
+      port,
+      socket: {
+        data: (_s, data) => void client.write(data),
+        close: () => void client.end(),
+        error: () => void client.end(),
+        timeout: (s) => void s.end(),
+      },
+    })
+
+  const tunnel = async (client: Socket<State>, addresses: readonly string[], port: number, first: Buffer | undefined) => {
     try {
-      const upstream = await Bun.connect({
-        hostname: address,
-        port,
-        socket: {
-          data: (_s, data) => void client.write(data),
-          close: () => void client.end(),
-          error: () => void client.end(),
-          timeout: (s) => void s.end(),
-        },
-      })
+      const upstream = await connect(addresses, port, client)
       upstream.timeout(idle)
       client.timeout(idle)
       client.data.upstream = upstream
@@ -102,16 +117,16 @@ export function startProxy(options: ProxyOptions): RunningProxy {
       }
     }
     const rule = target ? matchRule(target, options.rules) : undefined
-    const address = target && rule ? await resolveTarget(target, rule, resolve) : undefined
-    const ok = address !== undefined
+    const addresses = target && rule ? await resolveTarget(target, rule, resolve) : undefined
+    const ok = addresses !== undefined
     log({ time: new Date().toISOString(), method, target: target ? `${target.host}:${target.port}` : uri.slice(0, 200), allowed: ok })
     if (!target) return reply(client, "400 Bad Request")
     if (!ok) return reply(client, "403 Forbidden")
     if (method === "CONNECT") {
-      const upstream = await tunnel(client, address, target.port, rest)
+      const upstream = await tunnel(client, addresses, target.port, rest)
       if (upstream) client.write("HTTP/1.1 200 Connection Established\r\n\r\n")
     } else {
-      await tunnel(client, address, target.port, forward)
+      await tunnel(client, addresses, target.port, forward)
     }
   }
 
