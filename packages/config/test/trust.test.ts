@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs"
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import path from "node:path"
-import { fingerprint, loadConfig, TrustStore, trustFiles } from "../src/index.ts"
+import { fingerprint, loadConfig, TRUST_MAX_FILES, TrustStore, trustFiles } from "../src/index.ts"
 
 let root: string
 let project: string
@@ -85,6 +85,50 @@ describe("trust store", () => {
     const a = fingerprint(project, trustFiles(project))
     writeFileSync(path.join(project, "AGENTS.md"), "b")
     expect(fingerprint(project, trustFiles(project))).not.toBe(a)
+  })
+})
+
+describe("trust fingerprint covers what Bobi loads (review 2026-11-19, M3)", () => {
+  test("a nested AGENTS.md needs a decision and is part of the fingerprint", () => {
+    mkdirSync(path.join(project, "sub"))
+    writeFileSync(path.join(project, "sub", "AGENTS.md"), "injected")
+    expect(trustFiles(project)).toEqual([path.join(project, "sub", "AGENTS.md")])
+    expect(store.status(path.join(project, "sub"))).toBe("unknown")
+    store.decide(project, true)
+    writeFileSync(path.join(project, "sub", "AGENTS.md"), "changed")
+    expect(store.status(project)).toBe("unknown")
+  })
+
+  test("AGENTS.md in dependencies and .git is not searched", () => {
+    mkdirSync(path.join(project, "node_modules", "x"), { recursive: true })
+    writeFileSync(path.join(project, "node_modules", "x", "AGENTS.md"), "dep")
+    expect(trustFiles(project)).toEqual([])
+  })
+
+  test("symbolic links in rule folders are neither fingerprinted nor followed", () => {
+    mkdirSync(path.join(project, ".bobi", "rules"), { recursive: true })
+    writeFileSync(path.join(root, "outside.md"), "secret")
+    symlinkSync(path.join(root, "outside.md"), path.join(project, ".bobi", "rules", "x.md"))
+    writeFileSync(path.join(project, ".bobi", "rules", "real.md"), "r")
+    expect(trustFiles(project)).toEqual([path.join(project, ".bobi", "rules", "real.md")])
+  })
+
+  test("more files than can be fingerprinted means untrusted", () => {
+    mkdirSync(path.join(project, ".bobi", "rules"), { recursive: true })
+    for (let i = 0; i <= TRUST_MAX_FILES; i++) writeFileSync(path.join(project, ".bobi", "rules", `r${String(i).padStart(4, "0")}.md`), "r")
+    store.decide(project, true)
+    expect(store.status(project)).toBe("untrusted")
+  })
+
+  test("the fingerprint frames names and contents unambiguously", () => {
+    // Without length prefixes, one file "x" with content "y\0z\0w" and two files x="y", z="w" gave the same bytes.
+    const x = path.join(project, "x")
+    const z = path.join(project, "z")
+    writeFileSync(x, "y\0z\0w")
+    const one = fingerprint(project, [x])
+    writeFileSync(x, "y")
+    writeFileSync(z, "w")
+    expect(fingerprint(project, [x, z])).not.toBe(one)
   })
 })
 

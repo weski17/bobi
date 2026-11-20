@@ -9,7 +9,7 @@ import { startMockModel, type MockModel } from "@bobi/mock-model"
 import { bobiPaths, startBobiServer, type BobiServer } from "@bobi/server"
 import { BobiClient } from "../../ide-extension/src/client.ts"
 import { ChatController, type ToUi } from "../../ide-extension/src/controller.ts"
-import { ALLOWED, startGate } from "../src/gate.ts"
+import { ALLOWED, startGate, upstreamBody, upstreamQuery } from "../src/gate.ts"
 
 const serverPassword = "gate-test-server-password"
 const visitor = "gate-test-visitor-password"
@@ -81,6 +81,23 @@ test("cross-site requests are refused, same-site ones pass", async () => {
   expect(evil.status).toBe(403)
   const own = await get("/config.json", { authorization: login, origin: gate.url.origin })
   expect(own.status).toBe(200)
+})
+
+test("visitors cannot choose another folder through the query or the body (review 2026-11-19, M8)", async () => {
+  const q = new URLSearchParams(upstreamQuery(new URL("http://g/api/session?location[directory]=/etc&order=asc&x=1"), "/work"))
+  expect(q.get("location[directory]")).toBe("/work")
+  expect(q.get("order")).toBe("asc")
+  expect(q.get("x")).toBeNull()
+  expect(upstreamQuery(new URL("http://g/api/session/a/message?order=evil"), "/work")).toBe("")
+  const body = (b: string) => upstreamBody(new Request("http://g/api/session", { method: "POST", body: b }), new URL("http://g/api/session"), "/work")
+  expect(JSON.parse((await body(`{"location":{"directory":"/etc"},"agent":"ask"}`)) as string)).toEqual({ location: { directory: "/work" }, agent: "ask" })
+  expect(JSON.parse((await body("not json")) as string)).toEqual({ location: { directory: "/work" } })
+})
+
+test("a malformed Origin is refused, not answered with an error page", async () => {
+  const r = await fetch(new URL("/api/session", gate.url), { method: "POST", headers: { authorization: login, origin: "null", "content-type": "application/json" }, body: "{}" })
+  expect(r.status).toBe(403)
+  expect(await r.text()).not.toContain("gate.ts")
 })
 
 test("only the calls the chat needs reach the server", async () => {

@@ -6,6 +6,29 @@ phases 1–8 (see [`docs/STATUS.md`](docs/STATUS.md) and the [demo guides](docs/
 
 ## [Unreleased]
 
+### Security
+
+Medium findings of the security review of 2026-11-19:
+
+- `.bobiignore` holds for grep/glob in sub-folders and for symbolic links to ignored files (M1, M2).
+- Masking covers INI-style literals, credentials in URLs, `.netrc`, docker `auth`, kube `client-key-data` and quoted
+  passwords with spaces; the masker stays fast on long inputs (M4).
+- Project trust covers exactly what Bobi loads: nested `AGENTS.md`, no symbolic links, one file limit, length-prefixed
+  fingerprint, and trust is checked again before rules and modes are read (M3). Existing trust decisions are asked
+  once more.
+- The browser tool does not load private, loopback or link-local addresses the user did not approve, also not via
+  redirects (M5).
+- The egress proxy resolves once, refuses private addresses behind wildcard rules, connects to the checked address,
+  accepts only plain host names, rewrites `Host`, and limits header time, idle tunnels and connections (M6).
+- The demo removes global rules, modes, skills, commands and trust decisions from its volume at every start;
+  `SECURITY.md` states that demo visitors are not isolated from each other (M7).
+- The web-chat gate pins the project folder in query and new-session body and never shows Bun's error page (M8).
+- COBOL copy expansion has a token budget and copybooks a size limit; COBOL code tips are linear (M9).
+- Zowe job tools show only the user's own jobs unless `BOBI_ZOWE_JOB_OWNERS` allows more (M10).
+- CI: actions pinned to commit SHAs, scanner images to digests; deploy only from main via the `production`
+  environment; releases only for tags on main; the server image is scanned before it is pushed; registry logins
+  after scan and test (M11–M13).
+
 ## [1.1.0] – 2026-11-19
 
 Security release: fixes the critical and high findings of the security review of 2026-11-19.

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
-import { mkdtempSync, rmSync, utimesSync, writeFileSync } from "node:fs"
+import { mkdtempSync, rmSync, symlinkSync, utimesSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { BobiIgnore, blockedShellPath, patchPaths, shellWords } from "../src/bobiignore.ts"
@@ -21,6 +21,17 @@ describe("BobiIgnore", () => {
     expect(ig.ignores("secrets/db.txt")).toBe(true)
     expect(ig.ignores(path.join(project, "config", "tls.pem"))).toBe(true)
     expect(ig.ignores("src/index.ts")).toBe(false)
+  })
+
+  test("a symbolic link counts as the file it points to (review 2026-11-19, M1)", () => {
+    writeFileSync(path.join(project, ".env"), "SECRET=1")
+    symlinkSync(".env", path.join(project, "notes.txt"))
+    symlinkSync("secrets", path.join(project, "data"))
+    const ig = new BobiIgnore(project)
+    expect(ig.ignores("notes.txt")).toBe(true)
+    expect(ig.ignores(path.join(project, "notes.txt"))).toBe(true)
+    writeFileSync(path.join(project, "plain.txt"), "x")
+    expect(ig.ignores("plain.txt")).toBe(false)
   })
 
   test("never ignores itself, the project root or paths outside the project", () => {

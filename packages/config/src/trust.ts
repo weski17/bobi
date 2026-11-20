@@ -2,7 +2,7 @@
 // only used after the user trusts the project. The decision is stored with a fingerprint of those files and is
 // asked again when they change. Projects without such files need no decision.
 import { createHash } from "node:crypto"
-import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, statSync, writeFileSync } from "node:fs"
+import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, statSync, writeFileSync } from "node:fs"
 import path from "node:path"
 import { findProjectRoot } from "./load.ts"
 
@@ -11,15 +11,29 @@ export type TrustStatus = "none" | "trusted" | "untrusted" | "unknown"
 type Entry = { trusted: boolean; fingerprint: string; decidedAt: string }
 type StoreFile = { version: 1; projects: Record<string, Entry> }
 
-const MAX_FILES = 500
+/** More files than this cannot be fingerprinted; such a project is treated as untrusted (the rule loader uses the same limit). */
+export const TRUST_MAX_FILES = 500
 
+// Symbolic links are neither fingerprinted nor loaded: a link could pull any file into the system prompt while the
+// trust prompt only shows its name (review 2026-11-19, M3).
 function walk(dir: string, out: string[], depth = 0) {
-  if (depth > 5 || out.length >= MAX_FILES || !existsSync(dir)) return
+  if (depth > 5 || out.length > TRUST_MAX_FILES || !existsSync(dir) || lstatSync(dir).isSymbolicLink()) return
   for (const name of readdirSync(dir).sort()) {
     const full = path.join(dir, name)
-    const stat = statSync(full, { throwIfNoEntry: false })
+    const stat = lstatSync(full, { throwIfNoEntry: false })
     if (stat?.isDirectory()) walk(full, out, depth + 1)
     else if (stat?.isFile()) out.push(full)
+  }
+}
+
+const NOT_SEARCHED = new Set([".git", "node_modules", "vendor", "dist", "build", "out", "target", ".venv", "__pycache__"])
+
+/** Every AGENTS.md in the project: the rule loader reads those between the root and the folder Bobi starts in. */
+function agentsFiles(dir: string, out: string[], depth = 0) {
+  if (depth > 8 || out.length > TRUST_MAX_FILES) return
+  for (const entry of readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+    if (entry.isFile() && entry.name === "AGENTS.md") out.push(path.join(dir, entry.name))
+    else if (entry.isDirectory() && !NOT_SEARCHED.has(entry.name) && entry.name !== ".bobi") agentsFiles(path.join(dir, entry.name), out, depth + 1)
   }
 }
 
@@ -27,13 +41,14 @@ function walk(dir: string, out: string[], depth = 0) {
 export function trustFiles(project: string): string[] {
   const files: string[] = []
   // .bobiignore only restricts Bobi and is honoured without trust, so it is not part of the fingerprint.
-  for (const name of ["AGENTS.md"]) if (statSync(path.join(project, name), { throwIfNoEntry: false })?.isFile()) files.push(path.join(project, name))
+  agentsFiles(project, files)
   const bobi = path.join(project, ".bobi")
   if (existsSync(bobi)) {
     for (const name of readdirSync(bobi).sort()) {
       const full = path.join(bobi, name)
-      if (name === "config.jsonc" || name === "custom_modes.yaml") files.push(full)
-      else if ((name === "rules" || name.startsWith("rules-") || name === "skills" || name === "commands") && statSync(full).isDirectory()) walk(full, files)
+      const stat = lstatSync(full)
+      if ((name === "config.jsonc" || name === "custom_modes.yaml") && stat.isFile()) files.push(full)
+      else if ((name === "rules" || name.startsWith("rules-") || name === "skills" || name === "commands") && stat.isDirectory()) walk(full, files)
     }
   }
   return files
@@ -41,9 +56,11 @@ export function trustFiles(project: string): string[] {
 
 export function fingerprint(project: string, files: readonly string[]): string {
   const hash = createHash("sha256")
+  // Each part is length-prefixed, so two different file layouts cannot produce the same byte stream.
+  const part = (data: Buffer | string) => hash.update(`${Buffer.byteLength(data)}:`).update(data)
   for (const file of files) {
-    hash.update(path.relative(project, file)).update("\0")
-    hash.update(readFileSync(file)).update("\0")
+    part(path.relative(project, file))
+    part(readFileSync(file))
   }
   return hash.digest("hex")
 }
@@ -71,6 +88,7 @@ export class TrustStore {
     const project = realpathSync(findProjectRoot(directory))
     const files = trustFiles(project)
     if (files.length === 0) return "none"
+    if (files.length > TRUST_MAX_FILES) return "untrusted"
     const entry = this.read().projects[project]
     if (!entry || entry.fingerprint !== fingerprint(project, files)) return "unknown"
     return entry.trusted ? "trusted" : "untrusted"

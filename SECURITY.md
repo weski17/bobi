@@ -41,7 +41,11 @@ The demo exists so that others can try Bobi; treat it as an exposed service:
   loopback only.
 - Anyone with the password can run commands **inside that container** (terminal, IDE terminal). That is by design;
   the container boundary is the protection. Do not mount host directories or secrets into it.
-- The terminal gives each session a private copy of the sample project; the optional web IDE shares one workspace.
+- The terminal gives each session its own copy of the sample project, but **visitors are not isolated from each
+  other**: they share one Bobi server, its password (sessions inherit it) and one user account, so a visitor can read
+  other visitors' workspaces and sessions. Invite only people you trust with each other; the optional web IDE shares
+  one workspace anyway. At every start the demo removes global rules, modes, skills, commands and trust decisions from
+  its volume, so nothing a visitor planted survives a restart.
 - Use a long random password, rotate it after events, and do not publish it.
 
 ## Supply chain

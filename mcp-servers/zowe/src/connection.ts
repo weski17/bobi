@@ -16,6 +16,8 @@ export type Connection = {
   readonly datasets: readonly string[]
   /** USS path prefixes the agent may access. */
   readonly uss: readonly string[]
+  /** Job owners whose jobs and spool output the agent may see (default: the user; `*` for all). */
+  readonly jobOwners: readonly string[]
   /** Where the settings came from (for error messages; never contains secrets). */
   readonly source: string
 }
@@ -121,6 +123,9 @@ export function loadConnection(project: string, env: Record<string, string | und
     // Default: only the user's own datasets and home directory – never production data unless allowed explicitly.
     datasets: list(env.BOBI_ZOWE_DATASETS).map((p) => p.toUpperCase()).concat(env.BOBI_ZOWE_DATASETS ? [] : [`${upperUser}.**`]),
     uss: list(env.BOBI_ZOWE_USS).concat(env.BOBI_ZOWE_USS ? [] : [`/u/${user!.toLowerCase()}`]),
+    // Spool output often holds production data, so other users' jobs are hidden unless an administrator allows them
+    // (security review 2026-11-19, M10).
+    jobOwners: list(env.BOBI_ZOWE_JOB_OWNERS).map((o) => o.toUpperCase()).concat(env.BOBI_ZOWE_JOB_OWNERS ? [] : [upperUser]),
     source: [...layers.flatMap((l) => l.files), "environment"].join(", "),
   }
 }
@@ -162,6 +167,15 @@ export function requireDataset(connection: Connection, name: string): string {
   if (!allowedDataset(connection, upper))
     throw new ConnectionError(`Dataset ${upper} is outside the allowed datasets (${connection.datasets.join(", ")}). An administrator can widen BOBI_ZOWE_DATASETS.`)
   return upper
+}
+
+export function allowedJobOwner(connection: Connection, owner: string | undefined): boolean {
+  return connection.jobOwners.includes("*") || (owner !== undefined && connection.jobOwners.includes(owner.toUpperCase()))
+}
+
+export function requireJobOwner(connection: Connection, owner: string | undefined): void {
+  if (!allowedJobOwner(connection, owner))
+    throw new ConnectionError(`Jobs of ${owner ?? "an unknown owner"} are not available (allowed: ${connection.jobOwners.join(", ")}). An administrator can widen BOBI_ZOWE_JOB_OWNERS.`)
 }
 
 export function requireUssPath(connection: Connection, file: string): string {

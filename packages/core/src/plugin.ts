@@ -47,6 +47,19 @@ export function isProtected(action: string, resource: string): boolean {
   return PROTECTED_RULES.some((rule) => wildcard(action, rule.action) && wildcard(r, rule.resource.toLowerCase()))
 }
 
+/** A cached boolean check that is evaluated again once `ms` have passed. */
+function recheckEvery(ms: number, check: () => boolean, initial: boolean): () => boolean {
+  let value = initial
+  let at = Date.now()
+  return () => {
+    if (Date.now() - at >= ms) {
+      value = check()
+      at = Date.now()
+    }
+    return value
+  }
+}
+
 type Decision = { action: string; resources: readonly unknown[]; agent?: unknown; effect: "allow" | "ask" | "deny"; message?: string }
 
 /**
@@ -188,9 +201,14 @@ export function createBobiCore(options: BobiCoreOptions): Plugin.Plugin & { read
       const location = String(ctx.location.directory)
       const ignored = new BobiIgnore(project)
       // Untrusted projects: their AGENTS.md, rules, modes and config are ignored (.bobiignore still applies).
-      const trusted = options.trusted ? options.trusted(project) : new TrustStore(globalDir).isTrusted(project)
+      const checkTrust = () => (options.trusted ? options.trusted(project) : new TrustStore(globalDir).isTrusted(project))
+      const trusted = checkTrust()
+      // Rules and modes are re-read while the server runs; trust is checked again before each use (at most every 2 s),
+      // so files that changed after the decision (e.g. a git pull) are not used until the user trusts them again
+      // (review 2026-11-19, M3).
+      const trustedNow = recheckEvery(2000, checkTrust, trusted)
       const config = options.projectConfig?.(project, trusted) ?? options.config
-      const loadAllModes = () => loadModes({ globalDir, project, includeProject: trusted })
+      const loadAllModes = () => loadModes({ globalDir, project, includeProject: trustedNow() })
       let modes: Mode[] = loadAllModes()
 
       // MCP servers of this project: built-in ones, then global/project config (project only if trusted).
@@ -314,7 +332,7 @@ export function createBobiCore(options: BobiCoreOptions): Plugin.Plugin & { read
           event.system.push({ type: "text", text: A2A_PROMPT })
           for (const name of Object.keys(event.tools)) if (!A2A_TOOLS.has(name)) delete event.tools[name]
         }
-        const rules = rulesPrompt(collectRules(mode?.slug ?? String(event.agent), { globalDir, project, location, includeProject: trusted }), project)
+        const rules = rulesPrompt(collectRules(mode?.slug ?? String(event.agent), { globalDir, project, location, includeProject: trustedNow() }), project)
         if (rules) event.system.push({ type: "text", text: rules })
       })
 
@@ -366,7 +384,8 @@ export function createBobiCore(options: BobiCoreOptions): Plugin.Plugin & { read
           return
         }
         let result = event.result
-        const searchBase = path.resolve(location, inputPath(event.input) ?? ".")
+        // The engine reports grep/glob paths relative to the location, not to the searched folder (review 2026-11-19, M2).
+        const searchBase = location
         if (event.tool === "glob" && Array.isArray(result.output)) {
           const { entries, removed } = filterGlob(result.output as { path: string }[], searchBase, ignored)
           if (removed) result = { ...result, output: entries as never, content: renderGlob(entries, removed) }

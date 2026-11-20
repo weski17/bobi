@@ -15,7 +15,15 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Check that the tag is on main
+        # Only commits that went through a pull request with green checks (the branch rule on main) are released;
+        # a tag on any other commit is refused (security review 2026-11-19, M11).
+        run: |
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main || { echo "::error::$GITHUB_REF_NAME is not on main"; exit 1; }
       - name: Check the tag against package.json
         run: |
           version="${GITHUB_REF_NAME#v}"

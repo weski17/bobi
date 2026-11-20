@@ -24,7 +24,8 @@
 | High findings H1–H5 (protected paths after "always", A2A token, Zowe host, compare test, JCL) | ✅ fixed | #37 |
 | H6/H7 (self-hosted runner, gate bypass by a pull request's own workflows) | 🟡 partly: Dependabot excluded, limits documented | `docs/security/security-gate.md` |
 | Branch rule on `main` | ✅ active since 2026-11-20 (ruleset 27686498, no bypass) | `docs/security/security-gate.md` |
-| 13 medium and 11 low findings | ⬜ open | review report |
+| 13 medium findings | ✅ fixed (M13 partly: baseline entries stay global until the engine update) | `CHANGELOG.md` (Unreleased) |
+| 11 low findings | ⬜ open | review report |
 
 ## Release 1.0.0 (2026-11-19): versions and contributor files
 

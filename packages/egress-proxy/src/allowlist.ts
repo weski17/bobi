@@ -22,9 +22,15 @@ export function parseAllowlist(text: string): Rule[] {
     .map(parseRule)
 }
 
-export function allowed(target: Target, rules: readonly Rule[]): boolean {
+/** The rule that allows `target`, if any. Host names with other characters than letters, digits, dots and dashes never match. */
+export function matchRule(target: Target, rules: readonly Rule[]): Rule | undefined {
   const host = target.host.toLowerCase().replace(/\.$/, "")
-  return rules.some((rule) => rule.port === target.port && (rule.wildcard ? host.endsWith(`.${rule.host}`) : host === rule.host))
+  if (!/^([a-z0-9.-]+|\[[0-9a-f:]+\])$/.test(host)) return undefined
+  return rules.find((rule) => rule.port === target.port && (rule.wildcard ? host.endsWith(`.${rule.host}`) : host === rule.host))
+}
+
+export function allowed(target: Target, rules: readonly Rule[]): boolean {
+  return matchRule(target, rules) !== undefined
 }
 
 /** Parses "host:port" from a CONNECT authority or a URL. */

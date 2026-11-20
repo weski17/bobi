@@ -202,7 +202,14 @@ export type ExpandOptions = {
   readonly resolve: (name: string, from: string) => string | undefined
   readonly read: (file: string) => string
   readonly maxDepth?: number
+  /** Tokens that COPY may add in total (default 2 000 000); more is an error, not an out-of-memory crash. */
+  readonly maxTokens?: number
+  /** Shared by the nested expansions of one file. */
+  readonly budget?: { left: number }
 }
+
+/** Default limit for the tokens COPY statements may add to one program (security review 2026-11-19, M9). */
+export const MAX_EXPANDED_TOKENS = 2_000_000
 
 export type Expanded = { readonly tokens: Token[]; readonly copies: CopyReference[] }
 
@@ -210,7 +217,8 @@ export type Expanded = { readonly tokens: Token[]; readonly copies: CopyReferenc
  * Tokenises a source file and expands COPY statements (recursively, cycles and depth bounded).
  * `EXEC SQL INCLUDE name END-EXEC` is expanded the same way, except for SQLCA/SQLDA.
  */
-export function expand(source: string, file: string, options: ExpandOptions, depth = 0, stack: readonly string[] = []): Expanded {
+export function expand(source: string, file: string, given: ExpandOptions, depth = 0, stack: readonly string[] = []): Expanded {
+  const options = withBudget(given)
   const tokens = tokenize(normalize(source, file))
   const out: Token[] = []
   const copies: CopyReference[] = []
@@ -257,16 +265,31 @@ export function expand(source: string, file: string, options: ExpandOptions, dep
     const resolved = options.resolve(name, file)
     copies.push({ name, file: at.file, line: at.line, ...(resolved ? { resolved } : {}) })
     if (!resolved || stack.includes(resolved) || depth >= (options.maxDepth ?? 10)) return
-    let text: string
-    try {
-      text = options.read(resolved)
-    } catch {
-      return
-    }
+    const text = readOrUndefined(options, resolved)
+    if (text === undefined) return
     const lines = applyReplacing(normalize(text, resolved), replacements)
     const nested = expandLines(lines, resolved, options, depth + 1, [...stack, file])
+    spend(options, nested.tokens.length)
     out.push(...nested.tokens)
     copies.push(...nested.copies)
+  }
+}
+
+/** Depth and cycles alone do not bound the size: copybooks that COPY each other several times grow exponentially. */
+function withBudget(options: ExpandOptions): ExpandOptions {
+  return options.budget ? options : { ...options, budget: { left: options.maxTokens ?? MAX_EXPANDED_TOKENS } }
+}
+
+function spend(options: ExpandOptions, tokens: number) {
+  options.budget!.left -= tokens
+  if (options.budget!.left < 0) throw new Error(`COPY expansion is larger than ${options.maxTokens ?? MAX_EXPANDED_TOKENS} tokens (copybooks that include each other many times)`)
+}
+
+function readOrUndefined(options: ExpandOptions, file: string): string | undefined {
+  try {
+    return options.read(file)
+  } catch {
+    return undefined
   }
 }
 

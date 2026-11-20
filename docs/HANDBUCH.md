@@ -380,6 +380,7 @@ export ZOWE_OPT_HOST=mf.intranet ZOWE_OPT_PORT=443 ZOWE_OPT_USER=dev1
 export ZOWE_OPT_PASSWORD=…              # nur aus der Umgebung – nie aus Dateien
 export BOBI_ZOWE_DATASETS="DEV1.**,TEAM.TEST.*"   # Standard: nur eigene Datasets (<USER>.**)
 export BOBI_ZOWE_USS="/u/dev1"                    # Standard: eigenes Home
+export BOBI_ZOWE_JOB_OWNERS="DEV1"                # Standard: nur eigene Jobs und deren Spool; "*" für alle
 ```
 
 - Datasets und USS-Pfade außerhalb der Allowlist werden abgewiesen – bevor eine Anfrage den Mainframe erreicht.
@@ -731,7 +732,7 @@ bei Vertrauen) → `BOBI_CONFIG` → Umgebungsvariablen. Geheimnisse sind in Dat
 | `BOBI_A2A_TOKEN` | Token für eingehendes A2A (Pflicht, ≥ 24 Zeichen, nur für `/a2a` gültig) |
 | `BOBI_SESSION_TITLES` | `model` oder `local` (siehe `sessions.titles`) |
 | `OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_EXPORTER_OTLP_HEADERS` | OpenTelemetry |
-| `ZOWE_OPT_*`, `BOBI_ZOWE_PROFILE`, `BOBI_ZOWE_DATASETS`, `BOBI_ZOWE_USS` | Mainframe |
+| `ZOWE_OPT_*`, `BOBI_ZOWE_PROFILE`, `BOBI_ZOWE_DATASETS`, `BOBI_ZOWE_USS`, `BOBI_ZOWE_JOB_OWNERS` | Mainframe |
 | `BOBI_EGRESS_ALLOW`, `BOBI_SANDBOX_PORT`, `BOBI_IMAGE` | Sandbox |
 | `BOBI_BRANDING_DIR` | eigenes IDE-Logo beim `ide:setup` |
 
