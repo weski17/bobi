@@ -6,6 +6,25 @@ phases 1–8 (see [`docs/STATUS.md`](docs/STATUS.md) and the [demo guides](docs/
 
 ## [Unreleased]
 
+### Security
+
+Low findings of the security review of 2026-11-19:
+
+- Revoked registry packages are not loaded any more (before, only install and `bobi registry check` enforced the
+  revocation list); a damaged revocation store blocks registry packages.
+- Publisher and dossier trust compare the whole public key instead of the 64-bit key id.
+- `bobi dossier verify` without `--key` says NOT VERIFIED and exits 2; malformed input is "not a dossier".
+- Bobi IDE: an edit whose change could not be shown can only be rejected.
+- The server container (compose and `bobi-sandbox.sh`) has a read-only root file system; passwords reach curl on
+  stdin, not on the command line.
+- gitleaks scans every commit of a new branch; checkouts do not keep the token; outbound A2A refuses redirects.
+- Already fixed with earlier findings: slow masker regex (M4), error page on a malformed `Origin` (M8), branch name in
+  a workflow script (H7).
+
+### Changed
+
+- `bobi dossier verify` exit codes: 0 verified with `--key`, 2 intact but signer not checked, 1 broken.
+
 ## [1.2.0] – 2026-11-20
 
 Security release: fixes the medium findings of the security review of 2026-11-19.
