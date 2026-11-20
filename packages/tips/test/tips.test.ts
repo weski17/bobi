@@ -97,3 +97,8 @@ test("a COBOL file with tens of thousands of paragraphs is analysed quickly (rev
   analyze("x.cbl", source)
   expect(performance.now() - began).toBeLessThan(2_000)
 })
+
+test("COBOL tips ignore COPY statements (copybooks are not resolved)", () => {
+  const source = "       IDENTIFICATION DIVISION.\n       PROGRAM-ID. P.\n       DATA DIVISION.\n       WORKING-STORAGE SECTION.\n           COPY CUSTREC.\n       PROCEDURE DIVISION.\n       MAIN.\n           STOP RUN.\n"
+  expect(analyze("y.cbl", source)).toEqual([])
+})

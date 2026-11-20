@@ -6,7 +6,8 @@ const OPENERS = new Set(["IF", "EVALUATE", "SEARCH"])
 const CLOSERS = new Set(["END-IF", "END-EVALUATE", "END-SEARCH", "END-PERFORM"])
 
 export function analyzeCobol(text: string, file: string, limits: Limits): Tip[] {
-  const { tokens } = expand(text, file, { resolve: () => undefined, read: () => "" })
+  // Copybooks are never resolved here, so `read` is never called (String only satisfies the type).
+  const { tokens } = expand(text, file, { resolve: () => undefined, read: String })
   const program = parseProgram(tokens, file, [])
   const tips: Tip[] = []
   const lastLine = text.split("\n").length
