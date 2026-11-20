@@ -20,9 +20,18 @@ function verify(io: Io, command: Extract<DossierCommand, { action: "verify" }>):
   const trusted = command.key ? readFileSync(path.resolve(io.cwd, command.key), "utf8") : undefined
   const result = verifyDossier(dossier, trusted)
   const scope = dossier.task === undefined ? `session ${dossier.session}` : `session ${dossier.session}, task ${dossier.task}`
-  if (result.ok) io.out(`intact: ${dossier.events.length} events, ${scope}, key ${result.keyId}${result.trusted ? " (trusted key)" : " (key not checked; pass --key to pin the signer)"}`)
-  else io.err(`BROKEN: ${result.reason}${result.brokenAt === undefined ? "" : ` (at event ${result.brokenAt})`}`)
-  return result.ok ? 0 : 1
+  if (!result.ok) {
+    io.err(`BROKEN: ${result.reason}${result.brokenAt === undefined ? "" : ` (at event ${result.brokenAt})`}`)
+    return 1
+  }
+  if (result.trusted) {
+    io.out(`intact: ${dossier.events.length} events, ${scope}, signed by the trusted key ${result.keyId}`)
+    return 0
+  }
+  // Anyone can make a self-signed dossier that is "intact"; without the signer's key that proves nothing
+  // (review 2026-11-19). Exit code 2: not broken, but not verified either.
+  io.out(`NOT VERIFIED: the chain is intact (${dossier.events.length} events, ${scope}), but the signer was not checked; key ${result.keyId}. Pass --key <public-key.pem> to verify who signed it.`)
+  return 2
 }
 
 const clip = (text: string, max = 60) => (text.length > max ? `${text.slice(0, max - 1)}…` : text).replace(/\s+/g, " ")

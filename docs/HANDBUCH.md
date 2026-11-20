@@ -450,8 +450,8 @@ bobi dossier --list                                           # Sitzungen im Aud
 bobi dossier --list --session <id>                            # die Aufgaben (Prompts) einer Sitzung
 bobi dossier --out aenderung.json --diff --test "bun test"    # letzte Sitzung versiegeln (Tests und Diff dazu)
 bobi dossier --task last --out aufgabe.json                   # nur die letzte Aufgabe (oder --task 2, mit --session)
-bobi dossier verify aenderung.json                            # Kette und Signatur prüfen
-bobi dossier verify aenderung.json --key kollege.pub.pem      # zusätzlich: wurde es mit DIESEM Schlüssel signiert?
+bobi dossier verify aenderung.json                            # Kette und Signatur prüfen: „NOT VERIFIED“, Exit-Code 2
+bobi dossier verify aenderung.json --key kollege.pub.pem      # erst damit verifiziert: mit DIESEM Schlüssel signiert (Exit 0)
 ```
 
 Der Schlüssel liegt in `~/.bobi/keys/dossier-ed25519.pem` (nur für dich lesbar). Ohne `--key` beweist die Prüfung nur,

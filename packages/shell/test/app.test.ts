@@ -291,8 +291,9 @@ test("bobi dossier lists, seals (with test result and diff) and verifies; tamper
     expect(Bun.spawnSync(["ls", "-l", path.join(project, "d.json")]).stdout.toString()).toContain("-rw-------")
 
     const ok = io({ env, cwd: project })
-    expect(await runApp(["dossier", "verify", "d.json"], ok.io)).toBe(0)
-    expect(ok.out[0]).toContain("intact")
+    // Without the signer's key the chain is checked but the dossier is not verified (exit code 2).
+    expect(await runApp(["dossier", "verify", "d.json"], ok.io)).toBe(2)
+    expect(ok.out[0]).toContain("NOT VERIFIED")
 
     const pub = JSON.parse(await readFile(path.join(project, "d.json"), "utf8")).publicKey as string
     await writeFile(path.join(project, "pub.pem"), pub)

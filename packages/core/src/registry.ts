@@ -6,8 +6,8 @@
 import { createPublicKey, sign, verify, type KeyObject } from "node:crypto"
 import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs"
 import path from "node:path"
-import { canonical, hashOf, keyIdOf } from "./dossier.ts"
-import { findRevocation, manifestHash, type Revocation } from "./revocation.ts"
+import { canonical, hashOf, keyIdOf, sameKey } from "./dossier.ts"
+import { findRevocation, manifestHash, RevocationStore, type Revocation } from "./revocation.ts"
 
 export type PackageKind = "skill" | "command"
 
@@ -131,13 +131,7 @@ export function verifyPackage(pkg: Package, trustedKeys: readonly string[] = [])
     valid = false
   }
   if (!valid) return fail("the signature does not match")
-  const trusted = trustedKeys.some((k) => {
-    try {
-      return keyIdOf(k) === keyId
-    } catch {
-      return false
-    }
-  })
+  const trusted = trustedKeys.some((k) => sameKey(k, pkg.publicKey))
   return { ok: true, keyId, trusted }
 }
 
@@ -267,6 +261,25 @@ export function listRegistry(dir: string): { name: string; kind: PackageKind; ve
     } catch {
       // not a package; skipped
     }
+  }
+  return out
+}
+
+/**
+ * Names of installed packages that a known revocation matches, per kind. They are not loaded, even before the user ran
+ * `bobi registry check --remove` (review 2026-11-19: revocation was only enforced on install). A damaged store counts as
+ * "cannot tell" and blocks every registry package, never as "nothing revoked".
+ */
+export function revokedNames(roots: readonly string[], storeDir: string): { skill: Set<string>; command: Set<string> } {
+  const out = { skill: new Set<string>(), command: new Set<string>() }
+  for (const root of roots) {
+    let hits: ReturnType<typeof revokedInstalled>
+    try {
+      hits = revokedInstalled(root, new RevocationStore(storeDir).entries())
+    } catch {
+      hits = installedPackages(root).map((record) => ({ record, revocation: { reason: "revocation list damaged" } as never }))
+    }
+    for (const { record } of hits) out[record.kind].add(record.name)
   }
   return out
 }

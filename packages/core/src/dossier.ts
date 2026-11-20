@@ -70,6 +70,19 @@ export function loadOrCreateKey(dir: string, name = "dossier-ed25519.pem"): { pr
   return { privateKey, publicKey, keyId: keyIdOf(publicKey) }
 }
 
+/**
+ * True when two PEM public keys are the same key. Compares the whole key, not the 64-bit key id, which is only a
+ * display name (review 2026-11-19: a second key with the same id would cost 2^64 work, not 2^128).
+ */
+export function sameKey(a: string, b: string): boolean {
+  try {
+    const der = (pem: string) => createPublicKey(pem).export({ type: "spki", format: "der" }).toString("base64")
+    return der(a) === der(b)
+  } catch {
+    return false
+  }
+}
+
 export const keyIdOf = (publicKeyPem: string) => sha256(createPublicKey(publicKeyPem).export({ type: "spki", format: "der" }).toString("base64")).slice(0, 16)
 
 const FIELDS: Record<string, (a: AuditRecord["attributes"]) => Record<string, string | number | undefined>> = {
@@ -154,6 +167,8 @@ export type Verification = { readonly ok: boolean; readonly reason?: string; rea
  * result only says the dossier is intact, and `trusted` is false.
  */
 export function verifyDossier(d: Dossier, trustedPublicKey?: string): Verification {
+  // Shape first: a JSON `null` or a list must be "not a dossier", not a crash.
+  if (!d || typeof d !== "object" || Array.isArray(d)) return { ok: false, reason: "not a dossier", keyId: "", trusted: false }
   const keyId = (() => {
     try {
       return keyIdOf(d.publicKey)
@@ -180,7 +195,7 @@ export function verifyDossier(d: Dossier, trustedPublicKey?: string): Verificati
     valid = false
   }
   if (!valid) return fail("the signature does not match")
-  const trusted = trustedPublicKey !== undefined && keyIdOf(trustedPublicKey) === keyId
+  const trusted = trustedPublicKey !== undefined && sameKey(trustedPublicKey, d.publicKey)
   if (trustedPublicKey !== undefined && !trusted) return fail(`signed with key ${keyId}, which is not the trusted key`)
   return { ok: true, keyId, trusted }
 }

@@ -13,6 +13,7 @@ import {
   removeInstalled,
   RevocationStore,
   revokedInstalled,
+  revokedNames,
   signRevocations,
   verifyRevocations,
   type Revocation,
@@ -157,4 +158,16 @@ test("a skill is removed as a directory; a tampered ledger cannot point outside"
   expect(() => removeInstalled(root, { ...record, name: `../../${path.basename(outside)}` })).toThrow("not a valid package name")
   expect(existsSync(outside)).toBe(true)
   expect(readFileSync(path.join(root, "registry", "installed.json"), "utf8")).toBe("[]\n")
+})
+
+test("revoked installed packages are named for the loader; a damaged store blocks registry packages (review 2026-11-19)", () => {
+  const root = temp()
+  installPackage(packSource(command("deploy"), "1.0.0", alice), root, [alice.publicKey])
+  installPackage(packSource(command("lint"), "1.0.0", alice), root, [alice.publicKey])
+  const storeDir = path.join(temp(), "registry")
+  expect(revokedNames([root], storeDir).command.size).toBe(0)
+  new RevocationStore(storeDir).merge(signRevocations([entry({ name: "deploy" })], 1, alice), [alice.publicKey])
+  expect([...revokedNames([root], storeDir).command]).toEqual(["deploy"])
+  writeFileSync(path.join(storeDir, "revocations.json"), "{ damaged")
+  expect([...revokedNames([root], storeDir).command].sort()).toEqual(["deploy", "lint"])
 })
