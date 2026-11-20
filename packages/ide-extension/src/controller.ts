@@ -16,7 +16,8 @@ export type ToUi =
   | { type: "user"; text: string; context: string[] }
   | { type: "text"; delta: string }
   | { type: "tool"; name: string; summary: string }
-  | { type: "approval"; id: string; action: string; resources: string[]; diff: boolean }
+  | { type: "approval"; id: string; action: string; resources: string[]; diff: boolean; rejectOnly?: boolean }
+  | { type: "approval-blocked"; id: string }
   | { type: "approval-done"; id: string; decision: Decision }
   | { type: "busy"; busy: boolean }
   | { type: "mode"; mode: string }
@@ -136,23 +137,32 @@ export class ChatController {
     }
   }
 
+  /** Edits whose change could not be shown: they can only be rejected (review 2026-11-19: no blind approvals). */
+  private readonly unseen = new Set<string>()
+
   private async ask(request: PermissionRequest) {
     this.pending.set(request.id, request)
-    const diff = request.action === "edit" && (request.metadata?.files?.length ?? 0) > 0
-    this.ui.post({ type: "approval", id: request.id, action: request.action, resources: request.resources, diff })
+    const isEdit = request.action === "edit"
+    const diff = isEdit && (request.metadata?.files?.length ?? 0) > 0
+    if (isEdit && !diff) this.unseen.add(request.id)
+    this.ui.post({ type: "approval", id: request.id, action: request.action, resources: request.resources, diff, ...(isEdit && !diff ? { rejectOnly: true } : {}) })
     if (diff) {
       try {
         await this.ui.showDiff(request)
       } catch (error) {
-        this.ui.error(`Cannot show the proposed change: ${(error as Error).message}`)
+        this.unseen.add(request.id)
+        this.ui.post({ type: "approval-blocked", id: request.id })
+        this.ui.error(`Cannot show the proposed change, so it can only be rejected: ${(error as Error).message}`)
       }
     }
   }
 
-  async reply(id: string, decision: Decision) {
+  async reply(id: string, requested: Decision) {
     const request = this.pending.get(id)
     if (!request) return
     this.pending.delete(id)
+    // A change nobody could look at is never accepted, whatever button was pressed.
+    const decision: Decision = this.unseen.delete(id) && requested !== "reject" ? "reject" : requested
     await this.client.reply(request.sessionID, id, decision)
     this.ui.post({ type: "approval-done", id, decision })
   }

@@ -17,12 +17,16 @@ let server: BobiServer
 let home: string
 let dir: string
 let posts: ToUi[]
+let failDiff = false
 let diffs: PermissionRequest[]
 let controller: ChatController
 
 const ui: UiPort = {
   post: (m) => void posts.push(m),
-  showDiff: async (r) => void diffs.push(r),
+  showDiff: async (r) => {
+    if (failDiff) throw new Error("diff editor unavailable")
+    diffs.push(r)
+  },
   error: (m) => void posts.push({ type: "error", message: m }),
 }
 
@@ -78,6 +82,24 @@ test("streams the answer and reports when the request is done", async () => {
   await until(() => posts.some((p) => p.type === "busy" && !p.busy))
   expect(posts.filter((p) => p.type === "text").map((p) => (p as { delta: string }).delta).join("")).toBe("Hello from Bobi in the IDE.")
   expect(posts.find((p) => p.type === "user")).toEqual({ type: "user", text: "hi", context: ["app.ts"] })
+})
+
+test("an edit whose change cannot be shown can only be rejected (review 2026-11-19)", async () => {
+  const file = path.join(dir, "app.ts")
+  const before = await readFile(file, "utf8")
+  failDiff = true
+  try {
+    mock.enqueue({ toolCalls: [{ name: "edit", arguments: { path: file, oldString: "41", newString: "43" } }] }, { text: "Done." })
+    await controller.send("change it")
+    await until(() => posts.some((p) => p.type === "approval-blocked"))
+    const approval = posts.find((p) => p.type === "approval") as Extract<ToUi, { type: "approval" }>
+    await controller.reply(approval.id, "once")
+    expect(posts).toContainEqual({ type: "approval-done", id: approval.id, decision: "reject" })
+    await controller.idle()
+    expect(await readFile(file, "utf8")).toBe(before)
+  } finally {
+    failDiff = false
+  }
 })
 
 test("an edit shows the proposed diff first and is applied only after approval", async () => {
