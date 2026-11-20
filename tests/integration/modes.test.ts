@@ -1,10 +1,10 @@
 // Phase 2: modes, custom modes, rules, AGENTS.md, /init, .bobiignore – against the real engine and the mock model.
 import { afterEach, describe, expect, test } from "bun:test"
-import { existsSync } from "node:fs"
+import { existsSync, symlinkSync } from "node:fs"
 import { mkdir, readFile, writeFile } from "node:fs/promises"
 import path from "node:path"
 import { BOBI_IDENTITY, ENGINE_IDENTITY, SYSTEM_RULE } from "@bobi/core"
-import { createHarness, pendingPermission, type Harness } from "./harness.ts"
+import { createHarness, pendingPermission, waitFor, type Harness } from "./harness.ts"
 
 let h: Harness | undefined
 afterEach(async () => {
@@ -205,6 +205,28 @@ describe(".bobiignore", () => {
     expect(tool).toContain("hidden by .bobiignore")
   }, 30_000)
 
+  test("search in a sub-folder and symlinks do not reveal ignored files (review 2026-11-19, M1/M2)", async () => {
+    h = await createHarness()
+    await mkdir(path.join(h.dir, "config"))
+    await writeFile(path.join(h.dir, ".bobiignore"), "config/credentials.json\n.env\n")
+    await writeFile(path.join(h.dir, "config", "credentials.json"), "needle-in-credentials")
+    await writeFile(path.join(h.dir, "config", "app.json"), "needle-in-app")
+    await writeFile(path.join(h.dir, ".env"), "needle-in-env")
+    symlinkSync(".env", path.join(h.dir, "notes.txt"))
+    const sessionID = await h.prompt(
+      "look",
+      { toolCalls: [{ name: "grep", arguments: { pattern: "needle", path: path.join(h.dir, "config") } }] },
+      { toolCalls: [{ name: "read", arguments: { path: path.join(h.dir, "notes.txt") } }] },
+      done,
+    )
+    await h.opencode.sessions.wait({ sessionID })
+    const tool = toolText(h)
+    expect(tool).toContain("needle-in-app")
+    expect(tool).not.toContain("needle-in-credentials")
+    expect(tool).not.toContain("needle-in-env")
+    expect(tool).toContain("blocked by .bobiignore")
+  }, 30_000)
+
   test("changes to .bobi/ and .bobiignore always ask, even with auto-approve", async () => {
     h = await createHarness({ autoApprove: [{ action: "edit", resource: "*", modes: [] }] })
     const sessionID = await h.prompt("widen rights", write(path.join(h.dir, ".bobi", "config.jsonc"), "{}"), done)
@@ -213,6 +235,23 @@ describe(".bobiignore", () => {
     await h.opencode.permission.reply({ sessionID, requestID: request.id, decision: "reject" })
     await h.opencode.sessions.wait({ sessionID })
     expect(existsSync(path.join(h.dir, ".bobi", "config.jsonc"))).toBe(false)
+  }, 30_000)
+})
+
+describe("protected paths after \"always allow\"", () => {
+  test("one \"always\" on an ordinary edit does not open .bobi/ (review 2026-11-19, H1)", async () => {
+    h = await createHarness()
+    const protectedFile = path.join(h.dir, ".bobi", "config.jsonc")
+    const sessionID = await h.prompt("edit two files", write(path.join(h.dir, "a.txt"), "a"), write(protectedFile, "{}"), done)
+    const first = await pendingPermission(h, sessionID)
+    expect(first.resources.join(" ")).toContain("a.txt")
+    await h.opencode.permission.reply({ sessionID, requestID: first.id, decision: "always" })
+    const second = await waitFor(async () => (await h!.opencode.permission.list({ sessionID })).find((r) => r.id !== first.id))
+    expect(second.resources.join(" ")).toContain(".bobi")
+    await h.opencode.permission.reply({ sessionID, requestID: second.id, decision: "reject" })
+    await h.opencode.sessions.wait({ sessionID })
+    expect(existsSync(path.join(h.dir, "a.txt"))).toBe(true)
+    expect(existsSync(protectedFile)).toBe(false)
   }, 30_000)
 })
 

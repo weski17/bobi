@@ -79,7 +79,8 @@ function authorized(request: Request, password: string): boolean {
 /** Browsers send Origin on every request that could change something; it has to be this very site. */
 function crossSite(request: Request): boolean {
   const origin = request.headers.get("origin")
-  return origin !== null && new URL(origin).host !== request.headers.get("host")
+  // "Origin: null" (sandboxed frames, file pages) or anything unparsable counts as cross-site, instead of an error page.
+  return origin !== null && URL.parse(origin)?.host !== request.headers.get("host")
 }
 
 function serveFile(known: (typeof FILES)[string], dirs: Record<"public" | "dist" | "media", string>): Response {
@@ -90,8 +91,35 @@ function serveFile(known: (typeof FILES)[string], dirs: Record<"public" | "dist"
   }
 }
 
+/**
+ * The query the chat may send, rebuilt from scratch: the project folder is always the gate's own, never one the
+ * visitor puts into the URL (the engine reads `location[directory]` from the query; review 2026-11-19, M8).
+ */
+export function upstreamQuery(url: URL, directory: string): string {
+  const out = new URLSearchParams()
+  const order = url.searchParams.get("order")
+  if (order === "asc" || order === "desc") out.set("order", order)
+  if (url.pathname === "/api/agent" || url.pathname === "/api/session") out.set("location[directory]", directory)
+  const text = out.toString()
+  return text ? `?${text}` : ""
+}
+
+/** The request body; a new session is always opened in the gate's own folder. */
+export async function upstreamBody(request: Request, url: URL, directory: string): Promise<ArrayBuffer | string> {
+  const body = await request.arrayBuffer()
+  if (url.pathname !== "/api/session" || request.method !== "POST") return body
+  let parsed: Record<string, unknown> = {}
+  try {
+    const value: unknown = JSON.parse(new TextDecoder().decode(body) || "{}")
+    if (value && typeof value === "object" && !Array.isArray(value)) parsed = value as Record<string, unknown>
+  } catch {
+    // not JSON: replaced by a body that only names the folder
+  }
+  return JSON.stringify({ ...parsed, location: { directory } })
+}
+
 /** Forwards one allowed API call to the Bobi server with the server's own credentials. */
-async function forward(request: Request, url: URL, upstream: string, upstreamAuth: string): Promise<Response> {
+async function forward(request: Request, url: URL, upstream: string, upstreamAuth: string, directory: string): Promise<Response> {
   if (!ALLOWED.some((r) => r.method === request.method && r.path.test(url.pathname))) return plain(404, "Not available")
   const headers = new Headers({ authorization: upstreamAuth, "accept-encoding": "identity" })
   for (const name of ["content-type", "accept"]) {
@@ -100,10 +128,10 @@ async function forward(request: Request, url: URL, upstream: string, upstreamAut
   }
   let response: Response
   try {
-    response = await fetch(`${upstream}${url.pathname}${url.search}`, {
+    response = await fetch(`${upstream}${url.pathname}${upstreamQuery(url, directory)}`, {
       method: request.method,
       headers,
-      ...(request.method === "GET" ? {} : { body: await request.arrayBuffer() }),
+      ...(request.method === "GET" ? {} : { body: await upstreamBody(request, url, directory) }),
       signal: request.signal,
     })
   } catch {
@@ -143,7 +171,7 @@ export function startGate(options: GateOptions) {
     if (!authorized(request, options.password)) return plain(401, "Login required", { "www-authenticate": 'Basic realm="Bobi Demo"' })
     if (crossSite(request)) return plain(403, "Cross-site request refused")
     if (url.pathname === "/chat/poll" && request.method === "GET") return poll(request, url, hub, options.pollWaitMs ?? 25_000)
-    if (url.pathname.startsWith("/api/")) return forward(request, url, options.upstream, upstreamAuth)
+    if (url.pathname.startsWith("/api/")) return forward(request, url, options.upstream, upstreamAuth, options.directory)
     return page(request, url, options.directory, dirs)
   }
   const server = Bun.serve({
@@ -151,6 +179,9 @@ export function startGate(options: GateOptions) {
     hostname: options.hostname ?? "0.0.0.0",
     // A poll request can wait for the next event; the answer to a prompt can take minutes.
     idleTimeout: 0,
+    // Never Bun's development error page (stack and source) for visitors; an unexpected error is a plain 500.
+    development: false,
+    error: () => plain(500, "Internal error"),
     ...(options.tls ? { tls: { cert: Bun.file(options.tls.cert), key: Bun.file(options.tls.key) } } : {}),
     fetch: handle,
   })

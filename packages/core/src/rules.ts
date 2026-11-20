@@ -3,8 +3,9 @@
 //   1. $BOBI_HOME/rules-{mode}/   2. $BOBI_HOME/rules/   3. <project>/.bobi/rules-{mode}/   4. AGENTS.md (project root
 //   up to the location)   5. <project>/.bobi/rules/
 // Rule directories are read recursively in alphabetical order; empty and cache files are skipped.
-import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from "node:fs"
+import { existsSync, lstatSync, readdirSync, readFileSync, realpathSync, statSync } from "node:fs"
 import path from "node:path"
+import { TRUST_MAX_FILES } from "@bobi/config"
 
 export type RuleFile = { readonly path: string; readonly content: string }
 
@@ -12,18 +13,23 @@ const SKIPPED = /(^\.DS_Store$|\.(log|tmp|swp|bak)$|~$)/
 const MAX_DEPTH = 5
 const MAX_BYTES = 256 * 1024
 
-function readDirectory(dir: string, depth = 0, seen = new Set<string>()): RuleFile[] {
-  if (depth > MAX_DEPTH || !existsSync(dir)) return []
+/**
+ * Rule files of one directory tree. Project rules (`fromProject`) never follow symbolic links – the trust fingerprint
+ * does not include link targets – and stop at the fingerprint's file limit (review 2026-11-19, M3).
+ */
+function readDirectory(dir: string, fromProject = false, depth = 0, seen = new Set<string>()): RuleFile[] {
+  if (depth > MAX_DEPTH || !existsSync(dir) || (fromProject && lstatSync(dir).isSymbolicLink())) return []
   const real = realpathSync(dir)
   if (seen.has(real)) return []
   seen.add(real)
   const files: RuleFile[] = []
   for (const name of readdirSync(dir).sort()) {
     if (SKIPPED.test(name)) continue
+    if (fromProject && files.length >= TRUST_MAX_FILES) break
     const full = path.join(dir, name)
-    const stat = statSync(full, { throwIfNoEntry: false })
+    const stat = (fromProject ? lstatSync : statSync)(full, { throwIfNoEntry: false })
     if (!stat) continue
-    if (stat.isDirectory()) files.push(...readDirectory(full, depth + 1, seen))
+    if (stat.isDirectory()) files.push(...readDirectory(full, fromProject, depth + 1, seen))
     else if (stat.isFile() && stat.size > 0 && stat.size <= MAX_BYTES) {
       const content = readFileSync(full, "utf8").trim()
       if (content) files.push({ path: full, content })
@@ -45,7 +51,7 @@ function agentsFiles(project: string, location: string): RuleFile[] {
   }
   return dirs.flatMap((dir) => {
     const file = path.join(dir, "AGENTS.md")
-    const stat = statSync(file, { throwIfNoEntry: false })
+    const stat = lstatSync(file, { throwIfNoEntry: false })
     if (!stat?.isFile() || stat.size === 0 || stat.size > MAX_BYTES) return []
     const content = readFileSync(file, "utf8").trim()
     return content ? [{ path: file, content }] : []
@@ -68,9 +74,9 @@ export function collectRules(mode: string, sources: RuleSources): RuleFile[] {
   if (sources.includeProject === false) return global
   return [
     ...global,
-    ...readDirectory(path.join(projectDir, `rules-${mode}`)),
+    ...readDirectory(path.join(projectDir, `rules-${mode}`), true),
     ...agentsFiles(sources.project, sources.location ?? sources.project),
-    ...readDirectory(path.join(projectDir, "rules")),
+    ...readDirectory(path.join(projectDir, "rules"), true),
   ]
 }
 

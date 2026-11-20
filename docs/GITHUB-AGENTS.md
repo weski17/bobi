@@ -15,6 +15,14 @@ bobi tips --since "origin/<ziel-branch>" --fail-on warning
 Der PR wird rot, wenn er **neue** Warnungen hinzufügt (zu komplexe oder zu lange Funktionen, Anti-Patterns). Bestehende Funde
 blockieren nicht. Grenzen und Schwellwerte: [HANDBUCH.md](HANDBUCH.md#8-code-tipps).
 
+## 1b. Läuft schon: Security-Gate (ohne Modell) und Security-Agent (mit Modell, beratend)
+
+`.github/workflows/security.yml`: bei jedem Pull Request und jedem Push prüfen Semgrep, gitleaks, `bun audit` und Trivy; der
+Check `security-gate` ist nur grün, wenn alle grün sind. Ein Pull Request scheitert nur an dem, was er **neu** hinzufügt.
+Der Job `security-agent` (Modus `security-ci`, nur lesen) kommentiert den Pull Request und blockiert nie; er läuft nur auf
+einem Self-hosted Runner mit den Labels `self-hosted, bobi-model` und der Variable `BOBI_SECURITY_AGENT=true`.
+Details, Sperrregel für `main` und was bei Rot zu tun ist: [security/security-gate.md](security/security-gate.md).
+
 ## 2. Für eure Firma: Review mit Modell auf einem Self-hosted Runner
 
 Das Modell steht im Firmennetz; GitHubs eigene Runner kommen nicht heran. Deshalb ein **Self-hosted Runner** im selben Netz

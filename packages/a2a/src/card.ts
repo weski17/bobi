@@ -12,8 +12,8 @@ export function agentCard(options: { baseUrl: string; version: string; name?: st
     preferredTransport: "JSONRPC",
     version: options.version,
     capabilities: { streaming: false, pushNotifications: false, stateTransitionHistory: false },
-    securitySchemes: { basic: { type: "http", scheme: "basic", description: 'User "opencode" and the Bobi server password' } },
-    security: [{ basic: [] }],
+    securitySchemes: { bearer: { type: "http", scheme: "bearer", description: "The A2A token of this Bobi server (BOBI_A2A_TOKEN); it is valid only for this endpoint" } },
+    security: [{ bearer: [] }],
     defaultInputModes: ["text/plain"],
     defaultOutputModes: ["text/plain"],
     skills: [

@@ -16,7 +16,7 @@
   },
   // Explicit auto-approvals. Without them every write, shell command and network access asks.
   "autoApprove": [
-    // { "action": "shell", "resource": "git status *" },
+    // { "action": "shell", "resource": "npm test" },   (a redirect into a file, e.g. "> out.txt", still asks)
     // { "action": "edit", "resource": "docs/*", "modes": ["code"] }
   ],
   "telemetry": {
@@ -33,7 +33,7 @@
   // the model must be model.default or listed in model.models.
   // "autocomplete": { "model": "qwen2.5-coder", "maxTokens": 128 },
   // A2A. "enabled" (global config or BOBI_A2A=1 only): other agents may send read-only tasks to `bobi serve`;
-  // agent card at /.well-known/agent-card.json, JSON-RPC at /a2a (server password). "agents": remote agents
+  // agent card at /.well-known/agent-card.json, JSON-RPC at /a2a (bearer token BOBI_A2A_TOKEN, ≥ 24 characters, valid only there). "agents": remote agents
   // Bobi may ask with the a2a tool (Advanced mode, always confirmed); credentials only as ${ENV_VAR}.
   "a2a": {
     "enabled": false,

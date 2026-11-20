@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test"
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import path from "node:path"
-import { evaluate, loadDefaultPolicy, rulesForAgent, wildcard, type Rule } from "../src/permissions.ts"
+import { evaluate, loadDefaultPolicy, rulesForAgent, wildcard, writesFile, type Rule } from "../src/permissions.ts"
 
 // What OpenCode gives every agent by default (packages/schema/src/agent.ts): allow everything.
 const OPENCODE_DEFAULT: Rule[] = [
@@ -42,23 +42,35 @@ describe("default policy", () => {
       expect(evaluate("read", file, rules)).toBe("ask")
   })
 
-  test("the policy never denies (engine denies are checked first) and allows only read-only git", () => {
+  test("the policy never denies (engine denies are checked first) and allows nothing", () => {
     expect(policy.some((r) => r.effect === "deny")).toBe(false)
-    expect(policy.filter((r) => r.effect === "allow").every((r) => r.action === "shell" && r.resource.startsWith("git "))).toBe(true)
+    expect(policy.some((r) => r.effect === "allow")).toBe(false)
   })
 })
 
-describe("read-only git", () => {
-  test("status, diff, log and show run without asking", () => {
+describe("git", () => {
+  test("every git command asks, read-only ones too (review 2026-11-19, K1)", () => {
     const rules = effective()
-    for (const cmd of ["git status", "git status --short", "git diff", "git diff --staged", "git log -n 10 --format=%s", "git show HEAD", "git branch --show-current"])
-      expect(evaluate("shell", cmd, rules)).toBe("allow")
+    for (const cmd of ["git status", "git status --short", "git diff --staged", "git log -n 10 --format=%s", "git show HEAD", "git branch --show-current"])
+      expect(evaluate("shell", cmd, rules)).toBe("ask")
   })
 
-  test("writing or changing git commands still ask", () => {
+  test("the commands from the review that wrote, read ignored files or ran code ask", () => {
     const rules = effective()
-    for (const cmd of ["git commit -m x", "git push", "git branch -D main", "git diff --output=/tmp/x", "git log --output=out.txt", "git checkout .", "git reset --hard"])
+    for (const cmd of ["git log > /tmp/x", "git show HEAD:payload > .git/config", "git diff --no-index .env /dev/null", "git show HEAD:.env", "git log >> .bobi/custom_modes.yaml"])
       expect(evaluate("shell", cmd, rules)).toBe("ask")
+  })
+})
+
+describe("writesFile", () => {
+  test("redirects into files count", () => {
+    for (const cmd of ["git log > /tmp/x", "git log >> a", "git show HEAD:x >.git/config", "git log &> out", "git log >| x", "git log >&out", "git log >& out", "git log>x;ls", "x 2> err.txt"])
+      expect(writesFile(cmd)).toBe(true)
+  })
+
+  test("descriptors, /dev/null and plain commands do not", () => {
+    for (const cmd of ["git status", "git status 2>&1", "git status 2>/dev/null", "git diff 2>&1 | head", "ls 1>&2", "cat < in", "git status 2>&1 >/dev/null"])
+      expect(writesFile(cmd)).toBe(false)
   })
 })
 
@@ -116,5 +128,17 @@ describe("loadDefaultPolicy", () => {
     } finally {
       rmSync(dir, { recursive: true, force: true })
     }
+  })
+})
+
+describe("isProtected", () => {
+  test("Bobi's own configuration and mainframe changes are protected, also in other letter case", async () => {
+    const { isProtected } = await import("../src/plugin.ts")
+    for (const r of ["/p/.bobi/config.jsonc", ".bobi/custom_modes.yaml", "/p/.BOBI/custom_modes.yaml", "/p/.Bobi/rules/a.md", "/p/.bobiignore", "/p/.BobiIgnore", "C:\\p\\.bobi\\x"])
+      expect(isProtected("edit", r)).toBe(true)
+    expect(isProtected("zowe_submit_job", "*")).toBe(true)
+    expect(isProtected("a2a", "agent")).toBe(true)
+    for (const r of ["/p/src/a.ts", "/p/bobi.md", "/p/docs/.bobix"]) expect(isProtected("edit", r)).toBe(false)
+    expect(isProtected("read", "/p/.bobi/config.jsonc")).toBe(false)
   })
 })

@@ -35,7 +35,7 @@ const send = (a2a: InboundA2a, message: Message, blocking?: boolean) =>
 
 test("agent card follows the A2A shape", () => {
   const card = agentCard({ baseUrl: "http://bobi:4096/", version: "1.2.3" })
-  expect(card).toMatchObject({ protocolVersion: "0.3.0", url: "http://bobi:4096/a2a", preferredTransport: "JSONRPC", version: "1.2.3", security: [{ basic: [] }] })
+  expect(card).toMatchObject({ protocolVersion: "0.3.0", url: "http://bobi:4096/a2a", preferredTransport: "JSONRPC", version: "1.2.3", security: [{ bearer: [] }] })
   expect(card.capabilities.streaming).toBe(false)
   expect(card.skills[0]!.tags).toContain("read-only")
   expect(agentCard({ baseUrl: "http://x", version: "1", name: "N", description: "D" })).toMatchObject({ name: "N", description: "D" })
@@ -180,4 +180,14 @@ test("httpEngine talks to the Bobi server API", async () => {
   expect(calls).toContain(`GET /api/session/ses_1/message?order=asc Basic ${Buffer.from("opencode:pw-0123456789abcdef").toString("base64")}`)
   const broken = httpEngine({ url: () => `http://127.0.0.1:${server.port}/fail`, password: "p", directory: "/p" })
   await expect(broken.createSession("a2a")).rejects.toThrow("HTTP")
+})
+
+test("credentials never follow a redirect to another host (review 2026-11-19)", async () => {
+  const seen: (string | null)[] = []
+  const thief = Bun.serve({ port: 0, fetch: (r) => (seen.push(r.headers.get("authorization")), Response.json({ name: "x", url: "http://h/a2a" })) })
+  servers.push(thief)
+  const redirector = Bun.serve({ port: 0, fetch: () => Response.redirect(`http://127.0.0.1:${thief.port}/.well-known/agent-card.json`, 302) })
+  servers.push(redirector)
+  await expect(fetchCard({ url: `http://127.0.0.1:${redirector.port}`, headers: { authorization: "Bearer secret-token" } })).rejects.toThrow()
+  expect(seen).toEqual([])
 })

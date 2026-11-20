@@ -18,7 +18,7 @@ test("AGENTS.md files are collected from the project root down to the location",
   expect(files.map((f) => f.content)).toEqual(["root", "pkg"])
 })
 
-test("skips cache files, follows symlinked directories once and handles loops", () => {
+test("skips cache files and symbolic links in project rules", () => {
   const project = path.join(root, "p")
   const rules = path.join(project, ".bobi", "rules")
   mkdirSync(path.join(rules, "deep"), { recursive: true })
@@ -29,6 +29,20 @@ test("skips cache files, follows symlinked directories once and handles loops", 
   symlinkSync(rules, path.join(rules, "deep", "loop"))
   const files = collectRules("code", { globalDir: path.join(root, "g"), project })
   expect(files.map((f) => f.content)).toEqual(["A", "B"])
+})
+
+test("project rules never follow a link out of the project; global rules may (review 2026-11-19, M3)", () => {
+  const project = path.join(root, "p")
+  const globalDir = path.join(root, "g")
+  mkdirSync(path.join(project, ".bobi", "rules"), { recursive: true })
+  mkdirSync(path.join(globalDir, "rules"), { recursive: true })
+  writeFileSync(path.join(root, "secret.env"), "TOKEN=x")
+  writeFileSync(path.join(root, "shared.md"), "SHARED")
+  symlinkSync(path.join(root, "secret.env"), path.join(project, ".bobi", "rules", "x.md"))
+  symlinkSync(path.join(root, "secret.env"), path.join(project, "AGENTS.md"))
+  symlinkSync(path.join(root, "shared.md"), path.join(globalDir, "rules", "shared.md"))
+  const contents = collectRules("code", { globalDir, project }).map((f) => f.content)
+  expect(contents).toEqual(["SHARED"])
 })
 
 test("rulesPrompt names project files relatively and global files absolutely", () => {

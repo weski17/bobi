@@ -13,6 +13,7 @@
   ],
   "telemetry": { "user": "besucher", "team": "demo" },
   // The model runs on the CPU: no extra model request per session just for a title.
-  "sessions": { "titles": "local" },
-  "a2a": { "enabled": true }
+  "sessions": { "titles": "local" }
+  // A2A is switched on for the demo's own server only (entrypoint.sh: BOBI_A2A=1 with its own token), not for a
+  // `bobi` a visitor starts in the shell, which would have no A2A token.
 }

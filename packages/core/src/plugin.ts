@@ -11,10 +11,11 @@ import { type AuditSink, FileSink, MemorySink, MultiSink, OtlpSink, parseOtlpHea
 import { BobiIgnore, blockedShellPath, IGNORE_FILE, patchPaths } from "./bobiignore.ts"
 import { brandSystemPrompt } from "./identity.ts"
 import { expandTemplate, extensionDirs, readCommands, readSkills } from "./extensions.ts"
+import { revokedNames } from "./registry.ts"
 import { initPrompt } from "./init.ts"
 import { resolveMcpServers } from "./mcp.ts"
 import { createMasker, maskDeep, type Masker } from "./masking.ts"
-import { loadDefaultPolicy, rulesForAgent, type Rule } from "./permissions.ts"
+import { loadDefaultPolicy, rulesForAgent, wildcard, writesFile, type Rule } from "./permissions.ts"
 import { collectRules, rulesPrompt } from "./rules.ts"
 import { filterGlob, filterGrep, renderGlob, renderGrep } from "./search-filter.ts"
 import { isUntrusted, SYSTEM_RULE, wrapUntrusted } from "./untrusted.ts"
@@ -37,6 +38,52 @@ export const PROTECTED_RULES: Rule[] = [
   // Asking another agent sends project information out (A2A); always confirmed.
   { action: "a2a", resource: "*", effect: "ask" },
 ]
+
+/**
+ * True when a resource falls under a protected rule. Paths are compared without case: on the default macOS and Windows
+ * file systems `.BOBI/x` is `.bobi/x`.
+ */
+export function isProtected(action: string, resource: string): boolean {
+  const r = resource.replaceAll("\\", "/").toLowerCase()
+  return PROTECTED_RULES.some((rule) => wildcard(action, rule.action) && wildcard(r, rule.resource.toLowerCase()))
+}
+
+/** A cached boolean check that is evaluated again once `ms` have passed. */
+function recheckEvery(ms: number, check: () => boolean, initial: boolean): () => boolean {
+  let value = initial
+  let at = Date.now()
+  return () => {
+    if (Date.now() - at >= ms) {
+      value = check()
+      at = Date.now()
+    }
+    return value
+  }
+}
+
+type Decision = { action: string; resources: readonly unknown[]; agent?: unknown; effect: "allow" | "ask" | "deny"; message?: string }
+
+/**
+ * An "allow" that must still ask:
+ * - protected resources: "always allow" saves broad rules (an edit saves "*") that the engine checks after Bobi's rules,
+ *   so one click would otherwise open them (review 2026-11-19, H1);
+ * - a shell command that writes a file through a redirect: an explicit shell auto-approval (e.g. "git log *") never
+ *   covers that (K1).
+ */
+function stillAsks(d: Decision): boolean {
+  if (d.effect !== "allow") return false
+  return d.resources.some((r) => isProtected(d.action, String(r)) || (d.action === "shell" && writesFile(String(r))))
+}
+
+/** Bobi's last word on every permission decision of the engine. */
+export function enforcePolicy(d: Decision): void {
+  if (stillAsks(d)) d.effect = "ask"
+  // Other agents may only read; an approval request would wait for a person who is not there.
+  if (String(d.agent) === A2A_AGENT && (d.effect === "ask" || !A2A_TOOLS.has(d.action))) {
+    d.effect = "deny"
+    d.message = "Not available to requests from other agents (read-only)."
+  }
+}
 
 /**
  * Agent for requests from other agents (A2A, requirement 20): the built-in Ask mode, never overridable by a
@@ -129,6 +176,9 @@ export function promptText(event: unknown): string | undefined {
   return joined || undefined
 }
 
+/** The fields of an engine event the audit trail reads. */
+type EngineEvent = { type: string; location?: { directory?: unknown }; data?: Record<string, unknown> }
+
 const inputPath = (input: unknown): string | undefined =>
   input && typeof input === "object" && typeof (input as { path?: unknown }).path === "string" ? (input as { path: string }).path : undefined
 
@@ -152,9 +202,14 @@ export function createBobiCore(options: BobiCoreOptions): Plugin.Plugin & { read
       const location = String(ctx.location.directory)
       const ignored = new BobiIgnore(project)
       // Untrusted projects: their AGENTS.md, rules, modes and config are ignored (.bobiignore still applies).
-      const trusted = options.trusted ? options.trusted(project) : new TrustStore(globalDir).isTrusted(project)
+      const checkTrust = () => (options.trusted ? options.trusted(project) : new TrustStore(globalDir).isTrusted(project))
+      const trusted = checkTrust()
+      // Rules and modes are re-read while the server runs; trust is checked again before each use (at most every 2 s),
+      // so files that changed after the decision (e.g. a git pull) are not used until the user trusts them again
+      // (review 2026-11-19, M3).
+      const trustedNow = recheckEvery(2000, checkTrust, trusted)
       const config = options.projectConfig?.(project, trusted) ?? options.config
-      const loadAllModes = () => loadModes({ globalDir, project, includeProject: trusted })
+      const loadAllModes = () => loadModes({ globalDir, project, includeProject: trustedNow() })
       let modes: Mode[] = loadAllModes()
 
       // MCP servers of this project: built-in ones, then global/project config (project only if trusted).
@@ -278,7 +333,7 @@ export function createBobiCore(options: BobiCoreOptions): Plugin.Plugin & { read
           event.system.push({ type: "text", text: A2A_PROMPT })
           for (const name of Object.keys(event.tools)) if (!A2A_TOOLS.has(name)) delete event.tools[name]
         }
-        const rules = rulesPrompt(collectRules(mode?.slug ?? String(event.agent), { globalDir, project, location, includeProject: trusted }), project)
+        const rules = rulesPrompt(collectRules(mode?.slug ?? String(event.agent), { globalDir, project, location, includeProject: trustedNow() }), project)
         if (rules) event.system.push({ type: "text", text: rules })
       })
 
@@ -330,7 +385,8 @@ export function createBobiCore(options: BobiCoreOptions): Plugin.Plugin & { read
           return
         }
         let result = event.result
-        const searchBase = path.resolve(location, inputPath(event.input) ?? ".")
+        // The engine reports grep/glob paths relative to the location, not to the searched folder (review 2026-11-19, M2).
+        const searchBase = location
         if (event.tool === "glob" && Array.isArray(result.output)) {
           const { entries, removed } = filterGlob(result.output as { path: string }[], searchBase, ignored)
           if (removed) result = { ...result, output: entries as never, content: renderGlob(entries, removed) }
@@ -356,11 +412,7 @@ export function createBobiCore(options: BobiCoreOptions): Plugin.Plugin & { read
       await ctx.permission.hook("evaluate", (event) => {
         const now = Date.now()
         if (event.agent) sessionMode.set(String(event.sessionID), String(event.agent))
-        // Other agents may only read; an approval request would wait for a person who is not there.
-        if (String(event.agent) === A2A_AGENT && (event.effect === "ask" || !A2A_TOOLS.has(event.action))) {
-          event.effect = "deny"
-          event.message = "Not available to requests from other agents (read-only)."
-        }
+        enforcePolicy(event)
         audit.record({
           name: "bobi.permission",
           start: now,
@@ -381,7 +433,10 @@ export function createBobiCore(options: BobiCoreOptions): Plugin.Plugin & { read
       const events = new AbortController()
       void (async () => {
         try {
-          for await (const event of ctx.event.subscribe({ signal: events.signal } as never) as AsyncIterable<{ type: string; data?: Record<string, unknown> }>) {
+          for await (const event of ctx.event.subscribe({ signal: events.signal } as never) as AsyncIterable<EngineEvent>) {
+            // Setup runs once per location, and every instance's stream carries the events of all locations. Only the
+            // instance of the event's location records it (once, and with the mode and model its prompt hook saw).
+            if (event.location?.directory !== undefined && String(event.location.directory) !== location) continue
             const data = event.data ?? {}
             if (event.type === "permission.asked")
               asked.set(String(data.id), {
@@ -437,12 +492,14 @@ export function createBobiCore(options: BobiCoreOptions): Plugin.Plugin & { read
 
       // 6. Skills and slash commands (built-in /commit, /pr, /security-review; global; project if trusted).
       const dirs = extensionDirs(globalDir, project, trusted)
-      const skills = readSkills(dirs.skills)
+      // Revoked registry packages are not loaded, also before `bobi registry check --remove` ran.
+      const revoked = revokedNames([globalDir, ...(trusted ? [path.join(project, ".bobi")] : [])], path.join(globalDir, "registry"))
+      const skills = readSkills(dirs.skills).filter((s) => !revoked.skill.has(s.name))
       await ctx.skill.transform((editor) => {
         for (const skill of skills)
           editor.add({ id: skill.name, name: skill.name, description: skill.description, path: skill.path, content: skill.content } as Parameters<typeof editor.add>[0])
       })
-      const commands = readCommands(dirs.commands)
+      const commands = readCommands(dirs.commands).filter((c) => !revoked.command.has(c.name))
       // /init with Bobi's own prompt (replaces the engine's).
       await ctx.command.transform((editor) => {
         for (const command of commands)

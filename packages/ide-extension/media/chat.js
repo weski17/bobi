@@ -65,8 +65,10 @@ window.addEventListener("message", ({ data: m }) => {
       card.id = `approval-${m.id}`
       card.appendChild(el("div", "title", `Bobi wants to ${m.action}: ${m.resources.join(", ")}`))
       if (m.diff) card.appendChild(el("div", "hint", "The proposed change is open in the diff editor."))
+      if (m.rejectOnly) card.appendChild(el("div", "hint", "The change cannot be shown, so it can only be rejected."))
       const buttons = el("div", "buttons")
-      for (const [label, decision] of [["Accept", "once"], ["Always", "always"], ["Reject", "reject"]]) {
+      const choices = m.rejectOnly ? [["Reject", "reject"]] : [["Accept", "once"], ["Always", "always"], ["Reject", "reject"]]
+      for (const [label, decision] of choices) {
         const b = el("button", decision === "reject" ? "secondary" : "", label)
         b.addEventListener("click", () => vscode.postMessage({ type: "reply", id: m.id, decision }))
         buttons.appendChild(b)
@@ -74,6 +76,14 @@ window.addEventListener("message", ({ data: m }) => {
       card.appendChild(buttons)
       log.appendChild(card)
       current = undefined
+      break
+    }
+    case "approval-blocked": {
+      const card = document.getElementById(`approval-${m.id}`)
+      if (card) {
+        for (const b of card.querySelectorAll("button")) if (b.textContent !== "Reject") b.remove()
+        card.appendChild(el("div", "hint", "The change could not be shown, so it can only be rejected."))
+      }
       break
     }
     case "approval-done": {

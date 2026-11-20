@@ -6,7 +6,7 @@ import { Completer } from "./completion.ts"
 import { contextFiles, literatePrompt, literateRegion, simplifyPrompt, withSelection } from "./context.ts"
 import { ChatController } from "./controller.ts"
 import { DiffPresenter, SCHEME } from "./diff.ts"
-import { resolveCommand, startBobi, trust, type RunningBobi } from "./server.ts"
+import { resolveCommand, startBobi, trust, userCommand, type RunningBobi } from "./server.ts"
 
 let running: RunningBobi | undefined
 let controller: ChatController | undefined
@@ -20,7 +20,7 @@ export type BobiApi = { readonly started: Promise<void>; readonly controller: Ch
 
 function config() {
   const c = vscode.workspace.getConfiguration("bobi")
-  return { command: resolveCommand(c.get<string[]>("command") ?? []), includeOpenTabs: c.get<boolean>("includeOpenTabs") ?? true }
+  return { command: resolveCommand(userCommand(c.inspect<string[]>("command"))), includeOpenTabs: c.get<boolean>("includeOpenTabs") ?? true }
 }
 
 /** Project trust (ADR-0014) as a modal dialog, like workspace trust. */

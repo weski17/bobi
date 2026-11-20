@@ -1,0 +1,64 @@
+name: Bug report
+description: Something in Bobi does not work as described.
+title: "bug: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. **Do not paste secrets, tokens, customer code or production data.**
+        Security problems go to [private vulnerability reporting](https://github.com/weski17/bobi/security/advisories/new).
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Where did it happen?
+      options:
+        - Bobi Shell (interactive)
+        - Bobi Shell (headless, `bobi run`)
+        - Bobi IDE
+        - Web chat / demo image
+        - Server / container
+        - MCP server (code graph, COBOL, Zowe)
+        - CI / GitHub workflows
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Bobi version
+      description: Output of `bobi --version`, or the release / commit you use.
+      placeholder: bobi 1.0.0
+    validations:
+      required: true
+  - type: input
+    id: mode
+    attributes:
+      label: Mode and model
+      description: Which mode was active, and which model behind which endpoint (LiteLLM, vLLM, Ollama, mock …)?
+      placeholder: code mode, qwen2.5-coder:7b via Ollama
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Run `bobi run --mode ask "…"` in a project with …
+        2. …
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or audit records
+      description: Relevant lines from the output or `bobi audit`. Bobi masks secrets, but please check before pasting.
+      render: shell
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      placeholder: macOS 26 / Ubuntu 24.04, Bun 1.4.3, Podman 6.1

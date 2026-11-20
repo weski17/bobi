@@ -12,9 +12,11 @@
 
 <p align="center">
   <a href="https://github.com/weski17/bobi/actions/workflows/ci.yml"><img src="https://github.com/weski17/bobi/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/weski17/bobi/actions/workflows/security.yml"><img src="https://github.com/weski17/bobi/actions/workflows/security.yml/badge.svg" alt="Security gate"></a>
   <a href="https://github.com/weski17/bobi/actions/workflows/image.yml"><img src="https://github.com/weski17/bobi/actions/workflows/image.yml/badge.svg" alt="Image"></a>
-  <img src="https://img.shields.io/badge/license-MIT-5eead4" alt="MIT license">
-  <img src="https://img.shields.io/badge/tests-471%20passing-4ade80" alt="471 tests passing">
+  <a href="https://github.com/weski17/bobi/releases/latest"><img src="https://img.shields.io/badge/release-v1.2.0-3b6fe0" alt="Release v1.2.0"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-5eead4" alt="MIT license"></a>
+  <img src="https://img.shields.io/badge/tests-483%20passing-4ade80" alt="483 tests passing">
   <img src="https://img.shields.io/badge/red%20team-8%2F8%20contained-a78bfa" alt="Red team 8/8 contained">
   <img src="https://img.shields.io/badge/cloud-none-f87171" alt="No cloud">
 </p>
@@ -23,7 +25,9 @@
   <a href="docs/media/bobi-tour/bobi-tour.mp4"><b>▶ Watch the feature tour (3½ min)</b></a> ·
   <a href="docs/HANDBUCH.md">Handbuch (Deutsch)</a> ·
   <a href="docs/ARCHITECTURE.md">Architecture</a> ·
-  <a href="#quick-start">Quick start</a>
+  <a href="#quick-start">Quick start</a> ·
+  <a href="CHANGELOG.md">Changelog</a> ·
+  <a href="CONTRIBUTING.md">Contributing</a>
 </p>
 
 <p align="center">
@@ -86,7 +90,7 @@ permissions and configuration. Pick the IDE for daily work, the shell for script
 
 ```bash
 brew install oven-sh/bun/bun ripgrep bash
-git clone --recurse-submodules https://github.com/weski17/bobi.git && cd bobi
+git clone --recurse-submodules --branch v1.2.0 https://github.com/weski17/bobi.git && cd bobi   # latest release
 (cd vendor/opencode && bun install) && bun install && bun run browser:install
 bash scripts/install.sh                       # installs `bobi` and `bobi-ide` into ~/.local/bin
 
@@ -105,7 +109,8 @@ BOBI_MODEL_BASE_URL=http://mock-model:4001/v1 docker compose --profile demo up -
 cd "$BOBI_PROJECT" && bobi attach http://127.0.0.1:4096
 ```
 
-Ready-made multi-platform images (private): `ghcr.io/weski17/bobi` (server) and `ghcr.io/weski17/bobi-demo` (with model).
+Ready-made multi-platform images (private): `ghcr.io/weski17/bobi` (server) and `ghcr.io/weski17/bobi-demo` (with model),
+tagged per release (e.g. `1.2.0`, `1.2`) and `latest`.
 
 All settings with comments: [`bobi.example.jsonc`](bobi.example.jsonc) · full guide in German:
 [`docs/HANDBUCH.md`](docs/HANDBUCH.md).
@@ -154,7 +159,7 @@ plugin: secure policy, modes, rules, trust, masking, audit. Details: [architectu
 
 ## Quality
 
-471 automated tests (99 % line coverage), terminal-UI, IDE and sandbox tests, a promptfoo red team (8/8 attacks
+483 automated tests (99 % line coverage), terminal-UI, IDE and sandbox tests, a promptfoo red team (8/8 attacks
 contained) and load tests (100 parallel sessions, 0 errors) – all against a mock model, so they run without a real
 model or network. `bun run test` · [testing guide](docs/HANDBUCH.md#16-qualität-und-tests).
 
@@ -168,6 +173,16 @@ model or network. `bun run test` · [testing guide](docs/HANDBUCH.md#16-qualitä
 | [Demos](docs/demos/) | Step-by-step walkthroughs per phase |
 | [Development](docs/DEVELOPMENT.md) · [AGENTS.md](AGENTS.md) | Setup and rules for contributors |
 | [Status](docs/STATUS.md) | Progress, findings, open points |
+| [Changelog](CHANGELOG.md) · [Releases](https://github.com/weski17/bobi/releases) | What changed in each version |
+| [Security policy](SECURITY.md) | How to report a vulnerability, what Bobi guarantees |
+
+## Contributing
+
+Contributions are welcome. Read the [contributor guide](CONTRIBUTING.md) first: it covers setup, the ground rules
+(clean room, on-premise, no secrets, license check for every dependency), tests and the pull request checklist.
+Questions and ideas go to [Discussions](https://github.com/weski17/bobi/discussions), bugs and feature requests to
+[Issues](https://github.com/weski17/bobi/issues/new/choose). Everyone taking part follows the
+[Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## License
 

@@ -1,6 +1,7 @@
 // Headless browser access for the agent (requirement 4). Playwright is loaded lazily so that
 // Bobi starts without a browser installed; only http(s) pages are allowed.
 import type { Browser } from "playwright-core"
+import { mayLoad, resolvesPrivate } from "./address.ts"
 
 export type PageResult = { url: string; title: string; text: string; truncated: boolean }
 
@@ -52,14 +53,29 @@ export class HeadlessBrowser {
     const context = await browser.newContext({ javaScriptEnabled: true, acceptDownloads: false, serviceWorkers: "block" })
     try {
       const page = await context.newPage()
-      // Block navigation (including redirects) to non-web schemes.
-      await page.route("**/*", (route) => {
-        const target = new URL(route.request().url())
-        return target.protocol === "http:" || target.protocol === "https:" ? route.continue() : route.abort()
+      // Block navigation (including redirects) to non-web schemes, and requests to private addresses the user did not
+      // approve: a redirect or a script on an approved public page must not reach the intranet or cloud metadata
+      // (security review 2026-11-19, M5).
+      const approvedPrivate = await resolvesPrivate(url.hostname)
+      const permitted = async (raw: string) => {
+        const target = new URL(raw)
+        if (target.protocol !== "http:" && target.protocol !== "https:") return false
+        return mayLoad(url.hostname, approvedPrivate, target.hostname, await resolvesPrivate(target.hostname))
+      }
+      await page.route("**/*", async (route) => ((await permitted(route.request().url())) ? route.continue() : route.abort("blockedbyclient")))
+      // Redirect hops bypass page.route (the network stack follows them), so every request is checked as well; one
+      // that should not have been loaded means the page's content is not returned.
+      const checks: Promise<string | undefined>[] = []
+      page.on("request", (request) => {
+        if (request.redirectedFrom()) checks.push(permitted(request.url()).then((ok) => (ok ? undefined : request.url())))
       })
       await page.goto(url.href, { timeout: options.timeoutMs ?? 15_000, waitUntil: "domcontentloaded" })
       const title = await page.title()
       const body = await page.evaluate(() => document.body?.innerText ?? "")
+      // Checked after reading the page, so a redirect that happened while it loaded is caught too. The request itself
+      // has been made by then (a limit: a GET with side effects on an intranet page cannot be undone).
+      const refused = (await Promise.all(checks)).find(Boolean) ?? ((await permitted(page.url())) ? undefined : page.url())
+      if (refused) throw new BrowserError(`The page redirected to ${new URL(refused).origin}, a private address that was not approved. Open that address directly if it is intended.`)
       const max = options.maxChars ?? 20_000
       return { url: page.url(), title, text: body.slice(0, max), truncated: body.length > max }
     } finally {

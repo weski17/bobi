@@ -2,7 +2,7 @@ import { afterAll, expect, test } from "bun:test"
 import { mkdtempSync, rmSync, statSync } from "node:fs"
 import { tmpdir } from "node:os"
 import path from "node:path"
-import { loadOrCreateKey, promptText, renderDossier, sealDossier, sessionsOf, tasksOf, toolDetail, verifyDossier, type AuditRecord, type Dossier, type DossierEvent } from "../src/index.ts"
+import { loadOrCreateKey, promptText, renderDossier, sameKey, sealDossier, sessionsOf, tasksOf, toolDetail, verifyDossier, type AuditRecord, type Dossier, type DossierEvent } from "../src/index.ts"
 
 const dirs: string[] = []
 const temp = () => {
@@ -90,6 +90,15 @@ test("a rehashed forgery fails the signature; a swapped key fails the key id", (
   expect(verifyDossier({ ...d, user: "mallory" }).reason).toBe("the signature does not match")
   expect(verifyDossier({ ...d, sealedAt: "2020-01-01T00:00:00Z" }).ok).toBe(false)
   expect(verifyDossier({} as Dossier).reason).toBe("not a dossier")
+})
+
+test("malformed input is not a dossier instead of a crash; keys are compared in full (review 2026-11-19)", () => {
+  for (const bad of [null, [], "x", 1]) expect(verifyDossier(bad as unknown as Dossier)).toMatchObject({ ok: false, reason: "not a dossier" })
+  const a = key()
+  const b = key()
+  expect(sameKey(a.publicKey, a.publicKey)).toBe(true)
+  expect(sameKey(a.publicKey, b.publicKey)).toBe(false)
+  expect(sameKey("not a key", a.publicKey)).toBe(false)
 })
 
 test("extras (diff, test result) join the chain", () => {

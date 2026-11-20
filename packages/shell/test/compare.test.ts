@@ -26,6 +26,7 @@ function deps(overrides: Partial<CompareDeps> = {}) {
     runAgent: async (dir, model) => (log.push(`run ${model} in ${dir}`), (clock += 2500), model === "bad" ? 1 : 0),
     changes: (dir) => (dir === "/w0" ? { diff: "d0", files: 2, added: 10, removed: 1 } : { diff: "d1", files: 1, added: 3, removed: 0 }),
     runTest: (dir) => ({ exit: dir === "/w2" ? 1 : 0, seconds: 1.5, tail: "boom" }),
+    confirmTest: async () => true,
     records: () => [rec("bobi.tool", {}), rec("bobi.usage", { "bobi.tokens.input": 7, "bobi.tokens.output": 3 })],
     cleanup: (dir) => void log.push(`cleanup ${dir}`),
     now: () => clock,
@@ -83,4 +84,21 @@ test("without a test command only the run is compared", async () => {
   const text = renderComparison(options, await compareModels(options, value))
   expect(text).toContain("no test command given")
   expect(text).not.toContain("Passed the tests")
+})
+
+test("the test command runs only on changes the user confirmed (review 2026-11-19, H4)", async () => {
+  const ran: string[] = []
+  const asked: string[] = []
+  const { value } = deps({
+    runTest: (dir) => (ran.push(dir), { exit: 0, seconds: 1, tail: "" }),
+    confirmTest: async (model, changes) => (asked.push(`${model}:${changes.diff}`), model === "a"),
+  })
+  const options = { task: "t", models: ["a", "b"], mode: "code", test: "bun test" }
+  const results = await compareModels(options, value)
+  expect(asked).toEqual(["a:d0", "b:d1"])
+  expect(ran).toEqual(["/w0"])
+  expect(results[1]!.test).toMatchObject({ skipped: true })
+  const text = renderComparison(options, results)
+  expect(text).toContain("not run (not confirmed)")
+  expect(text).toContain("Test not run (not confirmed): b")
 })

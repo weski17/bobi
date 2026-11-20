@@ -90,3 +90,15 @@ test("supported languages and size limit", () => {
   expect(analyze("/a/b.ts", `// ${"x".repeat(600_000)}`)).toEqual([])
   expect(DEFAULT_LIMITS).toEqual({ complexity: 10, functionLines: 60, nesting: 4, parameters: 5 })
 })
+
+test("a COBOL file with tens of thousands of paragraphs is analysed quickly (review 2026-11-19, M9)", () => {
+  const source = "       IDENTIFICATION DIVISION.\n       PROGRAM-ID. P.\n       PROCEDURE DIVISION.\n" + Array.from({ length: 40_000 }, (_, i) => `       P${i}.\n`).join("")
+  const began = performance.now()
+  analyze("x.cbl", source)
+  expect(performance.now() - began).toBeLessThan(2_000)
+})
+
+test("COBOL tips ignore COPY statements (copybooks are not resolved)", () => {
+  const source = "       IDENTIFICATION DIVISION.\n       PROGRAM-ID. P.\n       DATA DIVISION.\n       WORKING-STORAGE SECTION.\n           COPY CUSTREC.\n       PROCEDURE DIVISION.\n       MAIN.\n           STOP RUN.\n"
+  expect(analyze("y.cbl", source)).toEqual([])
+})

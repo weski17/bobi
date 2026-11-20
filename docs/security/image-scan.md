@@ -1,7 +1,7 @@
 # Image scan (Trivy) – how the gate works
 
-The image workflow scans the demo image with Trivy (`HIGH` and `CRITICAL`, only findings that have a fix) after the
-build. A finding that is **not** listed in [`.trivyignore.yaml`](../../.trivyignore.yaml) fails the workflow, so the
+The image workflow scans the demo image **and the server image** (since 2026-11-19) with Trivy (`HIGH` and
+`CRITICAL`, only findings that have a fix) after the build and before the registry login. A finding that is **not** listed in [`.trivyignore.yaml`](../../.trivyignore.yaml) fails the workflow, so the
 image is not published.
 
 ## The baseline (2026-11-06)
@@ -27,6 +27,10 @@ red now and then without any change in Bobi. That is intended: someone looks at 
 (`golang.org/x/net/html`, denial of service) appeared in the pinned Ollama binary on the first CI run of the gate; it
 is listed with the reason, and it goes away when the Ollama version in `sandbox/Containerfile` is updated.
 
+Debian packages are different: the base image is pinned by digest, but the build runs `apt-get upgrade`, so Debian
+security fixes published after the pin are installed at build time. Example: CVE-2026-85091 (`zlib1g`, heap buffer
+overflow) failed the image build from 2026-11-07 until that step was added; it is fixed, not listed.
+
 ## Rules
 
 1. A new finding fails the build. Fix it (update the dependency or base image) or, after looking at it, add an entry
@@ -36,6 +40,9 @@ is listed with the reason, and it goes away when the Ollama version in `sandbox/
 3. When the engine or the base image is updated, delete the entries that are gone (run the scan, compare). Stale
    entries are harmless but hide that the baseline shrinks.
 4. Never add entries just to make a build pass.
+5. New entries name the affected files with `paths:` (see CVE-2026-97054), so the same ID in another component is
+   not hidden. The 54 baseline entries of 2026-11-06 are global by ID; they are replaced, not extended, when the
+   engine is updated (security review 2026-11-19, M13).
 
 ## Reproduce locally
 

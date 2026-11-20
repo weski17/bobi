@@ -135,7 +135,7 @@ Eigenes Logo: `BOBI_BRANDING_DIR=<ordner mit icon.svg> bun run ide:setup`.
 | **Literate Coding** | Anweisung als Kommentar an die Code-Stelle schreiben (oder markieren), `⌘⌥⏎` / `Strg+Alt+Enter` – Ergebnis kommt als Diff. Auch im Kontextmenü. |
 | **Autovervollständigung** | Grauer Vorschlagstext beim Tippen, `Tab` übernimmt. Aktiv, sobald `autocomplete.model` gesetzt ist ([Kapitel 15](#15-konfigurationsreferenz)). |
 | **Code-Tipps** | Gelbe/blaue Hinweise mit Quelle „Bobi“; Glühbirne → *Bobi: Simplify …*. |
-| **Commit-Nachricht** | In der Quellcodeverwaltung auf ✦ klicken – Bobi liest den gestagten Diff und schreibt die Nachricht. |
+| **Commit-Nachricht** | In der Quellcodeverwaltung auf ✦ klicken – Bobi fragt im Panel, ob es `git diff --staged` lesen darf, und schreibt dann die Nachricht. |
 | **Freigaben** | Erscheinen im Panel, auch für Teilaufgaben des Orchestrators. |
 
 Einstellungen der IDE: `bobi.command`, `bobi.includeOpenTabs`, `bobi.autocomplete.enabled`, `bobi.tips.enabled`.
@@ -155,6 +155,7 @@ Modell gar nicht erst.
 | `advanced` | wie `code`, plus MCP | lesen, schreiben, Terminal, Browser, MCP, `a2a` |
 | `orchestrator` | große Aufgaben zerlegen und delegieren | lesen, Teilaufgaben |
 | `security` | Schwachstellen finden, Patches vorschlagen | lesen, Terminal, schreiben |
+| `security-ci` | Sicherheits-Review in der Pipeline, nur Bericht (für das Security-Gate, siehe Abschnitt 13) | nur lesen |
 
 ### Eigene Modi
 
@@ -215,8 +216,11 @@ bobi trust --yes        # vertrauen
 ## 6. Freigaben und Checkpoints
 
 **Standard:** Jede schreibende Aktion, jeder Terminal-Befehl und jeder Netzzugriff fragt nach – *einmal erlauben*,
-*immer erlauben* oder *ablehnen*. Ohne Rückfrage laufen nur lesende Werkzeuge und rein lesende Git-Befehle
-(`git status`, `diff`, `log`, `show`, `branch --show-current`).
+*immer erlauben* oder *ablehnen*. Ohne Rückfrage laufen nur lesende Werkzeuge (Dateien lesen, suchen). **Jeder
+Terminal-Befehl fragt, auch `git status` oder `git diff`:** Schon „lesende“ Git-Befehle können über eine Umleitung
+(`git log > datei`) Dateien schreiben oder in einem präparierten Repository Code ausführen (Sicherheitsreview vom
+19.11.2026). Wer Git-Befehle trotzdem freigibt, tut das ausdrücklich per Auto-Freigabe; ein Befehl, der per
+Umleitung in eine Datei schreibt, fragt auch dann nach.
 
 **Auto-Freigaben** nur explizit in der Konfiguration – damit sie im Pull Request sichtbar sind:
 
@@ -252,7 +256,7 @@ Jede Teilaufgabe läuft mit den Rechten ihres Modus; Freigaben landen trotzdem b
 | Befehl | Zweck |
 |---|---|
 | `/init` | AGENTS.md erzeugen oder aktualisieren |
-| `/commit` | Commit-Nachricht aus dem gestagten Diff; fragt vor `git commit` |
+| `/commit` | Commit-Nachricht aus dem gestagten Diff; fragt vor dem Lesen des Diffs und vor `git commit` |
 | `/pr` | Pull Request; fragt vor `git push` und `gh pr create` |
 | `/security-review [pfad]` | wechselt in den Security-Modus und liefert Befunde mit Schweregrad und Fix |
 
@@ -368,17 +372,22 @@ Getestet an AWS CardDemo (`vendor/carddemo`). Diagramm: `bobi diagram cobol [--p
 ### Mainframe über Zowe
 
 Der `zowe`-Server nutzt die REST-Schnittstelle, die auch die Zowe CLI verwendet. Verbindung über ein Zowe-Profil
-(`zowe.config.json` im Projekt oder in `~/.zowe`) oder Umgebungsvariablen:
+(`zowe.config.json` in `~/.zowe`; eine Datei im Projekt wird ignoriert, damit ein Repository nicht bestimmen kann,
+wohin das Passwort geht) oder Umgebungsvariablen:
 
 ```bash
 export ZOWE_OPT_HOST=mf.intranet ZOWE_OPT_PORT=443 ZOWE_OPT_USER=dev1
 export ZOWE_OPT_PASSWORD=…              # nur aus der Umgebung – nie aus Dateien
 export BOBI_ZOWE_DATASETS="DEV1.**,TEAM.TEST.*"   # Standard: nur eigene Datasets (<USER>.**)
 export BOBI_ZOWE_USS="/u/dev1"                    # Standard: eigenes Home
+export BOBI_ZOWE_JOB_OWNERS="DEV1"                # Standard: nur eigene Jobs und deren Spool; "*" für alle
 ```
 
 - Datasets und USS-Pfade außerhalb der Allowlist werden abgewiesen – bevor eine Anfrage den Mainframe erreicht.
-- In abgeschickter JCL werden alle `DSN=` gegen die Allowlist geprüft.
+- In abgeschickter JCL werden alle `DSN=` gegen die Allowlist geprüft. Jobs, deren Datensätze Bobi nicht sehen kann,
+  lehnt Bobi ab: Aufruf einer Prozedur, `INCLUDE`/`JCLLIB`, interner Reader (`INTRDR`), `PATH=` und Programme mit
+  eingebetteten Befehlen (`IDCAMS`, `IKJEFT01`, `BPXBATCH`, `ADRDSSU`, …). Solche Jobs schickst du selbst ab. Die
+  eigentliche Grenze bleiben die Rechte des Mainframe-Benutzers (RACF): Die Prüfung ist eine zweite Linie, keine Garantie.
 - Schreiben (`write_dataset`) und Job-Submit fragen **immer**.
 - Zertifikate werden immer geprüft; eine Firmen-CA kommt per `NODE_EXTRA_CA_CERTS` dazu.
 - In der Sandbox den Mainframe-Host in `BOBI_EGRESS_ALLOW` aufnehmen.
@@ -397,13 +406,16 @@ export BOBI_ZOWE_USS="/u/dev1"                    # Standard: eigenes Home
 `BOBI_A2A=1`; ein Projekt kann das nicht):
 
 ```bash
-BOBI_A2A=1 BOBI_SERVER_PASSWORD=… bobi serve --port 4096
+BOBI_A2A=1 BOBI_A2A_TOKEN="$(openssl rand -base64 32)" BOBI_SERVER_PASSWORD=… bobi serve --port 4096
 curl http://127.0.0.1:4096/.well-known/agent-card.json      # Agentenkarte (öffentlich)
 ```
 
-JSON-RPC unter `/a2a` (Server-Passwort, HTTP Basic, Benutzer `opencode`): `message/send`, `tasks/get`,
+JSON-RPC unter `/a2a` mit einem **eigenen Token** (`Authorization: Bearer $BOBI_A2A_TOKEN`, mindestens 24 Zeichen,
+nicht das Server-Passwort): `message/send`, `tasks/get`,
 `tasks/cancel`. Fremde Agenten **dürfen nur lesen**: alles andere wird sofort abgelehnt, nichts wartet auf eine
-Freigabe.
+Freigabe. Das Token gilt nur für `/a2a`; das Server-Passwort öffnet `/a2a` nicht, und mit dem Token kommt man an keine
+andere Schnittstelle. Ohne `BOBI_A2A_TOKEN` startet Bobi mit eingeschaltetem A2A nicht. (Bis 19.11.2026 galt hier das
+Server-Passwort; damit hätte ein Agent eine Sitzung in einem anderen Modus öffnen und eigene Freigaben bestätigen können.)
 
 ---
 
@@ -438,8 +450,8 @@ bobi dossier --list                                           # Sitzungen im Aud
 bobi dossier --list --session <id>                            # die Aufgaben (Prompts) einer Sitzung
 bobi dossier --out aenderung.json --diff --test "bun test"    # letzte Sitzung versiegeln (Tests und Diff dazu)
 bobi dossier --task last --out aufgabe.json                   # nur die letzte Aufgabe (oder --task 2, mit --session)
-bobi dossier verify aenderung.json                            # Kette und Signatur prüfen
-bobi dossier verify aenderung.json --key kollege.pub.pem      # zusätzlich: wurde es mit DIESEM Schlüssel signiert?
+bobi dossier verify aenderung.json                            # Kette und Signatur prüfen: „NOT VERIFIED“, Exit-Code 2
+bobi dossier verify aenderung.json --key kollege.pub.pem      # erst damit verifiziert: mit DIESEM Schlüssel signiert (Exit 0)
 ```
 
 Der Schlüssel liegt in `~/.bobi/keys/dossier-ed25519.pem` (nur für dich lesbar). Ohne `--key` beweist die Prüfung nur,
@@ -467,6 +479,10 @@ Modell; die Diffs stehen in `vergleich.json`. Die Modelle müssen am konfigurier
 
 - **Nur Datei-Änderungen** werden in den Worktrees automatisch freigegeben. Shell, Netzwerk usw. fragen wie immer – ein
   Lauf ohne Bildschirm kann nicht antworten, also sind sie verweigert (steht im Bericht). Den Testbefehl führt Bobi selbst aus.
+- **Der Testbefehl fragt vorher:** Er läuft auf den Dateien, die das Modell geschrieben hat (Tests, Skripte,
+  `package.json`), direkt auf deinem Rechner und außerhalb der Sandbox. Bobi zeigt deshalb pro Modell den Diff und
+  fragt, bevor der Test läuft. Ohne Terminal wird der Test übersprungen; `--trust-tests` führt ihn ohne Frage aus
+  (nur in einer Wegwerf-Umgebung verwenden).
 - Voraussetzung: Git-Projekt mit mindestens einem Commit; nicht eingecheckte Änderungen fließen nicht ein.
 - Ein Lauf pro Modell ist eine Momentaufnahme, kein Benchmark: mehrfach wiederholen, bevor du entscheidest.
 - Jeder Lauf steht im Audit-Log, ist also mit `bobi dossier` belegbar.
@@ -533,6 +549,17 @@ gesperrte Pakete bleiben aktiv, bis du `check --remove` ausführst.
 | Netzwerk | nur über einen Egress-Proxy mit Allowlist |
 | Audit | jede Aktion über OpenTelemetry, an Langfuse oder jedes andere Backend |
 
+### Security-Gate in GitHub
+
+Jeder Pull Request und jeder Push (also auch jeder Merge nach `main`) läuft durch `.github/workflows/security.yml`: Semgrep,
+gitleaks (Geheimnisse), `bun audit` (Abhängigkeiten) und Trivy (Fehlkonfiguration). Ein Pull Request scheitert nur an dem,
+was er neu hinzufügt. Der Check `security-gate` fasst alles zusammen. Damit nichts Rotes nach `main` kommt, braucht `main`
+eine Sperrregel (nur Pull Requests, `security-gate` muss grün sein); der Befehl dafür steht in
+[docs/security/security-gate.md](security/security-gate.md).
+
+Optional kommentiert Bobi selbst den Pull Request: Modus `security-ci` (nur lesen), Befunde mit Schweregrad und Fix,
+nur auf einem Self-hosted Runner in eurem Netz. Das ist ein Rat, keine Entscheidung; der Kommentar blockiert nie.
+
 ### Sandbox starten
 
 ```bash
@@ -596,8 +623,8 @@ docker pull ghcr.io/weski17/bobi:latest
 BOBI_IMAGE=ghcr.io/weski17/bobi:latest docker compose up -d   # ohne lokalen Build
 ```
 
-Ohne Registry weitergeben: `docker save bobi:0.1.0 | gzip > bobi-0.1.0.tar.gz`, auf dem Zielrechner
-`docker load < bobi-0.1.0.tar.gz`.
+Ohne Registry weitergeben: `docker save bobi:1.2.0 | gzip > bobi-1.2.0.tar.gz`, auf dem Zielrechner
+`docker load < bobi-1.2.0.tar.gz`.
 
 Zum Bauen braucht Docker das Plugin `buildx` (`brew install docker-buildx` und
 `ln -sfn /opt/homebrew/opt/docker-buildx/bin/docker-buildx ~/.docker/cli-plugins/docker-buildx`); mit Podman geht es direkt.
@@ -702,9 +729,10 @@ bei Vertrauen) → `BOBI_CONFIG` → Umgebungsvariablen. Geheimnisse sind in Dat
 | `BOBI_USER`, `BOBI_TEAM` | Nutzer und Team im Audit |
 | `BOBI_SERVER_PASSWORD` | Passwort für `serve`/`attach` |
 | `BOBI_A2A` | `1`/`true`: eingehendes A2A |
+| `BOBI_A2A_TOKEN` | Token für eingehendes A2A (Pflicht, ≥ 24 Zeichen, nur für `/a2a` gültig) |
 | `BOBI_SESSION_TITLES` | `model` oder `local` (siehe `sessions.titles`) |
 | `OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_EXPORTER_OTLP_HEADERS` | OpenTelemetry |
-| `ZOWE_OPT_*`, `BOBI_ZOWE_PROFILE`, `BOBI_ZOWE_DATASETS`, `BOBI_ZOWE_USS` | Mainframe |
+| `ZOWE_OPT_*`, `BOBI_ZOWE_PROFILE`, `BOBI_ZOWE_DATASETS`, `BOBI_ZOWE_USS`, `BOBI_ZOWE_JOB_OWNERS` | Mainframe |
 | `BOBI_EGRESS_ALLOW`, `BOBI_SANDBOX_PORT`, `BOBI_IMAGE` | Sandbox |
 | `BOBI_BRANDING_DIR` | eigenes IDE-Logo beim `ide:setup` |
 
@@ -754,6 +782,8 @@ Sandbox 7/7, Red-Team 8/8, Semgrep 0 Befunde, Lasttest 300 Aufträge ohne Fehler
 | Demo: Antworten kommen sehr langsam oder gar nicht | Mindestens 8 GB RAM und 4 Kerne einplanen (`DEMO_MEMORY`, `DEMO_CPUS`); beim ersten Start wird das Modell erst geladen (bis zu 2 Minuten). |
 | Demo: Browser meldet Verbindungsfehler | Port prüfen (`DEMO_PORT`), `DEMO_BIND=0.0.0.0` für Zugriff aus dem Netz, `docker compose -f compose.demo.yaml logs demo`. |
 | Git meldet „dubious ownership“ in der Sandbox | aktuelles `sandbox/bobi-sandbox.sh` verwenden (markiert nur Projekt und Checkpoints als sicher). |
+| Antwort bricht mit „exceeds the available context size“ ab (Ollama: Fehler 400) | Ollama begrenzt den Kontext standardmäßig auf 4096 Token; Bobis Anfrage mit Werkzeugen und Dateiinhalten ist größer. Ollama mit `OLLAMA_CONTEXT_LENGTH=16384 ollama serve` starten. |
+| Ein eigener MCP-Server liefert nach einer Code-Änderung noch den alten Stand | Ein MCP-Server startet einmal pro Projekt und behält seinen Code im Speicher. Den Bobi-Server (oder die IDE) neu starten. |
 | Engine-Logs | `~/.bobi/data/log/server.log` |
 
 ---
@@ -768,7 +798,7 @@ Sandbox 7/7, Red-Team 8/8, Semgrep 0 Befunde, Lasttest 300 Aufträge ohne Fehler
   werden nicht analysiert.
 - Der Mainframe-Zugriff ist gegen einen Mock getestet, noch nicht gegen ein echtes System. Abgeschickte JCL kann
   alles, was der Job-Nutzer darf – die Freigabe bleibt entscheidend.
-- Eingehendes A2A nutzt ein gemeinsames Server-Passwort (keine Identität pro aufrufendem Agenten).
+- Eingehendes A2A nutzt ein gemeinsames Token für alle aufrufenden Agenten (keine Identität pro Agent).
 - Bei vielen parallelen Sitzungen auf einem Server steigt Bobis Eigenanteil an der Antwortzeit (≈ 1,1 s bei 100).
 - Bobi IDE läuft aus den Quellen; ein verteilbares Paket muss die proprietären Copilot-Pakete von Code-OSS entfernen.
 - Die Video-Tour wird mit Piper und der frei lizenzierten Stimme „Thorsten“ vertont (Modell MIT, Daten CC0); der

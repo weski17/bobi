@@ -38,7 +38,7 @@ export async function startServer(io: Io, cwd: string, listen: { hostname: strin
   mkdirSync(paths.config, { recursive: true })
   const secret = password ?? randomBytes(24).toString("base64url")
   if (secret.length < 16) throw new Error("server password must have at least 16 characters")
-  const server = await startBobiServer({ config: loaded.config, paths, password: secret, secrets: [loaded.apiKey, secret], env: io.env, directory: cwd, ...listen })
+  const server = await startBobiServer({ config: loaded.config, paths, password: secret, secrets: [loaded.apiKey, secret, io.env.BOBI_A2A_TOKEN, io.env.ZOWE_OPT_PASSWORD], env: io.env, directory: cwd, ...listen })
   return { server, password: secret, paths, loaded }
 }
 
@@ -192,6 +192,15 @@ export async function runApp(rawArgv: readonly string[], io: Io): Promise<number
           const began = Date.now()
           const r = spawnSync(test, { shell: true, cwd: dir, encoding: "utf8", timeout: 600_000 })
           return { exit: r.status ?? -1, seconds: Math.round((Date.now() - began) / 100) / 10, tail: mask(`${r.stdout ?? ""}${r.stderr ?? ""}`).slice(-1500) }
+        },
+        confirmTest: async (model, changes) => {
+          if (command.trustTests) return true
+          if (!io.ask) {
+            io.err(`bobi: not running the test for ${model}: it would run code the model wrote, outside the sandbox. Confirm it in a terminal or pass --trust-tests.`)
+            return false
+          }
+          io.err(`\n${model} changed ${changes.files} file(s) (+${changes.added}/-${changes.removed}):\n${changes.diff.slice(0, 4000)}${changes.diff.length > 4000 ? "\n…" : ""}`)
+          return io.ask(`Run "${command.test}" on these changes on this machine? It executes code the model wrote, outside the sandbox.`)
         },
         records: (from, to) => readAuditLog(path.join(paths.home, "audit")).records.filter((r) => r.start >= from && r.start <= to),
         cleanup: (dir) => {

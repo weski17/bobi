@@ -20,7 +20,9 @@ export class A2aError extends Error {}
 /** Reads the agent card: either the given URL is the card, or the card is at <origin>/.well-known/agent-card.json. */
 export async function fetchCard(agent: RemoteAgent, options: Pick<CallOptions, "fetch"> = {}): Promise<AgentCard> {
   const url = agent.url.endsWith(".json") ? agent.url : `${new URL(agent.url).origin}${CARD_PATH}`
-  const response = await (options.fetch ?? fetch)(url, { headers: { ...agent.headers }, signal: AbortSignal.timeout(15_000) })
+  // No redirects: the configured credentials (agent.headers) must never follow a redirect to another host
+  // (review 2026-11-19).
+  const response = await (options.fetch ?? fetch)(url, { headers: { ...agent.headers }, redirect: "error", signal: AbortSignal.timeout(15_000) })
   if (!response.ok) throw new A2aError(`agent card ${url}: HTTP ${response.status}`)
   const card = (await response.json()) as AgentCard
   if (typeof card.url !== "string" || typeof card.name !== "string") throw new A2aError(`agent card ${url} is not valid`)
@@ -32,6 +34,7 @@ async function rpc(endpoint: string, agent: RemoteAgent, method: string, params:
     method: "POST",
     headers: { "content-type": "application/json", ...agent.headers },
     body: JSON.stringify({ jsonrpc: "2.0", id: randomUUID(), method, params }),
+    redirect: "error",
     signal: AbortSignal.timeout(130_000),
   })
   if (!response.ok) throw new A2aError(`${method}: HTTP ${response.status}`)

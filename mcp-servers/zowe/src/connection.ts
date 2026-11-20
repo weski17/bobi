@@ -1,5 +1,5 @@
 // Mainframe connection for the Zowe MCP server: Zowe team configuration (zowe.config.json, zowe.config.user.json)
-// in the project or ~/.zowe, overridden by the standard ZOWE_OPT_* environment variables. Passwords are taken
+// in ~/.zowe (never the project's), overridden by the standard ZOWE_OPT_* environment variables. Passwords are taken
 // from the environment only (Zowe keeps them in the OS credential vault, which Bobi does not read).
 import { existsSync, readFileSync } from "node:fs"
 import os from "node:os"
@@ -16,6 +16,8 @@ export type Connection = {
   readonly datasets: readonly string[]
   /** USS path prefixes the agent may access. */
   readonly uss: readonly string[]
+  /** Job owners whose jobs and spool output the agent may see (default: the user; `*` for all). */
+  readonly jobOwners: readonly string[]
   /** Where the settings came from (for error messages; never contains secrets). */
   readonly source: string
 }
@@ -61,12 +63,17 @@ function profileProperties(config: TeamConfig, name: string): Record<string, unk
   return props
 }
 
-export function zoweConfigFiles(project: string, env: Record<string, string | undefined> = process.env): string[] {
+/**
+ * The Zowe config files Bobi reads: only the user's own (~/.zowe or ZOWE_CLI_HOME). A project's zowe.config.json is
+ * ignored: it could point the connection – and with it the mainframe password – at any host (security review
+ * 2026-11-19, H3). `_project` stays in the signature for callers.
+ */
+export function zoweConfigFiles(_project: string, env: Record<string, string | undefined> = process.env): string[] {
   const home = env.ZOWE_CLI_HOME ?? path.join(env.HOME ?? os.homedir(), ".zowe")
-  return [project, home].flatMap((dir) => ["zowe.config.json", "zowe.config.user.json"].map((f) => path.join(dir, f))).filter((f) => existsSync(f))
+  return ["zowe.config.json", "zowe.config.user.json"].map((f) => path.join(home, f)).filter((f) => existsSync(f))
 }
 
-/** True when a connection could be configured (a host in the environment or a Zowe config file). */
+/** True when a connection could be configured (a host in the environment or the user's Zowe config). */
 export function zoweConfigured(project: string, env: Record<string, string | undefined> = process.env): boolean {
   return Boolean(env.ZOWE_OPT_HOST) || zoweConfigFiles(project, env).length > 0
 }
@@ -75,8 +82,10 @@ const list = (value: string | undefined) => (value ?? "").split(",").map((v) => 
 
 export function loadConnection(project: string, env: Record<string, string | undefined> = process.env): Connection {
   const home = env.ZOWE_CLI_HOME ?? path.join(env.HOME ?? os.homedir(), ".zowe")
-  // Project config wins over global config, like the Zowe CLI.
-  const layers = [layer(home), layer(project)].filter((l) => l !== undefined)
+  // Only the user's own config (unlike the Zowe CLI, which lets a project config win): host, port and protocol decide
+  // where the password goes, and a repository must not choose them.
+  if (layer(project)) console.error("bobi zowe: ignoring the project's zowe.config.json; keep connection profiles in ~/.zowe")
+  const layers = [layer(home)].filter((l) => l !== undefined)
   const config: TeamConfig = { profiles: {}, defaults: {} }
   for (const l of layers) {
     config.profiles = { ...config.profiles, ...l.config.profiles }
@@ -114,6 +123,9 @@ export function loadConnection(project: string, env: Record<string, string | und
     // Default: only the user's own datasets and home directory – never production data unless allowed explicitly.
     datasets: list(env.BOBI_ZOWE_DATASETS).map((p) => p.toUpperCase()).concat(env.BOBI_ZOWE_DATASETS ? [] : [`${upperUser}.**`]),
     uss: list(env.BOBI_ZOWE_USS).concat(env.BOBI_ZOWE_USS ? [] : [`/u/${user!.toLowerCase()}`]),
+    // Spool output often holds production data, so other users' jobs are hidden unless an administrator allows them
+    // (security review 2026-11-19, M10).
+    jobOwners: list(env.BOBI_ZOWE_JOB_OWNERS).map((o) => o.toUpperCase()).concat(env.BOBI_ZOWE_JOB_OWNERS ? [] : [upperUser]),
     source: [...layers.flatMap((l) => l.files), "environment"].join(", "),
   }
 }
@@ -155,6 +167,15 @@ export function requireDataset(connection: Connection, name: string): string {
   if (!allowedDataset(connection, upper))
     throw new ConnectionError(`Dataset ${upper} is outside the allowed datasets (${connection.datasets.join(", ")}). An administrator can widen BOBI_ZOWE_DATASETS.`)
   return upper
+}
+
+export function allowedJobOwner(connection: Connection, owner: string | undefined): boolean {
+  return connection.jobOwners.includes("*") || (owner !== undefined && connection.jobOwners.includes(owner.toUpperCase()))
+}
+
+export function requireJobOwner(connection: Connection, owner: string | undefined): void {
+  if (!allowedJobOwner(connection, owner))
+    throw new ConnectionError(`Jobs of ${owner ?? "an unknown owner"} are not available (allowed: ${connection.jobOwners.join(", ")}). An administrator can widen BOBI_ZOWE_JOB_OWNERS.`)
 }
 
 export function requireUssPath(connection: Connection, file: string): string {

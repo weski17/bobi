@@ -57,7 +57,10 @@ or blob digest. License texts are in the image under `/opt/demo/licenses/`.
 
 | Tool | Version | License | Use |
 |---|---|---|---|
-| Semgrep CE (`semgrep/semgrep` image) | 1.178.0 | LGPL-2.1 (engine); rules from the Semgrep Registry under their own terms | Static analysis in CI |
+| Semgrep CE (`semgrep/semgrep` image) | 1.178.0 | LGPL-2.1 (engine); rules from the Semgrep Registry under their own terms | Static analysis in CI (`security.yml`) |
+| gitleaks (`ghcr.io/gitleaks/gitleaks` image) | 8.28.0 | MIT | Secrets in new commits (`security.yml`) |
+| Trivy (`aquasec/trivy` image) | 0.57.0 | Apache-2.0 | Image scan (`image.yml`), file system scan (`security.yml`); vulnerability database from `public.ecr.aws/aquasecurity/trivy-db` |
+| GitHub Action `actions/upload-artifact` | v4 | MIT | Run log of the security agent |
 | GitHub Actions `actions/checkout`, `oven-sh/setup-bun` | v4, v2 | MIT | CI |
 | GitHub Actions `docker/setup-qemu-action`, `setup-buildx-action`, `login-action`, `metadata-action`, `build-push-action`, `actions/setup-node` | v3, v3, v3, v5, v6, v4 | Apache-2.0 (docker/*), MIT (setup-node) | Image build and push to GitHub Packages; Node for the red team |
 | ignore | 7.0.11 | MIT | `.bobiignore` matching with gitignore semantics (`@bobi/core`) |
@@ -68,3 +71,10 @@ or blob digest. License texts are in the image under `/opt/demo/licenses/`.
 | Code-OSS (`microsoft/vscode`) | 1.141.2 (submodule `vendor/code-oss`) | MIT | Bobi IDE base; branding overlay `scripts/ide/brand.ts`, patches `patches/code-oss/` |
 | @types/vscode | 1.100.0 | MIT | Extension API types (dev) |
 | diff | 8.0.4 | BSD-3-Clause | Extension tests: produce patches like the engine (dev) |
+
+## Project documents and services (not shipped)
+
+| Component | Version | License | Use |
+|---|---|---|---|
+| Contributor Covenant | 2.1 | CC BY 4.0 (attribution in the document) | Text of [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md), contact method filled in |
+| Dependabot (GitHub service) | – | GitHub terms (no code in the repository) | Monthly update pull requests for GitHub Actions (`.github/dependabot.yml`) |

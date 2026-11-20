@@ -11,7 +11,9 @@ Please **do not open a public issue** for a vulnerability. Use GitHub's private 
 vulnerability* in this repository. Describe what you found, how to reproduce it and what an attacker gains. Do not
 include real secrets or production data. You will get an answer to your report; fixes are published on `main`.
 
-Supported version: the current `main` branch (Bobi is a research project; there are no maintained release branches).
+Supported versions: the latest release (see [Releases](https://github.com/weski17/bobi/releases) and
+[`CHANGELOG.md`](CHANGELOG.md)) and the current `main` branch. Fixes go to `main` and ship with the next release;
+there are no maintained release branches (Bobi is a research project).
 
 ## What Bobi protects (and how)
 
@@ -39,14 +41,21 @@ The demo exists so that others can try Bobi; treat it as an exposed service:
   loopback only.
 - Anyone with the password can run commands **inside that container** (terminal, IDE terminal). That is by design;
   the container boundary is the protection. Do not mount host directories or secrets into it.
-- The terminal gives each session a private copy of the sample project; the optional web IDE shares one workspace.
+- The terminal gives each session its own copy of the sample project, but **visitors are not isolated from each
+  other**: they share one Bobi server, its password (sessions inherit it) and one user account, so a visitor can read
+  other visitors' workspaces and sessions. Invite only people you trust with each other; the optional web IDE shares
+  one workspace anyway. At every start the demo removes global rules, modes, skills, commands and trust decisions from
+  its volume, so nothing a visitor planted survives a restart.
 - Use a long random password, rotate it after events, and do not publish it.
 
 ## Supply chain
 
 - Dependencies are pinned (`bun.lock`, exact versions, container base images by digest, downloaded binaries by
   SHA-256). Every new dependency is checked for its licence and recorded in [`LICENSES.md`](LICENSES.md).
-- CI runs `bun audit` (high and above fail the build), Semgrep (TypeScript and secrets rules) and the red-team suite.
+- Every pull request and push runs the security gate ([docs/security/security-gate.md](docs/security/security-gate.md)):
+  Semgrep (TypeScript and secrets rules), gitleaks (secrets in new commits), `bun audit` (high and above) and Trivy
+  (misconfigurations); a pull request fails on what it adds. An optional Bobi agent comments on the change, read-only
+  and advisory. CI also runs the red-team suite.
 - Upstream code (`vendor/`) is tracked by commit; changes to it are numbered patches in `patches/` with a reason.
 
 ## Known limits

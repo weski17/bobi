@@ -14,7 +14,7 @@
 name: bobi
 
 x-hardening: &hardening
-  image: ${BOBI_IMAGE:-bobi:0.1.0}
+  image: ${BOBI_IMAGE:-bobi:1.2.0}
   cap_drop: [ALL]
   security_opt: [no-new-privileges:true]
   restart: unless-stopped
@@ -30,6 +30,11 @@ services:
     working_dir: ${BOBI_PROJECT:?set BOBI_PROJECT to the absolute path of your project}
     pids_limit: 512
     mem_limit: 4g
+    # Read-only root file system like the demo: Bobi writes only to the mounted project, its home volume and /tmp
+    # (security review 2026-11-19).
+    read_only: true
+    tmpfs:
+      - /tmp:size=1g,mode=1777
     volumes:
       # The project at the same path as on the host, so checkpoint pointers and paths in answers match.
       - ${BOBI_PROJECT}:${BOBI_PROJECT}
@@ -45,6 +50,7 @@ services:
       BOBI_USER: ${BOBI_USER:-${USER:-unknown}}
       BOBI_TEAM: ${BOBI_TEAM:-}
       BOBI_A2A: ${BOBI_A2A:-}
+      BOBI_A2A_TOKEN: ${BOBI_A2A_TOKEN:-}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
       # Everything outside the internal network goes through the allowlist proxy.
       HTTP_PROXY: http://egress:3128

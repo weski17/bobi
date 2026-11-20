@@ -15,6 +15,42 @@
 | Image scan fails on new findings (Trivy, HIGH/CRITICAL with a fix); the 54 findings known on 2026-11-06 are a dated baseline that expires 2027-02-06 | ✅ | `.github/workflows/image.yml`, `.trivyignore.yaml`, `docs/security/image-scan.md` |
 | Revocation list for the registry: signed, with serial (no rollback); install refuses revoked packages even with `--force`; `bobi registry check [--remove]` | ✅ | `packages/core/src/revocation.ts`, `packages/shell/src/registry.ts`, ADR-0025 |
 
+## Release 1.2.0 (2026-11-20): medium findings of the security review
+
+| Task | Status | Where |
+|---|---|---|
+| Medium findings M1–M13 (`.bobiignore`, masking, project trust, browser, egress proxy, demo, web chat, COBOL limits, Zowe jobs, CI pinning, deploy/release on main, server image scan) | ✅ fixed (M13 partly) | #40, `CHANGELOG.md` |
+| 11 low findings | ✅ fixed (3 of them with earlier findings) | `CHANGELOG.md` (Unreleased) |
+
+## Release 1.1.0 (2026-11-19): security review
+
+| Task | Status | Where |
+|---|---|---|
+| Security review: scanners (Semgrep 11 rule sets, gitleaks over the whole history, `bun audit`, Trivy file system and both images) and a manual review in four parts | ✅ | review report (confidential, outside the repository) |
+| Critical findings K1 (git without approval), K2 (IDE start command from the repository) | ✅ fixed | #36 |
+| High findings H1–H5 (protected paths after "always", A2A token, Zowe host, compare test, JCL) | ✅ fixed | #37 |
+| H6/H7 (self-hosted runner, gate bypass by a pull request's own workflows) | 🟡 partly: Dependabot excluded, limits documented | `docs/security/security-gate.md` |
+| Branch rule on `main` | ✅ active since 2026-11-20 (ruleset 27686498, no bypass) | `docs/security/security-gate.md` |
+| 13 medium findings | ✅ fixed (M13 partly: baseline entries stay global until the engine update) | `CHANGELOG.md` (Unreleased) |
+| 11 low findings | ⬜ open | review report |
+
+## Release 1.0.0 (2026-11-19): versions and contributor files
+
+| Task | Status | Where |
+|---|---|---|
+| Version 1.0.0 (`bobi --version`, IDE extension, local image tag); a test keeps them equal to `package.json` | ✅ | `package.json`, `packages/shell/src/args.ts` |
+| Changelog per version; tags `v0.1.0`–`v0.8.0` mark the ends of phases 1–8 | ✅ | `CHANGELOG.md` |
+| Release workflow: a tag `vX.Y.Z` publishes the GitHub release with the changelog section as notes | ✅ (first run with `v1.0.0`) | `.github/workflows/release.yml` |
+| Contributor guide, code of conduct, issue and pull request templates, code owners, Dependabot for Actions, `.editorconfig` | ✅ | `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `.github/` |
+
+## After phase 8 (2026-11-10): security gate
+
+| Task | Status | Where |
+|---|---|---|
+| Security gate on every pull request and push: Semgrep, gitleaks, `bun audit`, Trivy fs; one required check `security-gate`; a pull request fails only on what it adds | 🟡 built, first CI run pending | `.github/workflows/security.yml`, `.gitleaks.toml`, ADR-0027 |
+| Advisory security agent: read-only built-in mode `security-ci`, one pull request comment (parsed, masked, escaped); self-hosted runner only | 🟡 tested with the mock model; not run with a real model | `packages/core/src/security-review.ts`, `scripts/security-agent.ts`, `docs/security/security-gate.md` |
+| Branch rule on `main` (pull requests; green `security-gate`, `test`, `redteam`, `tips`) | ✅ active since 2026-11-20 | `docs/security/security-gate.md` |
+
 ## After phase 7 (2026-10-20)
 
 | Task | Status | Where |
@@ -94,7 +130,7 @@ Tests: **369 pass, 0 fail** (line coverage 98.4 %) + IDE integration test (incl.
 | Security mode + `/security-review` | ✅ | `packages/modes/builtin-modes.yaml`, `defaults/commands` |
 | Skills (`SKILL.md`) global and per project (trusted) | ✅ | `packages/core/src/extensions.ts` |
 | Own slash commands (`.bobi/commands/*.md`, mode + `$ARGUMENTS`) | ✅ | same |
-| Git: `/commit`, `/pr`; read-only git without asking; IDE commit message button | ✅ | `defaults/commands`, `permissions.jsonc` |
+| Git: `/commit`, `/pr`; IDE commit message button (since 2026-11-19 every git command asks) | ✅ | `defaults/commands`, `permissions.jsonc` |
 | Literate coding in the IDE (Cmd+Alt+Enter) with diff review | ✅ | `packages/ide-extension` |
 | Shell: `bobi modes`, `bobi run --mode` | ✅ | `packages/shell` |
 | Engine's own skills (vendor docs/issue reporting) disabled | ✅ | `DISABLED_PLUGINS` |
@@ -200,7 +236,7 @@ Tests: **193 pass, 0 fail** + 3 terminal-UI e2e · line coverage 99.8 % · typec
 | Checkpoints + undo in git projects | ✅ | `tests/integration/checkpoints.test.ts` |
 | Checkpoints in projects without git (hidden repository + `.git` pointer) | ✅ | `packages/server/src/checkpoints.ts` |
 | Sandbox: Podman container, unprivileged, internal network, egress allowlist proxy | ✅ | `sandbox/`, `packages/egress-proxy`, `tests/sandbox` |
-| CI: typecheck, tests, coverage gate, terminal-UI e2e, Semgrep | ✅ green on GitHub | `.github/workflows/ci.yml` |
+| CI: typecheck, tests, coverage gate, terminal-UI e2e, Semgrep (since 2026-11-10 in the security gate) | ✅ green on GitHub | `.github/workflows/ci.yml`, `security.yml` |
 | Repository on GitHub (private) | ✅ | https://github.com/weski17/bobi |
 | Approval prompt in the terminal UI tested by keyboard (reject / allow once) | ✅ | `tests/e2e` |
 | Demo guide | ✅ | docs/demos/phase-1.md |

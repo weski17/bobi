@@ -6,17 +6,26 @@ const OPENERS = new Set(["IF", "EVALUATE", "SEARCH"])
 const CLOSERS = new Set(["END-IF", "END-EVALUATE", "END-SEARCH", "END-PERFORM"])
 
 export function analyzeCobol(text: string, file: string, limits: Limits): Tip[] {
-  const { tokens } = expand(text, file, { resolve: () => undefined, read: () => "" })
+  // Copybooks are never resolved here, so `read` is never called (String only satisfies the type).
+  const { tokens } = expand(text, file, { resolve: () => undefined, read: String })
   const program = parseProgram(tokens, file, [])
   const tips: Tip[] = []
   const lastLine = text.split("\n").length
   const paragraphs = program.paragraphs.filter((p) => p.file === file)
   const ranges = paragraphs.map((p, i) => ({ name: p.name, line: p.line, endLine: (paragraphs[i + 1]?.line ?? lastLine + 1) - 1 }))
-  const paragraphAt = (line: number) => ranges.findLast((r) => r.line <= line)
+  // Lookups by line in linear time: a file with tens of thousands of paragraphs must not block the server
+  // (security review 2026-11-19, M9: 40 000 empty paragraphs took 9 s with per-paragraph scans).
+  const owner = new Int32Array(lastLine + 2).fill(-1)
+  ranges.forEach((r, i) => owner.fill(i, Math.max(0, r.line), Math.min(lastLine + 1, r.endLine) + 1))
+  const paragraphAt = (line: number) => (line >= 0 && line <= lastLine ? ranges[owner[line]!] : undefined)
+  const hasCode = new Uint8Array(lastLine + 2)
+  for (const t of tokens) if (t.file === file && t.line >= 0 && t.line <= lastLine) hasCode[t.line] = 1
+  const codeBefore = new Int32Array(lastLine + 3)
+  for (let line = 0; line <= lastLine + 1; line++) codeBefore[line + 1] = codeBefore[line]! + hasCode[line]!
 
   for (const r of ranges) {
     // Count code lines only (comments and blank lines do not make a paragraph long).
-    const codeLines = new Set(tokens.filter((t) => t.file === file && t.line >= r.line && t.line <= r.endLine).map((t) => t.line)).size
+    const codeLines = codeBefore[Math.min(r.endLine, lastLine + 1) + 1]! - codeBefore[Math.max(0, r.line)]!
     if (codeLines > limits.functionLines)
       tips.push({ rule: "function-length", severity: "warning", message: `Paragraph ${r.name} has ${codeLines} lines of code (limit ${limits.functionLines}).`, line: r.line, endLine: r.endLine, symbol: r.name })
   }

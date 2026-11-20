@@ -54,6 +54,7 @@ up() {
   # Bind-mount roots can appear as owned by root inside the VM; git then refuses the repository. Only the
   # mounted project and its checkpoint directory are declared safe (not "*").
   podman run -d --name bobi-server --network "$NET" -p "127.0.0.1:${PORT}:4096" \
+    --read-only --tmpfs /tmp:size=1g,mode=1777 \
     --cap-drop all --security-opt no-new-privileges --pids-limit 512 --memory 4g \
     -v "${project}:${project}" -v "${shadow}:${shadow}" -v bobi-home:/home/bun/.bobi \
     -v "${trust}:/home/bun/.bobi/trust:ro" ${masks[@]+"${masks[@]}"} -w "$project" \
@@ -61,15 +62,18 @@ up() {
     -e http_proxy=http://bobi-egress:3128 -e https_proxy=http://bobi-egress:3128 \
     -e NO_PROXY=localhost,127.0.0.1 -e no_proxy=localhost,127.0.0.1 \
     -e BOBI_SERVER_PASSWORD -e BOBI_MODEL_BASE_URL="$model_url" -e BOBI_MODEL -e BOBI_MODEL_API_KEY \
-    -e BOBI_USER="${BOBI_USER:-$USER}" -e OTEL_EXPORTER_OTLP_ENDPOINT -e BOBI_A2A \
+    -e BOBI_USER="${BOBI_USER:-$USER}" -e OTEL_EXPORTER_OTLP_ENDPOINT -e BOBI_A2A -e BOBI_A2A_TOKEN \
     -e GIT_CONFIG_COUNT=2 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0="$project" \
     -e GIT_CONFIG_KEY_1=safe.directory -e GIT_CONFIG_VALUE_1="$shadow" \
     -e ZOWE_OPT_HOST -e ZOWE_OPT_PORT -e ZOWE_OPT_PROTOCOL -e ZOWE_OPT_USER -e ZOWE_OPT_PASSWORD \
     -e ZOWE_OPT_BASE_PATH -e ZOWE_OPT_REJECT_UNAUTHORIZED -e BOBI_ZOWE_PROFILE -e BOBI_ZOWE_DATASETS -e BOBI_ZOWE_USS \
+    -e BOBI_ZOWE_JOB_OWNERS \
     "$IMAGE" >/dev/null
 
   for _ in $(seq 1 60); do
-    if curl -sf -o /dev/null -u "opencode:${BOBI_SERVER_PASSWORD}" "http://127.0.0.1:${PORT}/api/session"; then
+    # The credential goes to curl on stdin (printf is a shell builtin), never on its command line, where other users
+    # of the host could read it with ps (security review 2026-11-19).
+    if printf 'user = "opencode:%s"\n' "$BOBI_SERVER_PASSWORD" | curl -sf -o /dev/null -K - "http://127.0.0.1:${PORT}/api/session"; then
       echo "Bobi sandbox ready: http://127.0.0.1:${PORT}"
       echo "Connect: cd ${project} && bun $(cd "$(dirname "$0")/.." && pwd)/packages/shell/src/cli.ts attach http://127.0.0.1:${PORT}"
       return 0

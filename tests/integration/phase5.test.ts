@@ -101,7 +101,7 @@ describe("slash commands", () => {
     expect(JSON.stringify(agentRequests(h).at(-1)!.body.messages)).toContain("# Mode: Security (security)")
   }, 30_000)
 
-  test("/commit reads the diff without asking and asks before committing", async () => {
+  test("/commit asks before reading the diff and before committing", async () => {
     h = await createHarness()
     for (const args of [["init", "-q"], ["config", "user.email", "t@t"], ["config", "user.name", "t"]]) Bun.spawnSync(["git", ...args], { cwd: h.dir })
     await writeFile(path.join(h.dir, "a.txt"), "a\n")
@@ -113,7 +113,11 @@ describe("slash commands", () => {
     )
     const session = await h.opencode.sessions.create({ location: { directory: h.dir } })
     await h.opencode.sessions.command({ sessionID: session.id, name: "commit", text: "" })
-    const request = await waitFor(async () => (await h!.opencode.permission.list({ sessionID: session.id }))[0])
+    // Shell commands always ask, read-only git too (security review 2026-11-19, K1).
+    const read = await waitFor(async () => (await h!.opencode.permission.list({ sessionID: session.id }))[0])
+    expect(read.resources.join(" ")).toContain("git diff --staged")
+    await h.opencode.permission.reply({ sessionID: session.id, requestID: read.id, decision: "once" })
+    const request = await waitFor(async () => (await h!.opencode.permission.list({ sessionID: session.id })).find((r) => r.id !== read.id))
     expect(request.action).toBe("shell")
     expect(request.resources.join(" ")).toContain("git commit")
     expect(toolText(h)).toContain("a.txt")

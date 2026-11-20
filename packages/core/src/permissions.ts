@@ -36,6 +36,21 @@ export function rulesForAgent(agentId: string, policy: readonly Rule[], autoAppr
   return [...policy, ...approvals]
 }
 
+/**
+ * True when a shell command redirects output into a file (`>`, `>>`, `&>`, `>|`). Redirects to another descriptor
+ * (`2>&1`) or to /dev/null do not count. Quoted text is not parsed, so a `>` inside quotes also counts: that errs on
+ * the side of asking. Used to keep explicit shell auto-approvals (e.g. "git log *") from writing files.
+ */
+export function writesFile(command: string): boolean {
+  for (const m of command.matchAll(/(?:^|[^<>])(?:&>>?|\d*>>?\|?)\s*([^\s;|]*?)(?=$|[\s;|]|&&)/g)) {
+    const target = m[1] ?? ""
+    // `>&2`, `>&-`: another descriptor. `>&file` and `>& file` write a file.
+    if (/^&(\d+|-)$/.test(target) || target === "/dev/null") continue
+    return true
+  }
+  return false
+}
+
 /** Glob match mirroring OpenCode's Wildcard.match (core/src/util/wildcard.ts). */
 export function wildcard(value: string, pattern: string): boolean {
   let source = pattern

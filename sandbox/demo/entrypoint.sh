@@ -15,6 +15,11 @@ export BOBI_MODEL_API_KEY="${BOBI_MODEL_API_KEY:-ollama}"
 export BOBI_SERVER_PASSWORD
 BOBI_SERVER_PASSWORD="$(head -c 24 /dev/urandom | base64 | tr -d '/+=\n')"
 mkdir -p "$BOBI_HOME"
+# BOBI_HOME is a volume that outlives restarts and is shared by all visitors. Everything in it that steers Bobi
+# (global rules, modes, skills, commands, registry, trust decisions) is removed at every start, so nothing a visitor
+# planted reaches later visitors; audit and usage data stay (security review 2026-11-19, M7).
+find "$BOBI_HOME" -mindepth 1 -maxdepth 1 \( -name rules -o -name 'rules-*' -o -name custom_modes.yaml -o -name skills \
+  -o -name commands -o -name registry -o -name trust -o -name AGENTS.md \) -exec rm -rf {} +
 cp /opt/demo/config.jsonc "$BOBI_HOME/config.jsonc"
 
 pids=()
@@ -30,9 +35,13 @@ for _ in $(seq 1 60); do curl -fsS http://127.0.0.1:11434/api/version > /dev/nul
 ( curl -fsS http://127.0.0.1:11434/api/generate -d "{\"model\":\"$BOBI_MODEL\",\"prompt\":\"\",\"keep_alive\":-1}" > /dev/null 2>&1 || true ) &
 
 echo "Bobi demo: starting the Bobi server …"
-bun /opt/bobi/packages/shell/src/cli.ts serve --hostname 127.0.0.1 --port 4096 > /tmp/bobi-server.log 2>&1 &
+# A2A needs its own token (the demo only shows the public agent card). It is given to the server alone, not exported,
+# so visitor shells do not inherit it.
+BOBI_A2A=1 BOBI_A2A_TOKEN="$(head -c 32 /dev/urandom | base64 | tr -d '/+=\n')" \
+  bun /opt/bobi/packages/shell/src/cli.ts serve --hostname 127.0.0.1 --port 4096 > /tmp/bobi-server.log 2>&1 &
 pids+=($!)
-for _ in $(seq 1 60); do curl -fsS -o /dev/null -u "opencode:$BOBI_SERVER_PASSWORD" http://127.0.0.1:4096/api/session 2> /dev/null && break; sleep 1; done
+# The credential goes to curl on stdin, not on its command line (visible to every process in the container).
+for _ in $(seq 1 60); do printf 'user = "opencode:%s"\n' "$BOBI_SERVER_PASSWORD" | curl -fsS -o /dev/null -K - http://127.0.0.1:4096/api/session 2> /dev/null && break; sleep 1; done
 
 ttyd_args=(ttyd -d 3 -W -O -p 7681 -m 8 -c "demo:${DEMO_PASSWORD}" -t titleFixed="Bobi Demo" -t fontSize=15 -t 'theme={"background":"#0a0f1e"}')
 if [ -f /run/tls/tls.crt ] && [ -f /run/tls/tls.key ]; then

@@ -16,7 +16,8 @@ export type ToUi =
   | { type: "user"; text: string; context: string[] }
   | { type: "text"; delta: string }
   | { type: "tool"; name: string; summary: string }
-  | { type: "approval"; id: string; action: string; resources: string[]; diff: boolean }
+  | { type: "approval"; id: string; action: string; resources: string[]; diff: boolean; rejectOnly?: boolean }
+  | { type: "approval-blocked"; id: string }
   | { type: "approval-done"; id: string; decision: Decision }
   | { type: "busy"; busy: boolean }
   | { type: "mode"; mode: string }
@@ -97,8 +98,8 @@ export class ChatController {
       void this.loadModes().then((modes) => modes.length && this.ui.post({ type: "ready", modes, mode: this.mode }))
       return
     }
-    if (!this.sessionID) return
     const child = data.sessionID !== undefined && this.children.has(String(data.sessionID))
+    if (!this.sessionID && !child) return
     if (data.sessionID && data.sessionID !== this.sessionID && !child) return
     // From subtasks only tool activity and approvals are shown; their text goes back to the orchestrator.
     if (child && !["session.tool.input.started", "session.tool.called", "permission.asked"].includes(event.type)) return
@@ -136,23 +137,32 @@ export class ChatController {
     }
   }
 
+  /** Edits whose change could not be shown: they can only be rejected (review 2026-11-19: no blind approvals). */
+  private readonly unseen = new Set<string>()
+
   private async ask(request: PermissionRequest) {
     this.pending.set(request.id, request)
-    const diff = request.action === "edit" && (request.metadata?.files?.length ?? 0) > 0
-    this.ui.post({ type: "approval", id: request.id, action: request.action, resources: request.resources, diff })
+    const isEdit = request.action === "edit"
+    const diff = isEdit && (request.metadata?.files?.length ?? 0) > 0
+    if (isEdit && !diff) this.unseen.add(request.id)
+    this.ui.post({ type: "approval", id: request.id, action: request.action, resources: request.resources, diff, ...(isEdit && !diff ? { rejectOnly: true } : {}) })
     if (diff) {
       try {
         await this.ui.showDiff(request)
       } catch (error) {
-        this.ui.error(`Cannot show the proposed change: ${(error as Error).message}`)
+        this.unseen.add(request.id)
+        this.ui.post({ type: "approval-blocked", id: request.id })
+        this.ui.error(`Cannot show the proposed change, so it can only be rejected: ${(error as Error).message}`)
       }
     }
   }
 
-  async reply(id: string, decision: Decision) {
+  async reply(id: string, requested: Decision) {
     const request = this.pending.get(id)
     if (!request) return
     this.pending.delete(id)
+    // A change nobody could look at is never accepted, whatever button was pressed.
+    const decision: Decision = this.unseen.delete(id) && requested !== "reject" ? "reject" : requested
     await this.client.reply(request.sessionID, id, decision)
     this.ui.post({ type: "approval-done", id, decision })
   }
@@ -196,19 +206,30 @@ export class ChatController {
 
   /**
    * A commit message for the staged changes, written by Bobi in its own short session: the model reads the diff with
-   * `git diff --staged` (allowed without asking), so the diff passes Bobi's secret masking and audit like any tool output.
+   * `git diff --staged`, so the diff passes Bobi's secret masking and audit like any tool output. Shell commands always
+   * ask (even read-only git can run code from a crafted repository), so the session's approvals appear in the panel
+   * like those of a subtask.
    */
   async commitMessage(timeoutMs = 120_000): Promise<string> {
     const session = await this.client.createSession(this.directory, "code")
+    this.children.add(session.id)
+    try {
+      return await this.awaitCommitMessage(session.id, timeoutMs)
+    } finally {
+      this.children.delete(session.id)
+    }
+  }
+
+  private async awaitCommitMessage(sessionID: string, timeoutMs: number): Promise<string> {
     await this.client.prompt(
-      session.id,
+      sessionID,
       "Write a git commit message for the staged changes. Run `git diff --staged` (and `git log -n 10 --format=%s` for the " +
         "repository's style). Reply with the commit message only – subject line (max 72 characters, imperative), a blank " +
         "line, then a short body if needed. No quotes, no code fences, no other text. Do not run any other command.",
     )
     const deadline = Date.now() + timeoutMs
     while (Date.now() < deadline) {
-      const messages = (await this.client.messages(session.id)) as { type: string; content?: { type: string; text?: string }[]; outcome?: string }[]
+      const messages = (await this.client.messages(sessionID)) as { type: string; content?: { type: string; text?: string }[]; outcome?: string }[]
       if (messages.some((m) => m.type === "idle")) {
         const last = [...messages].reverse().find((m) => m.type === "assistant" && m.content?.some((c) => c.type === "text" && c.text?.trim()))
         const text = last?.content?.filter((c) => c.type === "text").map((c) => c.text ?? "").join("").trim() ?? ""
