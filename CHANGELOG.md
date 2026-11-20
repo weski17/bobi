@@ -6,6 +6,17 @@ phases 1–8 (see [`docs/STATUS.md`](docs/STATUS.md) and the [demo guides](docs/
 
 ## [Unreleased]
 
+## [1.3.0] – 2026-11-20
+
+Security release: fixes the low findings of the security review of 2026-11-19.
+
+**Upgrade notes (changed behaviour):**
+- Revoked registry packages that are still installed are not loaded any more; run `bobi registry check --remove` to
+  clean them up. A damaged revocation store blocks all registry packages until it is repaired.
+- `bobi dossier verify` without `--key` exits with 2 (intact, signer not checked) instead of 0. Scripts that need a
+  verified signer pass `--key`.
+- The server container runs with a read-only root file system; write only to the mounted volumes and `/tmp`.
+
 ### Security
 
 Low findings of the security review of 2026-11-19:
@@ -250,7 +261,8 @@ Phase 1: the core.
 - Sandbox: unprivileged Podman container, internal network, egress allowlist proxy.
 - CI with typecheck, tests, coverage gate and terminal-UI end-to-end tests.
 
-[Unreleased]: https://github.com/weski17/bobi/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/weski17/bobi/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/weski17/bobi/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/weski17/bobi/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/weski17/bobi/compare/v1.0.1...v1.1.0
 [1.0.1]: https://github.com/weski17/bobi/compare/v1.0.0...v1.0.1

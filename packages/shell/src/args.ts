@@ -1,6 +1,6 @@
 // Command line of the `bobi` application (ADR-0013). Only Bobi's own commands exist.
 
-export const VERSION = "1.2.0"
+export const VERSION = "1.3.0"
 
 export type Command =
   | { kind: "tui"; directory?: string; client: string[] }

@@ -11,7 +11,7 @@ const PORT = 4296
 const NAME = `bobi-test-${process.pid}`
 const available =
   Bun.spawnSync(["docker", "compose", "version"], { stdout: "ignore", stderr: "ignore" }).exitCode === 0 &&
-  Bun.spawnSync(["docker", "image", "inspect", "bobi:1.2.0"], { stdout: "ignore", stderr: "ignore" }).exitCode === 0
+  Bun.spawnSync(["docker", "image", "inspect", "bobi:1.3.0"], { stdout: "ignore", stderr: "ignore" }).exitCode === 0
 
 // Docker's VM shares the home directory, so the project lives under $HOME.
 const project = path.join(os.homedir(), ".bobi-compose-test", `p-${process.pid}`)
