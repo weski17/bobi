@@ -749,7 +749,7 @@ Eine kommentierte Vorlage aller Einstellungen: [`bobi.example.jsonc`](../bobi.ex
 | `bun run test:e2e` | Terminal-Oberfläche inkl. Freigabe per Tastatur |
 | `bun run test:ide` | Integrationstest in der echten IDE |
 | `bun run test:sandbox` | Sandbox: Allowlist, unprivilegierter Nutzer, `.bobiignore`-Mounts, MCP im Container |
-| `bun run test:redteam` | Red-Team mit promptfoo (8 Angriffe gegen ein absichtlich kompromittiertes Modell) |
+| `bun run test:redteam` | Red-Team mit promptfoo (10 Angriffe gegen ein absichtlich kompromittiertes Modell) |
 | `bun run test:load -- --sessions 100` | Lasttest mit p50–p99 |
 
 Gegen euren echten Endpunkt:
