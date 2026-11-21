@@ -23,6 +23,7 @@
 
 <p align="center">
   <a href="docs/media/bobi-tour/bobi-tour.mp4"><b>▶ Watch the feature tour (3½ min)</b></a> ·
+  <a href="docs/media/bobi-showcase/bobi-showcase.mp4"><b>▶ Showcase with live demo (6 min)</b></a> ·
   <a href="docs/HANDBUCH.md">Handbuch (Deutsch)</a> ·
   <a href="docs/ARCHITECTURE.md">Architecture</a> ·
   <a href="#quick-start">Quick start</a> ·

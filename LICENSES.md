@@ -23,7 +23,8 @@ Notes:
 | GNU bash 5 | GPL-3.0 | Shell used by tests; not linked or distributed |
 | ffmpeg 9 (Homebrew) | LGPL-2.1 / GPL-2.0 (build with x264) | Encodes the demo videos in `docs/media`; dev machine only, not shipped |
 | Piper TTS (`piper-tts` 1.8.0, PyPI) | GPL-3.0-or-later | Generates the tour narration on a dev machine; not shipped, not in the repository |
-| Piper voice `de_DE-thorsten-high` (Hugging Face `rhasspy/piper-voices`) | Model MIT; Thorsten-Voice dataset CC0 | Narration voice of `docs/media/bobi-tour/bobi-tour.mp4`; the model file is not in the repository |
+| Piper TTS binary (`rhasspy/piper` release 2023.11.14-2, `piper_linux_aarch64`) | MIT | Narration of `docs/media/bobi-showcase` on a dev machine, run in a container (`oven/bun` image) because the release's macOS build is x86_64 only; not shipped, not in the repository |
+| Piper voice `de_DE-thorsten-high` (Hugging Face `rhasspy/piper-voices`) | Model MIT; Thorsten-Voice dataset CC0 | Narration voice of `docs/media/bobi-tour/bobi-tour.mp4` and `docs/media/bobi-showcase/bobi-showcase.mp4`; the model file is not in the repository |
 | macOS speech voice "Anna" (`say`) | Apple macOS licence: personal, non-commercial use only | Fallback in `make.ts` for drafts only; the published tour uses Piper |
 | Docker Buildx (Homebrew) | Apache-2.0 | `docker build` with the multi-stage, multi-platform Containerfile; dev machines |
 | Colima | MIT | Linux VM for Docker on macOS (instead of Docker Desktop, which needs a paid licence in large companies) |
