@@ -1,0 +1,3 @@
+$ bobi dossier verify forged.json
+BROKEN: the signature does not match
+

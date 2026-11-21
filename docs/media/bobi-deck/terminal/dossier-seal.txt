@@ -1,0 +1,23 @@
+$ bobi dossier --session ses_e4d6d9d3bffeG8oOaEx2lwEuQu --task 1 --out task.json
+bobi: dossier written to task.json (key f0545ff76ff1f811); check it with: bobi dossier verify task.json
+# Change dossier – session ses_e4d6d9d3bffeG8oOaEx2lwEuQu, task 1
+
+- User: besucher
+- Sealed: 2026-11-06T21:38:33.153Z
+- Models: qwen3:4b-instruct-2507-q4_K_M
+- Tokens: 2756
+- Tool calls: 1 (0 failed)
+- Approvals: 0 (0 rejected)
+- Integrity: intact, key not checked against a trusted key
+- Key: f0545ff76ff1f811
+- Head: 25240331462716a50a0712849ba2eaf8145df21b7f72a96650f1ad34386cd0f0
+
+| # | Time | Kind | Mode | What | Result |
+|---|---|---|---|---|---|
+| 0 | 20:35:00 | task | ask | "Lies src/checkout.ts und erkläre in drei Sätzen, was total macht." | started |
+| 1 | 20:36:02 | tool | ask | read src/checkout.ts | completed |
+| 2 | 20:36:02 | permission | ask | read src/checkout.ts | allow |
+| 3 | 20:36:02 | usage | ask | qwen3:4b-instruct-2507-q4_K_M in 2376 / out 22 |  |
+| 4 | 20:36:24 | usage | ask | qwen3:4b-instruct-2507-q4_K_M in 233 / out 125 |  |
+
+

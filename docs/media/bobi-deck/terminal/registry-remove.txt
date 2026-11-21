@@ -1,0 +1,6 @@
+$ bobi registry check --from reg --remove
+revocation list reg/revocations.bobirev.json: serial 1, 1 entries
+REVOKED command erklaere 1.0.0 in ~/.bobi: enthält ein Token
+  removed
+no revoked package left installed
+
