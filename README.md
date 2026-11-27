@@ -1,8 +1,6 @@
-<p align="center">
-  <img src="branding/default/icon.svg" width="120" alt="Bobi logo">
-</p>
-
-<h1 align="center">Bobi</h1>
+<h1 align="center">
+  <img src="docs/media/banner/banner.png" alt="Bobi – your AI development partner, entirely on-premise" width="100%">
+</h1>
 
 <p align="center">
   <b>Your AI development partner – entirely on-premise.</b><br>
@@ -17,7 +15,7 @@
   <a href="https://github.com/weski17/bobi/releases/latest"><img src="https://img.shields.io/badge/release-v1.3.0-3b6fe0" alt="Release v1.3.0"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-5eead4" alt="MIT license"></a>
   <img src="https://img.shields.io/badge/tests-483%20passing-4ade80" alt="483 tests passing">
-  <img src="https://img.shields.io/badge/red%20team-8%2F8%20contained-a78bfa" alt="Red team 8/8 contained">
+  <img src="https://img.shields.io/badge/red%20team-10%2F10%20contained-a78bfa" alt="Red team 10/10 contained">
   <img src="https://img.shields.io/badge/cloud-none-f87171" alt="No cloud">
 </p>
 
