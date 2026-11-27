@@ -222,6 +222,12 @@ docker compose --env-file ~/.bobi-demo.env -f compose.demo.yaml down
 Für den nächsten Testtermin ein **neues Passwort** erzeugen (Schritt 1, Datei vorher löschen). Willst du die Chats und
 Änderungen der Tester loswerden: `docker compose … down -v`.
 
+**Sicherheit:** Die Tester sind **nicht voneinander getrennt**. Wer das Passwort hat, sieht die Sitzungen und
+Arbeitsordner der anderen und kann im Container Befehle ausführen (siehe `SECURITY.md`). Lade nur Leute ein, denen sie
+untereinander vertrauen, und nutze **keinen echten Code und keine echten Zugangsdaten** in der Demo. Beim Start räumt die
+Demo globale Regeln, Modi, Skills, Befehle und Vertrauensentscheidungen aus ihrem Volume. Danach den Tunnel
+abschalten (Schritt 7).
+
 **Grenzen:** Mehr als zwei, drei Tester gleichzeitig sind zu viel (eine Anfrage gleichzeitig). Alle Tester teilen einen
 Arbeitsordner. Fällt dein Rechner in den Ruhezustand oder die Verbindung weg, sind die Tester getrennt. Es gibt keine
 Verfügbarkeitszusage. Für einen dauerhaften Betrieb nimm die Schritte oben mit einem Server.
