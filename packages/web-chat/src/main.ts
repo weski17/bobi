@@ -3,8 +3,9 @@
 //   - acquireVsCodeApi(): messages from the page go to the controller, controller messages go back to the page;
 //   - the diff editor: the proposed change is shown inside the approval card.
 // The page's own login (same origin) authenticates every request, so the client sends no credentials.
-import { BobiClient, type PermissionRequest } from "../../ide-extension/src/client.ts"
+import type { PermissionRequest } from "../../ide-extension/src/client.ts"
 import { ChatController, type ToUi } from "../../ide-extension/src/controller.ts"
+import { PollingClient } from "./polling-client.ts"
 
 type FromPage = { type: string; text?: string; id?: string; decision?: "once" | "always" | "reject"; mode?: string }
 
@@ -37,7 +38,7 @@ let controller: ChatController | undefined
 
 async function boot() {
   const { directory } = (await (await fetch("/config.json")).json()) as { directory: string }
-  controller = new ChatController(new BobiClient("", undefined), directory, {
+  controller = new ChatController(new PollingClient(""), directory, {
     // The card says "open in the diff editor" for edits; here the diff is inside the card.
     post: (m) => toPage(m.type === "approval" ? { ...m, diff: false } : m),
     showDiff: async (r) => showDiff(r),

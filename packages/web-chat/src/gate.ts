@@ -4,6 +4,7 @@
 import { timingSafeEqual } from "node:crypto"
 import { readFileSync } from "node:fs"
 import path from "node:path"
+import { EventHub } from "./hub.ts"
 
 export type GateOptions = {
   readonly port: number
@@ -20,6 +21,8 @@ export type GateOptions = {
   readonly distDir: string
   readonly mediaDir: string
   readonly tls?: { cert: string; key: string }
+  /** How long a poll request waits for the next event before it answers empty (ms). Stay below a proxy's timeout. */
+  readonly pollWaitMs?: number
 }
 
 const FILES: Record<string, { dir: "public" | "dist" | "media"; file: string; type: string }> = {
@@ -30,11 +33,13 @@ const FILES: Record<string, { dir: "public" | "dist" | "media"; file: string; ty
   "/bobi.svg": { dir: "media", file: "bobi.svg", type: "image/svg+xml" },
 }
 
-/** The API calls of the chat controller. Everything else of the engine's API stays unreachable from the browser. */
+/**
+ * The API calls of the chat controller. Everything else of the engine's API stays unreachable from the browser.
+ * The event stream (`/api/event`) is not among them: the gate reads it itself and serves it as `/chat/poll`.
+ */
 const SEG = "[A-Za-z0-9_-]+"
 export const ALLOWED: readonly { method: string; path: RegExp }[] = [
   { method: "GET", path: /^\/api\/agent$/ },
-  { method: "GET", path: /^\/api\/event$/ },
   { method: "POST", path: /^\/api\/session$/ },
   { method: "POST", path: new RegExp(`^/api/session/${SEG}/(prompt|interrupt|agent|revert/stage|revert/commit)$`) },
   { method: "GET", path: new RegExp(`^/api/session/${SEG}/(permission|message)$`) },
@@ -140,24 +145,39 @@ async function forward(request: Request, url: URL, upstream: string, upstreamAut
   return new Response(response.body, { status: response.status, headers: out })
 }
 
+/** The page itself: its files and the small config it reads at start. Anything else is a 404. */
+function page(request: Request, url: URL, directory: string, dirs: Record<"public" | "dist" | "media", string>): Response {
+  if (request.method !== "GET") return plain(404, "Not found")
+  if (url.pathname === "/config.json") return new Response(JSON.stringify({ directory }), { headers: { ...SECURITY_HEADERS, "content-type": "application/json" } })
+  const known = Object.hasOwn(FILES, url.pathname) ? FILES[url.pathname] : undefined
+  return known ? serveFile(known, dirs) : plain(404, "Not found")
+}
+
+/** `GET /chat/poll[?after=N]`: the events after N, waiting a while if there are none. Without `after`: only the position. */
+async function poll(request: Request, url: URL, hub: EventHub, waitMs: number): Promise<Response> {
+  const raw = url.searchParams.get("after")
+  const after = raw === null ? undefined : /^\d{1,15}$/.test(raw) ? Number(raw) : NaN
+  if (after !== undefined && Number.isNaN(after)) return plain(400, "after must be a number")
+  const body = after === undefined ? { last: hub.last, events: [] } : await hub.since(after, waitMs, request.signal)
+  return new Response(JSON.stringify(body), { headers: { ...SECURITY_HEADERS, "content-type": "application/json", "cache-control": "no-store" } })
+}
+
 export function startGate(options: GateOptions) {
   const upstreamAuth = `Basic ${btoa(`opencode:${options.serverPassword}`)}`
+  const hub = new EventHub(options.upstream, upstreamAuth)
   const dirs = { public: options.publicDir, dist: options.distDir, media: options.mediaDir }
   const handle = async (request: Request): Promise<Response> => {
     const url = new URL(request.url)
     if (!authorized(request, options.password)) return plain(401, "Login required", { "www-authenticate": 'Basic realm="Bobi Demo"' })
     if (crossSite(request)) return plain(403, "Cross-site request refused")
-    if (url.pathname === "/config.json" && request.method === "GET")
-      return new Response(JSON.stringify({ directory: options.directory }), { headers: { ...SECURITY_HEADERS, "content-type": "application/json" } })
-    const known = FILES[url.pathname]
-    if (known && request.method === "GET") return serveFile(known, dirs)
+    if (url.pathname === "/chat/poll" && request.method === "GET") return poll(request, url, hub, options.pollWaitMs ?? 25_000)
     if (url.pathname.startsWith("/api/")) return forward(request, url, options.upstream, upstreamAuth, options.directory)
-    return plain(404, "Not found")
+    return page(request, url, options.directory, dirs)
   }
-  return Bun.serve({
+  const server = Bun.serve({
     port: options.port,
     hostname: options.hostname ?? "0.0.0.0",
-    // Server-sent events stay open for hours.
+    // A poll request can wait for the next event; the answer to a prompt can take minutes.
     idleTimeout: 0,
     // Never Bun's development error page (stack and source) for visitors; an unexpected error is a plain 500.
     development: false,
@@ -165,4 +185,10 @@ export function startGate(options: GateOptions) {
     ...(options.tls ? { tls: { cert: Bun.file(options.tls.cert), key: Bun.file(options.tls.key) } } : {}),
     fetch: handle,
   })
+  const stop = server.stop.bind(server)
+  server.stop = (force) => {
+    hub.close()
+    return stop(force)
+  }
+  return server
 }
