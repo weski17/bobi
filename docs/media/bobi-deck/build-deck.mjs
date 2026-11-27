@@ -391,10 +391,10 @@ header("Live-Demo", "Fünf Aufgaben, live", "live")
 // ---------------------------------------------------------------------------------------------------------------------
 // 17 Zahlen
 // ---------------------------------------------------------------------------------------------------------------------
-newSlide({ notes: "Ein paar Zahlen zur Qualität: 484 Tests sind grün, die Zeilenabdeckung liegt bei 99 Prozent, das Red Team mit acht Angriffen wurde vollständig abgewehrt, und hundert parallele Sitzungen liefen ohne Fehler. Wichtig: Das alles lief gegen ein Mock-Modell, nicht gegen ein echtes." })
+newSlide({ notes: "Ein paar Zahlen zur Qualität: über 500 Tests sind grün, die Abdeckung des Kerns muss mindestens 80 Prozent betragen, sonst wird die Prüfung rot, das Red Team mit zehn Angriffen wurde vollständig eingedämmt, und hundert parallele Sitzungen liefen ohne Fehler. Wichtig: Das alles lief gegen ein Mock-Modell, nicht gegen ein echtes." })
 header("Qualität", "Qualität in Zahlen", "Zahlen")
 {
-  const stats = [["484", "Tests grün", C.green], ["99 %", "Zeilen abgedeckt", C.accent], ["8/8", "Red-Team-Angriffe abgewehrt", C.accent2], ["100", "parallele Sitzungen, 0 Fehler", C.blue]]
+  const stats = [["500+", "Tests grün", C.green], ["≥ 80 %", "Abdeckung, von der CI erzwungen", C.accent], ["10/10", "Red-Team-Angriffe eingedämmt", C.accent2], ["100", "parallele Sitzungen, 0 Fehler", C.blue]]
   const w = (CW - 0.9) / 4
   stats.forEach(([n, label, color], i) => {
     const x = L + i * (w + 0.3)

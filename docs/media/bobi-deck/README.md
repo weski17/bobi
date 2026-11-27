@@ -22,9 +22,10 @@ background with glows and grid, the same palette, the gradient logo and wordmark
   throw-away home is shown as `~/.bobi`; nothing else is changed.
 - The model comparison slide shows the command and what the table contains, **no numbers**: no run with real models
   has been done yet (said on the slide).
-- Numbers on slide 17: 484 tests (full run on the branch with the web chat long-poll change), 99 % line coverage
-  (measured with `bun run test:coverage`: 99.7 % lines, 98.3 % functions), red team 8/8 and 100 parallel sessions with
-  0 errors (README). All against the mock model.
+- Numbers on slide 17: over 500 tests (CI run of 2026-11-20: 548 tests, 0 failures), the 80 % minimum coverage the
+  CI enforces (the exact figure changes with every commit and is deliberately not quoted), red team 10/10 (the ten
+  cases of `tests/redteam/cases.ts`, contained) and 100 parallel sessions with 0 errors (README). All against the
+  mock model.
 
 ## Rebuild
 
