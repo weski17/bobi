@@ -173,6 +173,7 @@ model or network. `bun run test` · [testing guide](docs/HANDBUCH.md#16-qualitä
 | [Status](docs/STATUS.md) | Progress, findings, open points |
 | [Changelog](CHANGELOG.md) · [Releases](https://github.com/weski17/bobi/releases) | What changed in each version |
 | [Production checklist](docs/PRODUKTION.md) (German) | What is still missing before Bobi runs in daily use: pilot, real models, external pen test |
+| [Pilot guide](docs/PILOT.md) (German) | Four-week internal test with a small team: set-up, acceptance checks, weekly review, stop rules |
 | [Security policy](SECURITY.md) | How to report a vulnerability, what Bobi guarantees |
 
 ## Contributing
