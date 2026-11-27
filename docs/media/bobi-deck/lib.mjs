@@ -51,6 +51,38 @@ export function loadPptx(home = process.env.DECK_HOME ?? path.join(os.homedir(),
   return require("pptxgenjs")
 }
 
+function addShapeEl(pres, slide, e) {
+  const shape = e.k === "ellipse" ? pres.ShapeType.ellipse : e.r > 0 ? pres.ShapeType.roundRect : pres.ShapeType.rect
+  slide.addShape(shape, {
+    x: e.x, y: e.y, w: e.w, h: e.h,
+    fill: { color: e.fill, ...(e.alpha ? { transparency: e.alpha } : {}) },
+    line: e.line ? { color: e.line, width: e.lw ?? 1 } : { type: "none" },
+    ...(e.k === "rect" && e.r > 0 ? { rectRadius: e.r } : {}),
+  })
+}
+
+function runOptions(e, p, r, last) {
+  return {
+    fontFace: r.f ?? e.font, fontSize: r.s ?? e.size, color: r.c ?? e.color, bold: r.b ?? e.bold, italic: r.i ?? false,
+    align: p.align ?? e.align, paraSpaceAfter: p.after ?? e.after, lineSpacingMultiple: e.ls,
+    ...(last ? { breakLine: true } : {}),
+    ...(e.spacing ? { charSpacing: e.spacing } : {}),
+  }
+}
+
+function addTextEl(slide, e) {
+  const runs = e.paras.flatMap((p, pi) =>
+    p.runs.map((r, ri) => ({ text: r.t, options: runOptions(e, p, r, ri === p.runs.length - 1 && pi < e.paras.length - 1) })),
+  )
+  slide.addText(runs, { x: e.x, y: e.y, w: e.w, h: e.h, margin: 0, valign: e.valign, isTextBox: true, fit: "none", wrap: true })
+}
+
+function addElement(pres, slide, e) {
+  if (e.k === "rect" || e.k === "ellipse") addShapeEl(pres, slide, e)
+  else if (e.k === "img") slide.addImage({ path: e.file, x: e.x, y: e.y, w: e.w, h: e.h, altText: e.alt ?? "" })
+  else addTextEl(slide, e)
+}
+
 export async function writePptx(PptxGenJS, file, assets) {
   const pres = new PptxGenJS()
   pres.layout = "LAYOUT_WIDE"
@@ -62,35 +94,7 @@ export async function writePptx(PptxGenJS, file, assets) {
   for (const [kind, title] of Object.entries(layouts)) pres.defineSlideMaster({ title, background: { path: path.join(assets, `bg-${kind}.png`) } })
   for (const s of slides) {
     const slide = pres.addSlide({ masterName: layouts[s.bg] })
-    for (const e of s.els) {
-      if (e.k === "rect" || e.k === "ellipse") {
-        const shape = e.k === "ellipse" ? pres.ShapeType.ellipse : e.r > 0 ? pres.ShapeType.roundRect : pres.ShapeType.rect
-        slide.addShape(shape, {
-          x: e.x, y: e.y, w: e.w, h: e.h,
-          fill: { color: e.fill, ...(e.alpha ? { transparency: e.alpha } : {}) },
-          line: e.line ? { color: e.line, width: e.lw ?? 1 } : { type: "none" },
-          ...(e.k === "rect" && e.r > 0 ? { rectRadius: e.r } : {}),
-        })
-      } else if (e.k === "img") {
-        slide.addImage({ path: e.file, x: e.x, y: e.y, w: e.w, h: e.h, altText: e.alt ?? "" })
-      } else {
-        const runs = []
-        e.paras.forEach((p, pi) => {
-          p.runs.forEach((r, ri) => {
-            runs.push({
-              text: r.t,
-              options: {
-                fontFace: r.f ?? e.font, fontSize: r.s ?? e.size, color: r.c ?? e.color, bold: r.b ?? e.bold, italic: r.i ?? false,
-                align: p.align ?? e.align, paraSpaceAfter: p.after ?? e.after, lineSpacingMultiple: e.ls,
-                ...(ri === p.runs.length - 1 && pi < e.paras.length - 1 ? { breakLine: true } : {}),
-                ...(e.spacing ? { charSpacing: e.spacing } : {}),
-              },
-            })
-          })
-        })
-        slide.addText(runs, { x: e.x, y: e.y, w: e.w, h: e.h, margin: 0, valign: e.valign, isTextBox: true, fit: "none", wrap: true })
-      }
-    }
+    for (const e of s.els) addElement(pres, slide, e)
     if (s.notes) slide.addNotes(s.notes)
   }
   await pres.writeFile({ fileName: file })
@@ -103,28 +107,40 @@ const esc = (t) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, 
 const px = (v) => `${(v * PX).toFixed(1)}px`
 const hex = (c) => `#${c}`
 
+function shapeHtml(e, box) {
+  const radius = e.k === "ellipse" ? "50%" : px(e.r ?? 0)
+  const border = e.line ? `border:${(e.lw ?? 1) * 2}px solid ${hex(e.line)};box-sizing:border-box;` : ""
+  return `<div style="${box};background:${hex(e.fill)};${e.alpha ? `opacity:${1 - e.alpha / 100};` : ""}border-radius:${radius};${border}"></div>`
+}
+
+function runHtml(e, r) {
+  const style = `font-family:'${r.f ?? e.font}';font-size:${(r.s ?? e.size) * 2}px;color:${hex(r.c ?? e.color)};font-weight:${(r.b ?? e.bold) ? 700 : 400};font-style:${r.i ? "italic" : "normal"};${e.spacing ? `letter-spacing:${e.spacing * 2}px;` : ""}white-space:pre-wrap`
+  return `<span style="${style}">${esc(r.t)}</span>`
+}
+
+function paraHtml(e, p) {
+  const runs = p.runs.map((r) => runHtml(e, r)).join("")
+  const size = Math.max(...p.runs.map((r) => r.s ?? e.size))
+  const line = (size * 2 * 1.15 * e.ls).toFixed(1)
+  return `<div style="text-align:${p.align ?? e.align};margin-bottom:${(p.after ?? e.after) * 2}px;line-height:${line}px;min-height:${line}px">${runs}</div>`
+}
+
+function textHtml(e, box, i, n) {
+  const paras = e.paras.map((p) => paraHtml(e, p)).join("")
+  const justify = e.valign === "middle" ? "center" : e.valign === "bottom" ? "flex-end" : "flex-start"
+  return `<div class="txt" data-slide="${i + 1}" data-n="${n}" style="${box};display:flex;flex-direction:column;justify-content:${justify};overflow:hidden">${paras}</div>`
+}
+
+function elementHtml(e, i, n) {
+  const box = `left:${px(e.x)};top:${px(e.y)};width:${px(e.w)};height:${px(e.h)}`
+  if (e.k === "rect" || e.k === "ellipse") return shapeHtml(e, box)
+  if (e.k === "img") return `<img src="file://${e.file}" style="${box};object-fit:fill" alt="">`
+  return textHtml(e, box, i, n)
+}
+
 export function previewHtml(assets) {
   const out = slides.map((s, i) => {
-    const parts = s.els.map((e, n) => {
-      const box = `left:${px(e.x)};top:${px(e.y)};width:${px(e.w)};height:${px(e.h)}`
-      if (e.k === "rect" || e.k === "ellipse") {
-        const radius = e.k === "ellipse" ? "50%" : px(e.r ?? 0)
-        const border = e.line ? `border:${(e.lw ?? 1) * 2}px solid ${hex(e.line)};box-sizing:border-box;` : ""
-        return `<div style="${box};background:${hex(e.fill)};${e.alpha ? `opacity:${1 - e.alpha / 100};` : ""}border-radius:${radius};${border}"></div>`
-      }
-      if (e.k === "img") return `<img src="file://${e.file}" style="${box};object-fit:fill" alt="">`
-      const paras = e.paras
-        .map((p) => {
-          const runs = p.runs
-            .map((r) => `<span style="font-family:'${r.f ?? e.font}';font-size:${(r.s ?? e.size) * 2}px;color:${hex(r.c ?? e.color)};font-weight:${(r.b ?? e.bold) ? 700 : 400};font-style:${r.i ? "italic" : "normal"};${e.spacing ? `letter-spacing:${e.spacing * 2}px;` : ""}white-space:pre-wrap">${esc(r.t)}</span>`)
-            .join("")
-          const size = Math.max(...p.runs.map((r) => r.s ?? e.size))
-          return `<div style="text-align:${p.align ?? e.align};margin-bottom:${(p.after ?? e.after) * 2}px;line-height:${(size * 2 * 1.15 * e.ls).toFixed(1)}px;min-height:${(size * 2 * 1.15 * e.ls).toFixed(1)}px">${runs}</div>`
-        })
-        .join("")
-      const justify = e.valign === "middle" ? "center" : e.valign === "bottom" ? "flex-end" : "flex-start"
-      return `<div class="txt" data-slide="${i + 1}" data-n="${n}" style="${box};display:flex;flex-direction:column;justify-content:${justify};overflow:hidden">${paras}</div>`
-    })
+    const parts = s.els.map((e, n) => elementHtml(e, i, n))
     return `<section class="slide" id="s${i + 1}" style="background:url('file://${path.join(assets, `bg-${s.bg}.png`)}') center/cover">${parts.join("")}</section>`
   })
   return `<!doctype html><meta charset="utf-8"><style>body{margin:0;background:#000}.slide{position:relative;width:1920px;height:1080px;overflow:hidden;margin:0 0 20px}.slide>*{position:absolute;box-sizing:border-box}</style>${out.join("")}`
