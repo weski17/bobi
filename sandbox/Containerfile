@@ -17,6 +17,8 @@ LABEL org.opencontainers.image.source="https://github.com/weski17/bobi" \
 # The base image is pinned by digest, so its Debian packages age. `upgrade` pulls the Debian security fixes that
 # appeared since (e.g. zlib1g, CVE-2026-85091, found by the image scan on 2026-11-07); package versions therefore
 # follow Debian stable-security at build time, the base image itself stays pinned.
+# The image workflow passes the date, so a cached copy of this layer never hides a fix published since.
+ARG APT_REFRESH=none
 RUN apt-get update \
  && apt-get upgrade -y --no-install-recommends \
  && apt-get install -y --no-install-recommends git ripgrep ca-certificates \

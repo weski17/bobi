@@ -49,6 +49,11 @@ jobs:
       - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
         if: env.PUBLISH == 'true'
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      # Debian security fixes: the layer with `apt-get upgrade` sits in the build cache and would never see a fix
+      # published after it was cached (the demo image went red on 2026-11-27 for krb5 and libzstd1 although the
+      # Containerfile upgrades). The date changes the build argument, so that layer is rebuilt once a day.
+      - id: day
+        run: echo "date=$(date -u +%F)" >> "$GITHUB_OUTPUT"
       - id: meta
         uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
         with:
@@ -66,6 +71,7 @@ jobs:
           context: .
           file: sandbox/Containerfile
           target: server
+          build-args: APT_REFRESH=${{ steps.day.outputs.date }}
           platforms: linux/amd64
           load: true
           tags: bobi:ci
@@ -86,6 +92,7 @@ jobs:
           context: .
           file: sandbox/Containerfile
           target: server
+          build-args: APT_REFRESH=${{ steps.day.outputs.date }}
           platforms: ${{ env.PUBLISH == 'true' && 'linux/amd64,linux/arm64' || 'linux/amd64' }}
           push: ${{ env.PUBLISH == 'true' }}
           tags: ${{ steps.meta.outputs.tags }}
@@ -110,6 +117,11 @@ jobs:
       - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
         if: env.PUBLISH == 'true'
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      # Debian security fixes: the layer with `apt-get upgrade` sits in the build cache and would never see a fix
+      # published after it was cached (the demo image went red on 2026-11-27 for krb5 and libzstd1 although the
+      # Containerfile upgrades). The date changes the build argument, so that layer is rebuilt once a day.
+      - id: day
+        run: echo "date=$(date -u +%F)" >> "$GITHUB_OUTPUT"
       - id: meta
         uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
         with:
@@ -125,6 +137,7 @@ jobs:
           context: .
           file: sandbox/Containerfile
           target: demo
+          build-args: APT_REFRESH=${{ steps.day.outputs.date }}
           platforms: linux/amd64
           load: true
           tags: bobi-demo:ci
@@ -164,6 +177,7 @@ jobs:
           context: .
           file: sandbox/Containerfile
           target: demo
+          build-args: APT_REFRESH=${{ steps.day.outputs.date }}
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
