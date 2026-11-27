@@ -1,8 +1,6 @@
-<p align="center">
-  <img src="branding/default/icon.svg" width="120" alt="Bobi logo">
-</p>
-
-<h1 align="center">Bobi</h1>
+<h1 align="center">
+  <img src="docs/media/banner/banner.png" alt="Bobi – your AI development partner, entirely on-premise" width="100%">
+</h1>
 
 <p align="center">
   <b>Your AI development partner – entirely on-premise.</b><br>
@@ -14,10 +12,10 @@
   <a href="https://github.com/weski17/bobi/actions/workflows/ci.yml"><img src="https://github.com/weski17/bobi/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://github.com/weski17/bobi/actions/workflows/security.yml"><img src="https://github.com/weski17/bobi/actions/workflows/security.yml/badge.svg" alt="Security gate"></a>
   <a href="https://github.com/weski17/bobi/actions/workflows/image.yml"><img src="https://github.com/weski17/bobi/actions/workflows/image.yml/badge.svg" alt="Image"></a>
-  <a href="https://github.com/weski17/bobi/releases/latest"><img src="https://img.shields.io/badge/release-v1.2.0-3b6fe0" alt="Release v1.2.0"></a>
+  <a href="https://github.com/weski17/bobi/releases/latest"><img src="https://img.shields.io/badge/release-v1.3.0-3b6fe0" alt="Release v1.3.0"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-5eead4" alt="MIT license"></a>
   <img src="https://img.shields.io/badge/tests-483%20passing-4ade80" alt="483 tests passing">
-  <img src="https://img.shields.io/badge/red%20team-8%2F8%20contained-a78bfa" alt="Red team 8/8 contained">
+  <img src="https://img.shields.io/badge/red%20team-10%2F10%20contained-a78bfa" alt="Red team 10/10 contained">
   <img src="https://img.shields.io/badge/cloud-none-f87171" alt="No cloud">
 </p>
 
@@ -90,7 +88,7 @@ permissions and configuration. Pick the IDE for daily work, the shell for script
 
 ```bash
 brew install oven-sh/bun/bun ripgrep bash
-git clone --recurse-submodules --branch v1.2.0 https://github.com/weski17/bobi.git && cd bobi   # latest release
+git clone --recurse-submodules --branch v1.3.0 https://github.com/weski17/bobi.git && cd bobi   # latest release
 (cd vendor/opencode && bun install) && bun install && bun run browser:install
 bash scripts/install.sh                       # installs `bobi` and `bobi-ide` into ~/.local/bin
 
@@ -110,7 +108,7 @@ cd "$BOBI_PROJECT" && bobi attach http://127.0.0.1:4096
 ```
 
 Ready-made multi-platform images (private): `ghcr.io/weski17/bobi` (server) and `ghcr.io/weski17/bobi-demo` (with model),
-tagged per release (e.g. `1.2.0`, `1.2`) and `latest`.
+tagged per release (e.g. `1.3.0`, `1.3`) and `latest`.
 
 All settings with comments: [`bobi.example.jsonc`](bobi.example.jsonc) · full guide in German:
 [`docs/HANDBUCH.md`](docs/HANDBUCH.md).
@@ -174,6 +172,7 @@ model or network. `bun run test` · [testing guide](docs/HANDBUCH.md#16-qualitä
 | [Development](docs/DEVELOPMENT.md) · [AGENTS.md](AGENTS.md) | Setup and rules for contributors |
 | [Status](docs/STATUS.md) | Progress, findings, open points |
 | [Changelog](CHANGELOG.md) · [Releases](https://github.com/weski17/bobi/releases) | What changed in each version |
+| [Production checklist](docs/PRODUKTION.md) (German) | What is still missing before Bobi runs in daily use: pilot, real models, external pen test |
 | [Security policy](SECURITY.md) | How to report a vulnerability, what Bobi guarantees |
 
 ## Contributing

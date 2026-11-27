@@ -145,6 +145,93 @@ docker compose -f compose.demo.yaml down -v                # stoppen und die Gas
 | Web-IDE leer | Die Web-IDE ist experimentell und standardmäßig nicht im Image (ADR-0021). Nimm den Web-Chat (Port 7682). |
 | Web-Chat zeigt „Login required“ oder nichts | Dieselben Zugangsdaten wie beim Terminal (Benutzer `demo`). Adresse mit `https://` und ohne Zugangsdaten in der URL öffnen. |
 
+## Ohne Server: Demo auf dem eigenen Mac mit Tunnel (kostenlos, für wenige Tester)
+
+Wenn du keinen Server mieten willst: Die Demo läuft auf deinem Rechner, ein **Tunnel** macht den Web-Chat für die
+Tester erreichbar. Passt für **wenige Tester zu abgesprochenen Zeiten**. Dein Rechner muss währenddessen an und wach
+sein, und die Antworten sind so langsam wie auf einem Server ohne GPU (1 bis 3 Minuten pro Antwort, eine Anfrage
+gleichzeitig). Die Schritte 1 bis 4 wurden auf einem Mac mit Apple-Prozessor (10 Kerne, 16 GB, Colima mit 6 Kernen
+und 10 GB) ausprobiert: Bauen (rund 20 bis 30 Minuten, hauptsächlich das Laden von Ollama und Modell), Start, Passwortschutz
+(401 ohne und mit falschem Passwort), Seite, gesperrte Aufrufe (404) und eine echte Modellantwort (Aufgabe 1 der
+Testanleitung: 85 Sekunden). Der **Tunnel (Schritt 5) wurde in diesem Repository nicht getestet** – prüfe ihn beim
+ersten Mal selbst.
+
+**Was du brauchst:** Docker (Docker Desktop oder Colima, mit mindestens 10 GB für die Docker-VM), 16 GB RAM am Rechner,
+ca. 20 GB freien Platz.
+
+**1. Passwort anlegen** (einmalig; die Datei liegt außerhalb des Repositorys und nur du kannst sie lesen):
+
+```bash
+umask 077
+printf 'DEMO_PASSWORD=%s\nBOBI_DEMO_IMAGE=bobi-demo:local\n' "$(openssl rand -base64 18)" > ~/.bobi-demo.env
+```
+
+**2. Image bauen** (im Repository-Ordner; einmalig, dauert eine Weile und lädt das Modell, ca. 2,5 GB):
+
+```bash
+git submodule update --init --depth 1
+docker compose --env-file ~/.bobi-demo.env -f compose.demo.yaml build demo
+```
+
+Statt zu bauen kannst du auch das fertige Image ziehen (`ghcr.io/weski17/bobi-demo`); es ist privat, dafür brauchst du
+bei `docker login ghcr.io` einen Token mit Leserecht auf Pakete. Das veröffentlichte `latest` ist aber nicht immer der
+neueste Stand: prüfe, ob der Web-Chat (Port 7682) darin ist.
+
+**3. Starten** (nur auf deinem Rechner erreichbar, `127.0.0.1`):
+
+```bash
+docker compose --env-file ~/.bobi-demo.env -f compose.demo.yaml up -d
+```
+
+**4. Lokal prüfen**, bevor du irgendetwas freigibst:
+
+```bash
+# ohne Passwort muss es abgelehnt werden (401); die erste Antwort kommt erst, wenn das Modell geladen ist
+curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:7682/
+```
+
+Dann im Browser `http://127.0.0.1:7682` öffnen (Benutzer `demo`, Passwort aus `~/.bobi-demo.env`) und selbst die
+[Testaufgaben](demos/tester-anleitung.md) durchspielen.
+
+**5. Tunnel** – nur den **Web-Chat (Port 7682)** freigeben, **nicht** das Web-Terminal (Port 7681): Das Terminal gibt
+eine Shell im Container und gehört nicht ins Internet. Mit Cloudflare Tunnel (`brew install cloudflared`) geht es ohne
+eigene Domain:
+
+```bash
+cloudflared tunnel --url http://127.0.0.1:7682
+```
+
+Das Programm gibt eine Adresse wie `https://<zufallsname>.trycloudflare.com` aus. Diese Adresse (HTTPS) plus das Passwort
+schickst du den Testern. Sie ändert sich bei jedem Start. Solange der Tunnel läuft, ist dein Chat im Internet erreichbar,
+geschützt nur durch das Passwort (und die Vorkehrungen des Gates: nur die Chat-Aufrufe, Herkunftsprüfung, strenge
+Sicherheits-Header).
+
+**6. Rechner wach halten** (in einem eigenen Terminal, solange getestet wird):
+
+```bash
+caffeinate -dims
+```
+
+**7. Danach alles abschalten:**
+
+```bash
+# Tunnel: im Terminal Ctrl-C drücken
+docker compose --env-file ~/.bobi-demo.env -f compose.demo.yaml down
+```
+
+Für den nächsten Testtermin ein **neues Passwort** erzeugen (Schritt 1, Datei vorher löschen). Willst du die Chats und
+Änderungen der Tester loswerden: `docker compose … down -v`.
+
+**Sicherheit:** Die Tester sind **nicht voneinander getrennt**. Wer das Passwort hat, sieht die Sitzungen und
+Arbeitsordner der anderen und kann im Container Befehle ausführen (siehe `SECURITY.md`). Lade nur Leute ein, denen sie
+untereinander vertrauen, und nutze **keinen echten Code und keine echten Zugangsdaten** in der Demo. Beim Start räumt die
+Demo globale Regeln, Modi, Skills, Befehle und Vertrauensentscheidungen aus ihrem Volume. Danach den Tunnel
+abschalten (Schritt 7).
+
+**Grenzen:** Mehr als zwei, drei Tester gleichzeitig sind zu viel (eine Anfrage gleichzeitig). Alle Tester teilen einen
+Arbeitsordner. Fällt dein Rechner in den Ruhezustand oder die Verbindung weg, sind die Tester getrennt. Es gibt keine
+Verfügbarkeitszusage. Für einen dauerhaften Betrieb nimm die Schritte oben mit einem Server.
+
 ## Testerinnen und Tester einladen
 
 Wenn die Demo läuft: schicke den Gästen die Adresse (Web-Chat, Port 7682 bzw. `https://chat.firma.de`) und das Passwort einzeln, nicht im Team-Chat. Dazu die [Testanleitung](demos/tester-anleitung.md) und den [Rückmeldebogen](demos/tester-feedback.md). Alle Gäste teilen einen Arbeitsordner; sprecht Zeiten ab.

@@ -1,0 +1,3 @@
+$ bobi registry install erklaere --from reg
+installed command erklaere 1.0.0 (publisher e23a74e696980b22) in ~/.bobi
+
