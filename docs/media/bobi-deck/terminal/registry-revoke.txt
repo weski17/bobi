@@ -1,0 +1,4 @@
+$ bobi registry revoke erklaere --reason "enthält ein Token" --out reg
+reg/revocations.bobirev.json  (serial 1, 1 entries, signed by e23a74e696980b22)
+bobi: publish this file in the registry folder; others pick it up with `bobi registry check --from <folder>` and on every install from it
+

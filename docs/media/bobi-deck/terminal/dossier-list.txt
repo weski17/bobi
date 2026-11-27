@@ -1,0 +1,9 @@
+$ bobi dossier --list
+ses_e4d33eaadffeG2vebyjWTxt1kp  2026-11-06T21:38:01Z  besucher  1 tasks, 1 records
+ses_e4d35bf4dffeSBJICRGOmp3DTf  2026-11-06T21:36:01Z  besucher  1 tasks, 1 records
+ses_e4d36212bffez6UWhIvuTUBquX  2026-11-06T21:35:36Z  besucher  1 tasks, 5 records
+ses_e4d3a409effeGsk9I4l1LNjSIx  2026-11-06T21:31:06Z  besucher  1 tasks, 5 records
+ses_e4d502979ffena5F3bp5aCm047  2026-11-06T21:07:10Z  besucher  1 tasks, 7 records
+ses_e4d5568b8ffeNX9sEDW7ev2eL1  2026-11-06T21:01:27Z  besucher  1 tasks, 7 records
+ses_e4d6d9d3bffeG8oOaEx2lwEuQu  2026-11-06T20:35:00Z  besucher  1 tasks, 5 records
+
